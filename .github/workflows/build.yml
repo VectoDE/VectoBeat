@@ -1,29 +1,36 @@
-name: 🏗️ Build
+name: 🏗️ Build Container
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build container image
+        uses: docker/build-push-action@v5
         with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Build package
-        run: |
-          mkdir -p dist
-          zip -r dist/vectobeat.zip src config.yml requirements.txt .env
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: vectobeat-build
-          path: dist/vectobeat.zip
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: vectobeat:ci
+
+      - name: Smoke test container
+        run: docker run --rm vectobeat:ci python -m compileall src

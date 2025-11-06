@@ -1,0 +1,38 @@
+name: 🔐 Dependency Audit
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
+  workflow_dispatch:
+  push:
+    paths:
+      - requirements.txt
+      - ".github/workflows/security.yml"
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt --format cyclonedx-json --output pip-audit.json
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit.json

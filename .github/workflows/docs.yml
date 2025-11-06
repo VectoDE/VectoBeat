@@ -1,0 +1,37 @@
+name: 📚 Documentation Guard
+
+on:
+  pull_request:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "assets/images/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "assets/images/**"
+  workflow_dispatch:
+
+jobs:
+  mermaid-diagram:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install Mermaid CLI
+        run: npm install -g @mermaid-js/mermaid-cli
+
+      - name: Regenerate architecture diagram
+        run: mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -t dark
+
+      - name: Ensure diagram is committed
+        run: git diff --exit-code assets/images/architecture.png
