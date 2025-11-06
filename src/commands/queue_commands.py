@@ -68,7 +68,8 @@ class QueueCommands(commands.Cog):
         """Display the queue using an embed paginator."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            error_embed = factory.error("Guild only command.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or (not player.queue and not player.current):
@@ -142,7 +143,8 @@ class QueueCommands(commands.Cog):
 
         player = self._player(inter.guild)
         if not player or len(player.queue) < 2:
-            return await inter.response.send_message(embed=factory.warning("Need at least 2 tracks to shuffle."), ephemeral=True)
+            warning_embed = factory.warning("Need at least 2 tracks to shuffle.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         random.shuffle(player.queue)
         embed = factory.primary("🔀 Shuffled")
@@ -160,11 +162,13 @@ class QueueCommands(commands.Cog):
         """Reorder a track within the queue."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            error_embed = factory.error("Guild only command.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or not player.queue:
-            return await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            warning_embed = factory.warning("Queue is empty.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         src_idx = src - 1
         dest_idx = dest - 1

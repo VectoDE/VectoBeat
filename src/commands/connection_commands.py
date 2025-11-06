@@ -70,7 +70,8 @@ class ConnectionCommands(commands.Cog):
 
         member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
         if not member or not member.voice or not member.voice.channel:
-            return await inter.response.send_message(embed=factory.error("You must be in a voice channel."), ephemeral=True)
+            error_embed = factory.error("You must be in a voice channel.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         async with self._connect_lock:
             await self._ensure_ready()
@@ -154,7 +155,8 @@ class ConnectionCommands(commands.Cog):
         voice_client = inter.guild.voice_client
 
         if not player or not player.is_connected or not voice_client:
-            return await inter.response.send_message(embed=factory.warning("VectoBeat is not connected."), ephemeral=True)
+            warning_embed = factory.warning("VectoBeat is not connected.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         embed = factory.primary("🔊 Voice Session")
         channel = voice_client.channel  # type: ignore

@@ -255,9 +255,17 @@ class MusicEvents(commands.Cog):
                         logger.error("Failed to send autoplay announcement: %s", exc)
                     return
 
-        factory = EmbedFactory(getattr(channel.guild, "id", None) if isinstance(channel, discord.abc.GuildChannel) else None)
+        if isinstance(channel, discord.abc.GuildChannel):
+            guild_id = channel.guild.id
+        else:
+            guild_id = None
+        factory = EmbedFactory(guild_id)
         try:
-            await channel.send(embed=factory.primary("Queue Finished", "Add more tracks with `/play`."), silent=True)
+            queue_message = "Add more tracks with `/play`."
+            await channel.send(
+                embed=factory.primary("Queue Finished", queue_message),
+                silent=True,
+            )
         except Exception as exc:
             logger.error("Failed to send queue finished message: %s", exc)
 
@@ -273,9 +281,14 @@ class MusicEvents(commands.Cog):
             channel = self._channel(player)
             if not channel:
                 return
-            factory = EmbedFactory(getattr(channel.guild, "id", None) if isinstance(channel, discord.abc.GuildChannel) else None)
+            if isinstance(channel, discord.abc.GuildChannel):
+                guild_id = channel.guild.id
+            else:
+                guild_id = None
+            factory = EmbedFactory(guild_id)
             try:
-                await channel.send(embed=factory.error("Failed to play track. The source might be unavailable."), silent=True)
+                error_embed = factory.error("Failed to play track. The source might be unavailable.")
+                await channel.send(embed=error_embed, silent=True)
             except Exception as exc:
                 logger.error("Failed to send load failure message: %s", exc)
 

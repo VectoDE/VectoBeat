@@ -279,14 +279,12 @@ class InfoCommands(commands.Cog):
         if owner_names:
             embed.add_field(name="Owner", value=owner_names, inline=True)
         embed.add_field(name="Command Count", value=f"`{len(self.bot.tree.get_commands())}`", inline=True)
-        embed.add_field(
-            name="Reach",
-            value=(
-                f"`{self._format_number(guild_count)}` guilds\n"
-                f"`{self._format_number(unique_users)}` unique users"
-            ),
-            inline=False,
-        )
+        reach_lines = [
+            f"`{self._format_number(guild_count)}` guilds",
+            f"`{self._format_number(total_members)}` total members",
+            f"`{self._format_number(unique_users)}` unique users",
+        ]
+        embed.add_field(name="Reach", value="\n".join(reach_lines), inline=False)
         runtime_meta = "\n".join(
             [
                 f"Python `{platform.python_version()}`",
@@ -355,7 +353,8 @@ class InfoCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         nodes = self._lavalink_nodes()
         if not nodes:
-            return await inter.response.send_message(embed=factory.warning("Lavalink is not connected."), ephemeral=True)
+            warning_embed = factory.warning("Lavalink is not connected.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         embed = factory.primary("🎛️ Lavalink Nodes")
         for node in nodes:
@@ -387,7 +386,8 @@ class InfoCommands(commands.Cog):
     async def permissions(self, inter: discord.Interaction):
         """Display the bot's effective permissions for the current channel."""
         if not inter.guild or not inter.channel:
-            return await inter.response.send_message("This command must be invoked inside a guild channel.", ephemeral=True)
+            message = "This command must be invoked inside a guild channel."
+            return await inter.response.send_message(message, ephemeral=True)
 
         guild = inter.guild
         me = guild.me or guild.get_member(self.bot.user.id)  # type: ignore
