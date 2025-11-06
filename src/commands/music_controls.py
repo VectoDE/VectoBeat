@@ -458,6 +458,11 @@ class NowPlayingView(discord.ui.View):
             except discord.HTTPException:
                 pass
 
+    def disable_all_items(self):
+        """Gracefully disable every interactive component in the view."""
+        for child in self.children:
+            child.disabled = True
+
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
     async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[override]
         """Allow users to refresh the embed on demand."""
