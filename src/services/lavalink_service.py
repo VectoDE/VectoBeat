@@ -130,7 +130,7 @@ class LavalinkManager:
             # Force an explicit connection attempt so we can surface authentication errors early.
             await node.connect(force=True)
             await asyncio.wait_for(node.get_version(), timeout=5)
-        except AuthenticationError as exc:
+        except AuthenticationError:
             self.logger.error(
                 "Lavalink authentication failed for node '%s'. "
                 "Verify the password in config.yml/.env matches the server configuration.",

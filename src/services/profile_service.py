@@ -66,7 +66,14 @@ class GuildProfileManager:
         profile.validate()
         return profile
 
-    def update(self, guild_id: int, *, volume: int | None = None, autoplay: bool | None = None, announcement_style: str | None = None) -> GuildProfile:
+    def update(
+        self,
+        guild_id: int,
+        *,
+        volume: int | None = None,
+        autoplay: bool | None = None,
+        announcement_style: str | None = None,
+    ) -> GuildProfile:
         """Mutate the stored profile and return the latest state."""
         profile = self.get(guild_id)
         if volume is not None:

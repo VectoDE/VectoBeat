@@ -6,6 +6,7 @@ import asyncio
 from typing import Optional
 
 import discord
+import lavalink
 from discord import app_commands
 from discord.ext import commands
 
@@ -31,16 +32,21 @@ class ConnectionCommands(commands.Cog):
             f"User limit `{channel.user_limit or '∞'}`"
         )
 
-    def _permissions_summary(self, member: discord.Member, channel: discord.VoiceChannel) -> str:
+    def _permissions_summary(
+        self, member: discord.Member, channel: discord.VoiceChannel
+    ) -> tuple[str, list[str]]:
         """List permission status for required voice capabilities."""
         perms = channel.permissions_for(member)
         lines = []
+        missing = []
         for attr in REQUIRED_VOICE_PERMS:
             label = attr.replace("_", " ").title()
             granted = getattr(perms, attr, False)
             icon = "✅" if granted else "❌"
             lines.append(f"{icon} {label}")
-        return "\n".join(lines)
+            if not granted:
+                missing.append(attr)
+        return "\n".join(lines), missing
 
     @staticmethod
     def _find_player(bot: commands.Bot, guild_id: int) -> Optional[lavalink.DefaultPlayer]:
@@ -85,12 +91,12 @@ class ConnectionCommands(commands.Cog):
             if not me:
                 return await inter.response.send_message("Unable to resolve bot member.", ephemeral=True)
 
-            summary = self._permissions_summary(me, channel)
-            missing = [attr for attr in REQUIRED_VOICE_PERMS if "❌" in summary.splitlines()[REQUIRED_VOICE_PERMS.index(attr)]]
+            summary, missing = self._permissions_summary(me, channel)
             if missing:
+                missing_lines = "\n".join(f"- {attr.replace('_', ' ').title()}" for attr in missing)
                 embed = factory.error(
                     "I am missing voice permissions in this channel:",
-                    "\n".join(f"- {attr.replace('_', ' ').title()}" for attr in missing),
+                    missing_lines,
                 )
                 return await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -106,7 +112,8 @@ class ConnectionCommands(commands.Cog):
                     if player.volume != profile.default_volume:
                         await player.set_volume(profile.default_volume)
 
-            embed = factory.success("Connected", f"Joined voice channel:\n{self._channel_info(channel)}")
+            connection_details = f"Joined voice channel:\n{self._channel_info(channel)}"
+            embed = factory.success("Connected", connection_details)
             embed.add_field(name="Permissions", value=summary, inline=False)
             await inter.response.send_message(embed=embed)
 
@@ -159,7 +166,7 @@ class ConnectionCommands(commands.Cog):
         embed.add_field(name="Players Active", value=f"`{player.is_playing}`", inline=True)
         embed.add_field(name="Queue Size", value=f"`{len(player.queue)}`", inline=True)
 
-        summary = self._permissions_summary(inter.guild.me, channel)  # type: ignore
+        summary, _ = self._permissions_summary(inter.guild.me, channel)  # type: ignore[arg-type]
         embed.add_field(name="Permissions", value=summary, inline=False)
 
         await inter.response.send_message(embed=embed, ephemeral=True)

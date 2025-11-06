@@ -28,15 +28,16 @@ class ErrorEvents(commands.Cog):
                 pass
             return
 
+        fallback_embed = factory.error("Unexpected error. Please try again later.")
         self.bot.logger.error(
             "Unhandled app command error: %s",
             "".join(traceback.format_exception(type(error), error, error.__traceback__)),
         )
         try:
             if interaction.response.is_done():
-                await interaction.followup.send(embed=factory.error("Unexpected error. Please try again later."), ephemeral=True)
+                await interaction.followup.send(embed=fallback_embed, ephemeral=True)
             else:
-                await interaction.response.send_message(embed=factory.error("Unexpected error. Please try again later."), ephemeral=True)
+                await interaction.response.send_message(embed=fallback_embed, ephemeral=True)
         except Exception:
             pass
 

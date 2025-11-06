@@ -130,7 +130,9 @@ class MusicControls(commands.Cog):
         embed.add_field(name="Up Next", value=self._up_next_block(player), inline=False)
         return embed
 
-    def _tag_tracks(self, tracks: List[lavalink.AudioTrack], requester: Optional[discord.abc.User]) -> List[lavalink.AudioTrack]:
+    def _tag_tracks(
+        self, tracks: List[lavalink.AudioTrack], requester: Optional[discord.abc.User]
+    ) -> List[lavalink.AudioTrack]:
         """Attach requester metadata to Lavalink track objects."""
         if requester:
             requester_id = requester.id
@@ -186,7 +188,8 @@ class MusicControls(commands.Cog):
             player = self.bot.lavalink.player_manager.get(inter.guild.id)
 
         if not player:
-            await inter.response.send_message(embed=factory.error("Failed to establish Lavalink player."), ephemeral=True)
+            error_embed = factory.error("Failed to establish Lavalink player.")
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
             return None
 
         if not player.is_connected:
@@ -471,7 +474,9 @@ class NowPlayingView(discord.ui.View):
             child.disabled = True
 
     @discord.ui.button(label="Refresh", style=discord.ButtonStyle.secondary)
-    async def refresh_button(self, interaction: discord.Interaction, button: discord.ui.Button):  # type: ignore[override]
+    async def refresh_button(  # type: ignore[override]
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
         """Allow users to refresh the embed on demand."""
         await self.refresh()
         if not interaction.response.is_done():

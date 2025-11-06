@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import random
 import time
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import lavalink
 import redis.asyncio as redis

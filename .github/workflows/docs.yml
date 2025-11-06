@@ -31,7 +31,7 @@ jobs:
         run: npm install -g @mermaid-js/mermaid-cli
 
       - name: Regenerate architecture diagram
-        run: mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -t dark
+        run: mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -t dark -p docs/puppeteer-config.json
 
       - name: Ensure diagram is committed
         run: git diff --exit-code assets/images/architecture.png

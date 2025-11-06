@@ -7,7 +7,6 @@ import datetime
 import os
 import platform
 import statistics
-from collections import Counter
 from typing import Optional, Tuple
 
 import discord
@@ -202,10 +201,15 @@ class InfoCommands(commands.Cog):
 
             embed.add_field(
                 name="Guild Footprint",
-                value=(
-                    f"`{self._format_number(guild_count)}` guilds\n"
-                    f"`{self._format_number(member_count)}` members\n"
-                    f"`{self._format_number(text_channels)}` text / `{self._format_number(voice_channels)}` voice channels"
+                value="\n".join(
+                    [
+                        f"`{self._format_number(guild_count)}` guilds",
+                        f"`{self._format_number(member_count)}` members",
+                        (
+                            f"`{self._format_number(text_channels)}` text / "
+                            f"`{self._format_number(voice_channels)}` voice channels"
+                        ),
+                    ]
                 ),
                 inline=False,
             )
@@ -219,10 +223,12 @@ class InfoCommands(commands.Cog):
                 inline=True,
             )
 
-            runtime_info = (
-                f"Python `{platform.python_version()}`\n"
-                f"discord.py `{discord.__version__}`\n"
-                f"Host `{platform.system()} {platform.release()}`"
+            runtime_info = "\n".join(
+                [
+                    f"Python `{platform.python_version()}`",
+                    f"discord.py `{discord.__version__}`",
+                    f"Host `{platform.system()} {platform.release()}`",
+                ]
             )
             embed.add_field(name="Runtime", value=runtime_info, inline=True)
 
@@ -259,7 +265,13 @@ class InfoCommands(commands.Cog):
         owner_names = ", ".join(owner.name for owner in ([app_info.owner] if app_info.owner else []))
         guild_count = len(self.bot.guilds)
         total_members = sum(g.member_count or 0 for g in self.bot.guilds)
-        unique_users = len({member.id for g in self.bot.guilds for member in g.members}) if inter.guild else total_members
+        if inter.guild:
+            unique_users = len({member.id for member in inter.guild.members})
+        else:
+            seen_users: set[int] = set()
+            for guild in self.bot.guilds:
+                seen_users.update(member.id for member in guild.members)
+            unique_users = len(seen_users)
         cpu_percent, memory_mb = self._process_metrics()
 
         embed = factory.primary("🤖 Bot Information")
@@ -275,15 +287,14 @@ class InfoCommands(commands.Cog):
             ),
             inline=False,
         )
-        embed.add_field(
-            name="Runtime",
-            value=(
-                f"Python `{platform.python_version()}`\n"
-                f"discord.py `{discord.__version__}`\n"
-                f"Host `{platform.system()} {platform.release()}`"
-            ),
-            inline=True,
+        runtime_meta = "\n".join(
+            [
+                f"Python `{platform.python_version()}`",
+                f"discord.py `{discord.__version__}`",
+                f"Host `{platform.system()} {platform.release()}`",
+            ]
         )
+        embed.add_field(name="Runtime", value=runtime_meta, inline=True)
         if cpu_percent is not None or memory_mb is not None:
             process_lines = []
             if cpu_percent is not None:
@@ -348,16 +359,26 @@ class InfoCommands(commands.Cog):
 
         embed = factory.primary("🎛️ Lavalink Nodes")
         for node in nodes:
+            cpu_line = (
+                f"CPU `{(node['cpu_lavalink'] or 0) * 100:.1f}%` LL / "
+                f"`{(node['cpu_system'] or 0) * 100:.1f}%` SYS"
+            )
+            memory_line = (
+                f"Memory `{self._format_bytes(node['memory_used'])}` / "
+                f"`{self._format_bytes(node['memory_allocated'])}`"
+            )
             lines = [
                 f"Region `{node['region']}`",
                 f"Players `{node['playing']}/{node['players']}`",
-                f"CPU `{(node['cpu_lavalink'] or 0)*100:.1f}%` LL / `{(node['cpu_system'] or 0)*100:.1f}%` SYS",
-                f"Memory `{self._format_bytes(node['memory_used'])}` / `{self._format_bytes(node['memory_allocated'])}`",
+                cpu_line,
+                memory_line,
             ]
             if node["frames"] is not None:
-                lines.append(
-                    f"Frames sent `{node['frames']}`, deficit `{node['deficit']}`, nulled `{node['nulled']}`"
+                frame_line = (
+                    f"Frames sent `{node['frames']}`, deficit `{node['deficit']}`, "
+                    f"nulled `{node['nulled']}`"
                 )
+                lines.append(frame_line)
             embed.add_field(name=node["name"], value="\n".join(lines), inline=False)
 
         await inter.response.send_message(embed=embed)

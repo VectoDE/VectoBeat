@@ -56,7 +56,9 @@ class PlaylistService:
         return payload
 
     @staticmethod
-    def _deserialise(entries: List[Dict[str, Any]], *, default_requester: Optional[int] = None) -> List[lavalink.AudioTrack]:
+    def _deserialise(
+        entries: List[Dict[str, Any]], *, default_requester: Optional[int] = None
+    ) -> List[lavalink.AudioTrack]:
         tracks: List[lavalink.AudioTrack] = []
         for entry in entries:
             track_id = entry.get("track")
@@ -82,7 +84,9 @@ class PlaylistService:
                 self.logger.error("Failed saving playlist '%s' for %s: %s", name, guild_id, exc)
             raise PlaylistStorageError(str(exc)) from exc
 
-    async def load_playlist(self, guild_id: int, name: str, *, default_requester: Optional[int] = None) -> List[lavalink.AudioTrack]:
+    async def load_playlist(
+        self, guild_id: int, name: str, *, default_requester: Optional[int] = None
+    ) -> List[lavalink.AudioTrack]:
         """Fetch and deserialise a playlist by name."""
         key = self._key(guild_id, name)
         try:

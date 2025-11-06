@@ -60,7 +60,11 @@ autoplay_random = os.getenv("AUTOPLAY_RANDOM_PICK")
 if autoplay_limit or autoplay_random:
     CONFIG.autoplay = AutoplayConfig(
         discovery_limit=int(autoplay_limit) if autoplay_limit else CONFIG.autoplay.discovery_limit,
-        random_pick=(autoplay_random.lower() == "true") if isinstance(autoplay_random, str) else CONFIG.autoplay.random_pick,
+        random_pick=(
+            autoplay_random.lower() == "true"
+            if isinstance(autoplay_random, str)
+            else CONFIG.autoplay.random_pick
+        ),
     )
 
 crossfade_enabled = os.getenv("CROSSFADE_ENABLED")
@@ -69,7 +73,11 @@ crossfade_steps = os.getenv("CROSSFADE_STEPS")
 crossfade_floor = os.getenv("CROSSFADE_FLOOR_VOLUME")
 if crossfade_enabled or crossfade_duration or crossfade_steps or crossfade_floor:
     CONFIG.crossfade = CrossfadeConfig(
-        enabled=(crossfade_enabled.lower() == "true") if isinstance(crossfade_enabled, str) else CONFIG.crossfade.enabled,
+        enabled=(
+            crossfade_enabled.lower() == "true"
+            if isinstance(crossfade_enabled, str)
+            else CONFIG.crossfade.enabled
+        ),
         duration_ms=int(crossfade_duration) if crossfade_duration else CONFIG.crossfade.duration_ms,
         fade_steps=int(crossfade_steps) if crossfade_steps else CONFIG.crossfade.fade_steps,
         floor_volume=int(crossfade_floor) if crossfade_floor else CONFIG.crossfade.floor_volume,

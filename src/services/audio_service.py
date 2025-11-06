@@ -3,9 +3,9 @@
 import asyncio
 import re
 from dataclasses import dataclass
-from functools import partial
 from typing import Iterable, List, Optional
 
+import discord
 import yt_dlp
 
 YTDL_OPTIONS = {

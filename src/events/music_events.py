@@ -108,7 +108,11 @@ class MusicEvents(commands.Cog):
         if not channel:
             return
 
-        factory = EmbedFactory(getattr(channel.guild, "id", None) if isinstance(channel, discord.abc.GuildChannel) else None)
+        if isinstance(channel, discord.abc.GuildChannel):
+            guild_id = channel.guild.id
+        else:
+            guild_id = None
+        factory = EmbedFactory(guild_id)
         track = event.track
         guild = channel.guild if isinstance(channel, discord.abc.GuildChannel) else None
         profile_manager = getattr(self.bot, "profile_manager", None)
@@ -124,8 +128,10 @@ class MusicEvents(commands.Cog):
             restore_volume = player.fetch("crossfade_restore_volume") or player.volume
             current_volume = player.volume
             if current_volume < restore_volume:
-                asyncio.create_task(self._ramp_volume(player, current_volume, restore_volume))
-            self._fade_tasks[player.guild_id] = asyncio.create_task(self._schedule_fade_out(player, track))
+                ramp_task = self._ramp_volume(player, current_volume, restore_volume)
+                asyncio.create_task(ramp_task)
+            fade_task = self._schedule_fade_out(player, track)
+            self._fade_tasks[player.guild_id] = asyncio.create_task(fade_task)
 
         autoplay_service = getattr(self.bot, "autoplay_service", None)
         payload = {
@@ -203,7 +209,8 @@ class MusicEvents(commands.Cog):
                 query_terms = f"{artist or ''} {metadata.get('title', '')}".strip()
                 if query_terms:
                     try:
-                        results = await self.bot.lavalink.get_tracks(f"ytsearch{CONFIG.autoplay.discovery_limit}:{query_terms}")
+                        search_query = f"ytsearch{CONFIG.autoplay.discovery_limit}:{query_terms}"
+                        results = await self.bot.lavalink.get_tracks(search_query)
                     except Exception as exc:  # pragma: no cover - network safeguard
                         logger.error("Autoplay search failed: %s", exc)
                     else:
@@ -223,11 +230,11 @@ class MusicEvents(commands.Cog):
                 except Exception as exc:  # pragma: no cover - lavalink behaviour
                     logger.error("Failed to start autoplay track: %s", exc)
                 else:
-                    factory = EmbedFactory(
-                        getattr(channel.guild, "id", None)
-                        if isinstance(channel, discord.abc.GuildChannel)
-                        else None
-                    )
+                    if isinstance(channel, discord.abc.GuildChannel):
+                        guild_id = channel.guild.id
+                    else:
+                        guild_id = None
+                    factory = EmbedFactory(guild_id)
                     bot_logger = getattr(self.bot, "logger", None)
                     if bot_logger:
                         bot_logger.info(

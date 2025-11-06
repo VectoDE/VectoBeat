@@ -79,13 +79,21 @@ class QueueCommands(commands.Cog):
             items.append(f"`Now` {track_str(player.current)}")
         items.extend(track_str(track) for track in player.queue)
 
-        paginator = EmbedPaginator(entries=items, per_page=10, guild_id=inter.guild.id if inter.guild else None)
+        paginator = EmbedPaginator(
+            entries=items,
+            per_page=10,
+            guild_id=inter.guild.id if inter.guild else None,
+        )
         embed = paginator.make_embed()
         embed.title = "🎶 Queue Overview"
         embed.description = "\n".join(items[:10])
-        embed.set_footer(
-            text=f"{embed.footer.text} • {self._queue_summary(player)}" if embed.footer and embed.footer.text else self._queue_summary(player)
-        )
+        summary_text = self._queue_summary(player)
+        footer_text = embed.footer.text if embed.footer else None
+        footer_icon = getattr(embed.footer, "icon_url", None) if embed.footer else None
+        if footer_text:
+            embed.set_footer(text=f"{footer_text} • {summary_text}", icon_url=footer_icon)
+        else:
+            embed.set_footer(text=summary_text, icon_url=None)
         await inter.response.send_message(embed=embed, view=paginator, ephemeral=True)
 
     @app_commands.command(name="remove", description="Remove a track by its 1-based position.")
@@ -143,7 +151,12 @@ class QueueCommands(commands.Cog):
 
     @app_commands.command(name="move", description="Move a track within the queue.")
     @app_commands.describe(src="From (1-based)", dest="To (1-based)")
-    async def move(self, inter: discord.Interaction, src: app_commands.Range[int, 1, 9999], dest: app_commands.Range[int, 1, 9999]):
+    async def move(
+        self,
+        inter: discord.Interaction,
+        src: app_commands.Range[int, 1, 9999],
+        dest: app_commands.Range[int, 1, 9999],
+    ):
         """Reorder a track within the queue."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
@@ -224,11 +237,13 @@ class QueueCommands(commands.Cog):
 
         cleaned = name.strip()
         if not cleaned or len(cleaned) > 64:
-            return await inter.response.send_message(embed=factory.error("Playlist name must be 1-64 characters."), ephemeral=True)
+            error_embed = factory.error("Playlist name must be 1-64 characters.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or (not player.queue and not player.current):
-            return await inter.response.send_message(embed=factory.warning("No tracks to persist."), ephemeral=True)
+            warning_embed = factory.warning("No tracks to persist.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         tracks: List[lavalink.AudioTrack] = []
         if include_current and player.current:
@@ -255,10 +270,10 @@ class QueueCommands(commands.Cog):
                     inter.user.id,
                     exc,
                 )
-            return await inter.response.send_message(
-                embed=factory.error("Failed to save playlist. Please try again later."), ephemeral=True
-            )
-        embed = factory.success("Playlist Saved", f"Stored **{count}** track(s) as `{cleaned}`.")
+            error_embed = factory.error("Failed to save playlist. Please try again later.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+        save_message = f"Stored **{count}** track(s) as `{cleaned}`."
+        embed = factory.success("Playlist Saved", save_message)
         embed.add_field(name="Tip", value="Use `/playlist load` to queue the playlist later.", inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -274,17 +289,22 @@ class QueueCommands(commands.Cog):
 
         player = self._player(inter.guild)
         if not player or not player.is_connected:
-            return await inter.response.send_message(
-                embed=factory.error("VectoBeat must be connected to voice before loading a playlist. Use `/connect` first."),
-                ephemeral=True,
+            message = (
+                "VectoBeat must be connected to voice before loading a playlist. "
+                "Use `/connect` first."
             )
+            error_embed = factory.error(message)
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         await inter.response.defer(ephemeral=True)
 
         service = self._playlist_service()
+        default_requester = inter.user.id if isinstance(inter.user, discord.User) else None
         try:
             tracks = await service.load_playlist(
-                inter.guild.id, name.strip(), default_requester=inter.user.id if isinstance(inter.user, discord.User) else None
+                inter.guild.id,
+                name.strip(),
+                default_requester=default_requester,
             )
             if self.bot.logger:
                 self.bot.logger.info(
@@ -303,12 +323,11 @@ class QueueCommands(commands.Cog):
                     inter.user.id,
                     exc,
                 )
-            return await inter.followup.send(
-                embed=factory.error("Failed to load playlist from storage. Please try again later."),
-                ephemeral=True,
-            )
+            error_embed = factory.error("Failed to load playlist from storage. Please try again later.")
+            return await inter.followup.send(embed=error_embed, ephemeral=True)
         if not tracks:
-            return await inter.followup.send(embed=factory.warning(f"No playlist found with the name `{name}`."), ephemeral=True)
+            warning = factory.warning(f"No playlist found with the name `{name}`.")
+            return await inter.followup.send(embed=warning, ephemeral=True)
 
         autop_flag = player.fetch("autoplay_enabled")
         if replace_queue:
@@ -337,7 +356,8 @@ class QueueCommands(commands.Cog):
         if len(tracks) > 5:
             summary += f"\n...`{len(tracks) - 5}` more"
 
-        embed = factory.success("Playlist Loaded", f"Queued **{len(tracks)}** track(s) from `{name}`.")
+        load_message = f"Queued **{len(tracks)}** track(s) from `{name}`."
+        embed = factory.success("Playlist Loaded", load_message)
         embed.add_field(name="Preview", value=summary, inline=False)
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.followup.send(embed=embed, ephemeral=True)
@@ -356,11 +376,11 @@ class QueueCommands(commands.Cog):
         except PlaylistStorageError as exc:
             if self.bot.logger:
                 self.bot.logger.error("Failed to list playlists for guild %s: %s", inter.guild.id, exc)
-            return await inter.response.send_message(
-                embed=factory.error("Unable to query playlists from storage. Please try again later."), ephemeral=True
-            )
+            error_embed = factory.error("Unable to query playlists from storage. Please try again later.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
         if not names:
-            return await inter.response.send_message(embed=factory.warning("No playlists saved yet."), ephemeral=True)
+            warning_embed = factory.warning("No playlists saved yet.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         embed = factory.primary("Saved Playlists")
         embed.description = "\n".join(f"- `{name}`" for name in names)
@@ -378,7 +398,10 @@ class QueueCommands(commands.Cog):
             removed = await service.delete_playlist(inter.guild.id, cleaned)
             if removed and self.bot.logger:
                 self.bot.logger.info(
-                    "Deleted playlist '%s' for guild %s by user %s", cleaned, inter.guild.id, inter.user.id
+                    "Deleted playlist '%s' for guild %s by user %s",
+                    cleaned,
+                    inter.guild.id,
+                    inter.user.id,
                 )
         except PlaylistStorageError as exc:
             if self.bot.logger:
@@ -389,13 +412,11 @@ class QueueCommands(commands.Cog):
                     inter.user.id,
                     exc,
                 )
-            return await inter.response.send_message(
-                embed=factory.error("Failed to delete playlist from storage. Please try again later."), ephemeral=True
-            )
+            error_embed = factory.error("Failed to delete playlist from storage. Please try again later.")
+            return await inter.response.send_message(embed=error_embed, ephemeral=True)
         if not removed:
-            return await inter.response.send_message(
-                embed=factory.warning(f"No playlist found with the name `{cleaned}`."), ephemeral=True
-            )
+            warning_embed = factory.warning(f"No playlist found with the name `{cleaned}`.")
+            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
         embed = factory.success("Playlist Deleted", f"Removed `{cleaned}` from storage.")
         await inter.response.send_message(embed=embed, ephemeral=True)
