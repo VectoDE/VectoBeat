@@ -1,0 +1,43 @@
+%% VectoBeat System Architecture Diagram
+graph LR
+  subgraph Discord_Platform[Discord Platform]
+    Users[Discord Users] -->|Interactions & Voice| Gateway[Discord API & Gateway]
+  end
+
+  subgraph VectoBeat_Runtime[VectoBeat Runtime]
+    Bot[AutoShardedBot Core]
+    Commands[Slash Command Suites]
+    Events[Lifecycle & Music Events]
+    Services[Lavalink Manager & Audio Service]
+    Config["Configuration (.env + config.yml)"]
+    Observability[Logging & Metrics]
+  end
+
+  Gateway -->|Gateway Events| Bot
+  Bot -->|REST Calls| Gateway
+  Bot --> Commands
+  Bot --> Events
+  Commands --> Services
+  Events --> Services
+  Config --> Bot
+  Config --> Services
+  Bot --> Observability
+  Services --> Observability
+
+  Services -->|REST + WebSocket| Lavalink[Lavalink Node]
+  Lavalink -->|Voice PCM| VoiceGateway[Discord Voice Gateway]
+  VoiceGateway --> Gateway
+
+  subgraph Media_Sources[Media Sources]
+    YouTube["YouTube / yt-dlp"]
+    SoundCloud["SoundCloud"]
+    Spotify["Spotify Plugin"]
+    Apple["Apple Music (via plugins)"]
+    HTTP["Direct HTTP Streams"]
+  end
+
+  Lavalink --> YouTube
+  Lavalink --> SoundCloud
+  Lavalink --> Spotify
+  Lavalink --> Apple
+  Lavalink --> HTTP

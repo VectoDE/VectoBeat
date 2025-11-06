@@ -1,0 +1,44 @@
+bot:
+  intents:
+    members: true
+    message_content: true
+  presence:
+    status: "online"
+    activity_type: "listening"
+    activity_name: "your commands"
+  sync_commands_on_start: true
+  shard_count: 1
+
+theme:
+  color_primary: 5793266 # 0x5865F2
+  color_success: 5763719 # green-ish
+  color_warning: 16763904 # yellow-ish
+  color_error: 15548997 # red-ish
+  footer_text: "VectoBeat"
+  footer_icon_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+  author_name: "VectoDE"
+  author_icon_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+  thumbnail_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+
+branding:
+  guild_overrides: {} # future: per-guild brand overrides
+
+lavalink:
+  host: "lava-v4.ajieblogs.eu.org"
+  port: 443
+  password: https://dsc.gg/ajidevserver
+  https: true
+  name: "main"
+  region: "eu"
+
+spotify:  # Optional: Für Spotify Support
+  client_id: ""  # Setze deinen Spotify Client ID
+  client_secret: ""  # Setze deinen Spotify Client Secret
+
+limits:
+  queue_max_length: 500
+  search_timeout_ms: 8000
+
+features:
+  allow_loop: true
+  allow_shuffle: true
