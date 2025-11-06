@@ -206,6 +206,9 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Runtime data
+data/
+
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md

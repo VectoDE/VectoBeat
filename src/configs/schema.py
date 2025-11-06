@@ -74,6 +74,31 @@ class FeaturesConfig(BaseModel):
     allow_shuffle: bool = True
 
 
+class AutoplayConfig(BaseModel):
+    """Autoplay tuning parameters."""
+
+    discovery_limit: int = 10
+    random_pick: bool = True
+
+
+class CrossfadeConfig(BaseModel):
+    """Crossfade and gapless playback tuning."""
+
+    enabled: bool = False
+    duration_ms: int = 2000
+    fade_steps: int = 10
+    floor_volume: int = 15
+
+
+class RedisConfig(BaseModel):
+    """Redis connection configuration for playlist persistence."""
+
+    host: str = "127.0.0.1"
+    port: int = 6379
+    password: Optional[str] = None
+    db: int = 0
+
+
 class AppConfig(BaseModel):
     """Root configuration container loaded from ``config.yml`` and ``.env``."""
 
@@ -84,3 +109,6 @@ class AppConfig(BaseModel):
     spotify: Optional[SpotifyConfig] = None
     limits: LimitsConfig = LimitsConfig()
     features: FeaturesConfig = FeaturesConfig()
+    autoplay: AutoplayConfig = AutoplayConfig()
+    crossfade: CrossfadeConfig = CrossfadeConfig()
+    redis: RedisConfig = RedisConfig()

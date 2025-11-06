@@ -8,6 +8,7 @@ import lavalink
 from discord import app_commands
 from discord.ext import commands
 
+from src.services.playlist_service import PlaylistService, PlaylistStorageError
 from src.utils.embeds import EmbedFactory
 from src.utils.pagination import EmbedPaginator
 
@@ -43,6 +44,24 @@ class QueueCommands(commands.Cog):
         duration = sum(track.duration or 0 for track in player.queue)
         duration += max((player.current.duration - player.position) if player.current else 0, 0)
         return f"`{total_tracks}` tracks • `{ms_to_clock(duration)}` remaining"
+
+    def _playlist_service(self) -> PlaylistService:
+        service = getattr(self.bot, "playlist_service", None)
+        if not service:
+            raise RuntimeError("PlaylistService not initialised on bot.")
+        return service
+
+    @staticmethod
+    def _ensure_manage_guild(inter: discord.Interaction) -> Optional[str]:
+        """Ensure the invoking member can manage the guild."""
+        if not inter.guild:
+            return "This command can only be used inside a guild."
+        member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
+        if not isinstance(member, discord.Member):
+            return "Unable to resolve invoking member."
+        if not member.guild_permissions.manage_guild:
+            return "You must have the `Manage Server` permission to perform this action."
+        return None
 
     @app_commands.command(name="queue", description="Show the current queue with details.")
     async def queue(self, inter: discord.Interaction):
@@ -185,6 +204,201 @@ class QueueCommands(commands.Cog):
         if len(player.queue) > limit:
             lines.append(f"...`{len(player.queue) - limit}` more")
         return "\n".join(lines)
+
+    # ------------------------------------------------------------------ playlist management
+    playlist = app_commands.Group(
+        name="playlist",
+        description="Manage persistent playlists for this guild.",
+        guild_only=True,
+    )
+
+    @playlist.command(name="save", description="Persist the current queue as a named playlist.")
+    @app_commands.describe(
+        name="Unique playlist name (case-insensitive).",
+        include_current="Include the currently playing track in the saved playlist.",
+    )
+    async def playlist_save(self, inter: discord.Interaction, name: str, include_current: bool = True):
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if (error := self._ensure_manage_guild(inter)) is not None:
+            return await inter.response.send_message(error, ephemeral=True)
+
+        cleaned = name.strip()
+        if not cleaned or len(cleaned) > 64:
+            return await inter.response.send_message(embed=factory.error("Playlist name must be 1-64 characters."), ephemeral=True)
+
+        player = self._player(inter.guild)
+        if not player or (not player.queue and not player.current):
+            return await inter.response.send_message(embed=factory.warning("No tracks to persist."), ephemeral=True)
+
+        tracks: List[lavalink.AudioTrack] = []
+        if include_current and player.current:
+            tracks.append(player.current)
+        tracks.extend(player.queue)
+
+        service = self._playlist_service()
+        try:
+            count = await service.save_playlist(inter.guild.id, cleaned, tracks)
+            if self.bot.logger:
+                self.bot.logger.info(
+                    "Playlist '%s' saved with %s track(s) for guild %s by user %s",
+                    cleaned,
+                    count,
+                    inter.guild.id,
+                    inter.user.id,
+                )
+        except PlaylistStorageError as exc:
+            if self.bot.logger:
+                self.bot.logger.error(
+                    "Playlist save failed for '%s' (guild %s, user %s): %s",
+                    cleaned,
+                    inter.guild.id,
+                    inter.user.id,
+                    exc,
+                )
+            return await inter.response.send_message(
+                embed=factory.error("Failed to save playlist. Please try again later."), ephemeral=True
+            )
+        embed = factory.success("Playlist Saved", f"Stored **{count}** track(s) as `{cleaned}`.")
+        embed.add_field(name="Tip", value="Use `/playlist load` to queue the playlist later.", inline=False)
+        await inter.response.send_message(embed=embed, ephemeral=True)
+
+    @playlist.command(name="load", description="Load a saved playlist into the current queue.")
+    @app_commands.describe(
+        name="Playlist name to load.",
+        replace_queue="Clear the existing queue (and stop current track) before loading.",
+    )
+    async def playlist_load(self, inter: discord.Interaction, name: str, replace_queue: bool = False):
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if not inter.guild:
+            return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+
+        player = self._player(inter.guild)
+        if not player or not player.is_connected:
+            return await inter.response.send_message(
+                embed=factory.error("VectoBeat must be connected to voice before loading a playlist. Use `/connect` first."),
+                ephemeral=True,
+            )
+
+        await inter.response.defer(ephemeral=True)
+
+        service = self._playlist_service()
+        try:
+            tracks = await service.load_playlist(
+                inter.guild.id, name.strip(), default_requester=inter.user.id if isinstance(inter.user, discord.User) else None
+            )
+            if self.bot.logger:
+                self.bot.logger.info(
+                    "Loaded playlist '%s' with %s track(s) for guild %s by user %s",
+                    name,
+                    len(tracks),
+                    inter.guild.id,
+                    inter.user.id,
+                )
+        except PlaylistStorageError as exc:
+            if self.bot.logger:
+                self.bot.logger.error(
+                    "Playlist load failed for '%s' (guild %s, user %s): %s",
+                    name,
+                    inter.guild.id,
+                    inter.user.id,
+                    exc,
+                )
+            return await inter.followup.send(
+                embed=factory.error("Failed to load playlist from storage. Please try again later."),
+                ephemeral=True,
+            )
+        if not tracks:
+            return await inter.followup.send(embed=factory.warning(f"No playlist found with the name `{name}`."), ephemeral=True)
+
+        autop_flag = player.fetch("autoplay_enabled")
+        if replace_queue:
+            player.queue.clear()
+            if player.current:
+                if autop_flag is not None:
+                    player.store("autoplay_enabled", False)
+                try:
+                    await player.stop()
+                except Exception:
+                    pass
+                finally:
+                    if autop_flag is not None:
+                        player.store("autoplay_enabled", autop_flag)
+
+        should_start = not player.is_playing and not player.paused and not player.current
+
+        for track in tracks:
+            player.add(track)
+
+        if should_start:
+            player.store("suppress_next_announcement", True)
+            await player.play()
+
+        summary = "\n".join(f"`{idx+1}` {track.title}" for idx, track in enumerate(tracks[:5]))
+        if len(tracks) > 5:
+            summary += f"\n...`{len(tracks) - 5}` more"
+
+        embed = factory.success("Playlist Loaded", f"Queued **{len(tracks)}** track(s) from `{name}`.")
+        embed.add_field(name="Preview", value=summary, inline=False)
+        embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
+        await inter.followup.send(embed=embed, ephemeral=True)
+
+    @playlist.command(name="list", description="List all saved playlists for this guild.")
+    async def playlist_list(self, inter: discord.Interaction):
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if not inter.guild:
+            return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+
+        service = self._playlist_service()
+        try:
+            names = await service.list_playlists(inter.guild.id)
+            if self.bot.logger:
+                self.bot.logger.info("Listed %s playlists for guild %s", len(names), inter.guild.id)
+        except PlaylistStorageError as exc:
+            if self.bot.logger:
+                self.bot.logger.error("Failed to list playlists for guild %s: %s", inter.guild.id, exc)
+            return await inter.response.send_message(
+                embed=factory.error("Unable to query playlists from storage. Please try again later."), ephemeral=True
+            )
+        if not names:
+            return await inter.response.send_message(embed=factory.warning("No playlists saved yet."), ephemeral=True)
+
+        embed = factory.primary("Saved Playlists")
+        embed.description = "\n".join(f"- `{name}`" for name in names)
+        await inter.response.send_message(embed=embed, ephemeral=True)
+
+    @playlist.command(name="delete", description="Remove a saved playlist.")
+    async def playlist_delete(self, inter: discord.Interaction, name: str):
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if (error := self._ensure_manage_guild(inter)) is not None:
+            return await inter.response.send_message(error, ephemeral=True)
+
+        service = self._playlist_service()
+        cleaned = name.strip()
+        try:
+            removed = await service.delete_playlist(inter.guild.id, cleaned)
+            if removed and self.bot.logger:
+                self.bot.logger.info(
+                    "Deleted playlist '%s' for guild %s by user %s", cleaned, inter.guild.id, inter.user.id
+                )
+        except PlaylistStorageError as exc:
+            if self.bot.logger:
+                self.bot.logger.error(
+                    "Playlist delete failed for '%s' (guild %s, user %s): %s",
+                    cleaned,
+                    inter.guild.id,
+                    inter.user.id,
+                    exc,
+                )
+            return await inter.response.send_message(
+                embed=factory.error("Failed to delete playlist from storage. Please try again later."), ephemeral=True
+            )
+        if not removed:
+            return await inter.response.send_message(
+                embed=factory.warning(f"No playlist found with the name `{cleaned}`."), ephemeral=True
+            )
+
+        embed = factory.success("Playlist Deleted", f"Removed `{cleaned}` from storage.")
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot):

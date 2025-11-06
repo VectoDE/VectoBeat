@@ -13,6 +13,9 @@ from discord.ext import commands
 
 from src.configs.settings import CONFIG, DISCORD_TOKEN
 from src.services.lavalink_service import LavalinkManager
+from src.services.autoplay_service import AutoplayService
+from src.services.playlist_service import PlaylistService
+from src.services.profile_service import GuildProfileManager
 from src.utils.logger import setup_logging
 
 INTENTS = discord.Intents.default()
@@ -40,6 +43,9 @@ class VectoBeat(commands.AutoShardedBot):
         self.logger = None
         self._cleanup_tasks = []
         self.lavalink_manager = LavalinkManager(self, CONFIG.lavalink)
+        self.profile_manager = GuildProfileManager()
+        self.playlist_service = PlaylistService(CONFIG.redis)
+        self.autoplay_service = AutoplayService(CONFIG.redis)
 
     def add_cleanup_task(self, task):
         """Register an async callable that should run before the bot shuts down."""
@@ -56,6 +62,15 @@ class VectoBeat(commands.AutoShardedBot):
 
         if hasattr(self, "lavalink_manager"):
             await self.lavalink_manager.close()
+
+        if hasattr(self, "profile_manager"):
+            self.profile_manager.save()
+
+        if hasattr(self, "playlist_service"):
+            await self.playlist_service.close()
+
+        if hasattr(self, "autoplay_service"):
+            await self.autoplay_service.close()
 
         for vc in list(self.voice_clients):
             try:
@@ -75,6 +90,18 @@ class VectoBeat(commands.AutoShardedBot):
         self.logger.info("Initializing VectoBeat...")
 
         await self.lavalink_manager.connect()
+        self.playlist_service.logger = self.logger
+        try:
+            await self.playlist_service.ping()
+        except Exception:
+            if self.logger:
+                self.logger.warning("Redis playlist backend is unreachable; playlist commands may fail.")
+        self.autoplay_service.logger = self.logger
+        try:
+            await self.autoplay_service.ping()
+        except Exception:
+            if self.logger:
+                self.logger.warning("Redis autoplay backend is unreachable; autoplay recommendations may fail.")
 
         # Load all cogs dynamically
         for pkg in ("events", "commands"):

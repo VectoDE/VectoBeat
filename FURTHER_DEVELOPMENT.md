@@ -1,7 +1,7 @@
 <div align="center">
   <h1 style="margin-bottom: 0.4rem;">VectoBeat Development Path</h1>
   <p style="max-width: 680px;">
-    A staged implementation checklist that visualises the next waves of improvements for the VectoBeat music bot.
+    An implementation checklist that visualises the next waves of improvements for the VectoBeat music bot.
     Toggle each milestone as releases go out to keep the roadmap transparent for contributors and stakeholders.
   </p>
 </div>
@@ -13,25 +13,25 @@
   <ul style="list-style: none; padding-left: 0;">
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Per-Guild Playback Profiles</strong> &mdash; Allow server owners to customise default volume, autoplay, and announcement styles via slash configuration.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Playlist Persistence</strong> &mdash; Back playlists with persistent storage (PostgreSQL or Redis) plus import/export tooling.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Advanced Autoplay</strong> &mdash; Recommend tracks automatically using guild listening history and source metadata.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Cross-Fade &amp; Gapless Playback</strong> &mdash; Employ Lavalink filters to deliver seamless transitions between songs.
       </label>
     </li>

@@ -1,6 +1,5 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png" alt="VectoBeat Logo" width="280" />
-  <h1 style="margin-top: 1rem; font-size: 3rem;">VectoBeat</h1>
   <p style="font-size: 1.2rem;"><strong>Music Bot for Discord</strong></p>
   <p style="max-width: 640px;">
     VectoBeat delivers premium audio playback, meticulous observability, and a polished operations toolchain built on
@@ -79,7 +78,7 @@
   <tbody>
     <tr>
       <td><strong>Playback</strong></td>
-      <td>Randomised search results, queue autosync, manual seek, replay, loop modes, volume control, auto-resume protection</td>
+      <td>Randomised search results, queue autosync, manual seek, replay, loop modes, volume control, auto-resume protection, Redis-backed playlists, history-aware autoplay</td>
     </tr>
     <tr>
       <td><strong>Queueing</strong></td>
@@ -131,7 +130,7 @@
 <p align="center" style="font-size: 0.9rem;"><em>High-level interaction map between Discord, the VectoBeat runtime, Lavalink, and upstream media sources.</em></p>
 
 <p align="center">
-  <img src="assets/images/architecture.png" alt="VectoBeat System Architecture" width="720" />
+  <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/architecture.png" alt="VectoBeat System Architecture" width="720" />
 </p>
 <p style="font-size: 0.85rem; text-align: center;">Source Mermaid definition lives at <code>docs/system_architecture.mmd</code>; regenerate the asset with:</p>
 
@@ -155,7 +154,15 @@ pip install -r requirements.txt</code></pre>
   <li>Record host, port, password, SSL and region; update <code>.env</code> and <code>config.yml</code>.</li>
 </ul>
 
-<h3>3. Bot Configuration</h3>
+<h3>3. Redis (Playlists & Autoplay)</h3>
+<ul>
+  <li>Prepare a Redis instance (single node is sufficient). Default config assumes <code>45.84.196.19:32768</code>.</li>
+  <li>Set network rules so only the bot host can access Redis.</li>
+  <li>Populate <code>REDIS_HOST</code>/<code>PORT</code>/<code>PASSWORD</code>/<code>DB</code> in <code>.env</code> or adjust <code>config.yml</code>.</li>
+  <li>Tune history-driven autoplay via <code>AUTOPLAY_DISCOVERY_LIMIT</code> and <code>AUTOPLAY_RANDOM_PICK</code> (controls recommendation breadth and randomness).</li>
+</ul>
+
+<h3>4. Bot Configuration</h3>
 <pre><code>.env
 DISCORD_TOKEN=YOUR_BOT_TOKEN
 LAVALINK_HOST=example-host
@@ -163,10 +170,16 @@ LAVALINK_PORT=2333
 LAVALINK_PASSWORD=supersecret
 LAVALINK_HTTPS=false
 LAVALINK_REGION=eu
+REDIS_HOST=45.84.196.19
+REDIS_PORT=32768
+REDIS_PASSWORD=
+REDIS_DB=0
+AUTOPLAY_DISCOVERY_LIMIT=10
+AUTOPLAY_RANDOM_PICK=true
 </code></pre>
 <p>Optional: adjust <code>config.yml</code> for intents, shard count, embed theme.</p>
 
-<h3>4. Launch</h3>
+<h3>5. Launch</h3>
 <pre><code>python -m src.main</code></pre>
 <p>The bot registers slash commands and reports node health on startup. Review the logs for authentication or connectivity hints.</p>
 
@@ -230,6 +243,22 @@ LAVALINK_REGION=eu
     <tr><td><code>/voiceinfo</code></td><td>See above; duplicated for quick reference.</td></tr>
     <tr><td><code>/guildinfo</code></td><td>Guild demographics and configuration (requires Manage Guild).</td></tr>
     <tr><td><code>/permissions</code></td><td>Audit the bot’s channel permissions with checkmarks.</td></tr>
+    <tr>
+      <td rowspan="4"><strong>Configuration</strong></td>
+      <td><code>/profile show</code></td>
+      <td>Display the guild’s playback profile (default volume, autoplay, announcement style).</td>
+    </tr>
+    <tr><td><code>/profile set-volume</code></td><td>Persist a default volume applied whenever the bot joins voice.</td></tr>
+    <tr><td><code>/profile set-autoplay</code></td><td>Toggle automatic queue refill when playback finishes.</td></tr>
+    <tr><td><code>/profile set-announcement</code></td><td>Switch between rich embeds and minimal now-playing text.</td></tr>
+    <tr>
+      <td rowspan="4"><strong>Playlists</strong></td>
+      <td><code>/playlist save</code></td>
+      <td>Persist the current queue (optionally including the active track) to Redis. Requires Manage Server.</td>
+    </tr>
+    <tr><td><code>/playlist load</code></td><td>Load a saved playlist into the queue, optionally replacing current items.</td></tr>
+    <tr><td><code>/playlist list</code></td><td>Enumerate playlists stored for the guild.</td></tr>
+    <tr><td><code>/playlist delete</code></td><td>Remove a playlist from storage. Requires Manage Server.</td></tr>
   </tbody>
 </table>
 
@@ -254,6 +283,7 @@ LAVALINK_REGION=eu
         <li>No audio? Verify Lavalink source managers (YouTube/Spotify) and logs for “requires login”.</li>
         <li>Bot silent? Confirm permissions with <code>/permissions</code> (connect, speak, view channel).</li>
         <li>Queue stuck? Use <code>/stop</code> followed by <code>/play</code> to reset the player.</li>
+        <li>No autoplay? Check Redis reachability and <code>VectoBeat</code> logs for “Autoplay” warnings.</li>
       </ul>
     </td>
   </tr>
@@ -264,6 +294,7 @@ LAVALINK_REGION=eu
   <li>Capture <code>stdout</code> for VectoBeat; enable log shipping in production (ELK, CloudWatch, etc.).</li>
   <li>Monitor Lavalink metrics: player count, CPU, memory, frame deficit.</li>
   <li>Regularly patch yt-dlp for source compatibility.</li>
+  <li>Monitor Redis availability (<code>INFO</code>/<code>PING</code>) if playlist persistence is enabled.</li>
 </ul>
 
 <hr />

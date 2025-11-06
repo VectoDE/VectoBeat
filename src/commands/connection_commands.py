@@ -98,6 +98,13 @@ class ConnectionCommands(commands.Cog):
             player = self._find_player(self.bot, inter.guild.id)
             if player:
                 player.text_channel_id = getattr(inter.channel, "id", None)
+                manager = getattr(self.bot, "profile_manager", None)
+                if manager:
+                    profile = manager.get(inter.guild.id)
+                    player.store("autoplay_enabled", profile.autoplay)
+                    player.store("announcement_style", profile.announcement_style)
+                    if player.volume != profile.default_volume:
+                        await player.set_volume(profile.default_volume)
 
             embed = factory.success("Connected", f"Joined voice channel:\n{self._channel_info(channel)}")
             embed.add_field(name="Permissions", value=summary, inline=False)

@@ -196,6 +196,13 @@ class MusicControls(commands.Cog):
                 await asyncio.sleep(0.1)
 
         player.text_channel_id = getattr(inter.channel, "id", None)
+        manager = getattr(self.bot, "profile_manager", None)
+        if manager:
+            profile = manager.get(inter.guild.id)
+            player.store("autoplay_enabled", profile.autoplay)
+            player.store("announcement_style", profile.announcement_style)
+            if player.volume != profile.default_volume:
+                await player.set_volume(profile.default_volume)
         return player
 
     # ------------------------------------------------------------------ commands

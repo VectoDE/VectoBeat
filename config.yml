@@ -42,3 +42,20 @@ limits:
 features:
   allow_loop: true
   allow_shuffle: true
+
+autoplay:
+  discovery_limit: 10
+  random_pick: true
+
+crossfade:
+  enabled: true
+  duration_ms: 2500
+  fade_steps: 12
+  floor_volume: 20
+
+redis:
+  # Redis playlist persistence backend
+  host: "45.84.196.19"
+  port: 32768
+  password: ""
+  db: 0
