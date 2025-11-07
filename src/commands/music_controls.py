@@ -7,14 +7,20 @@ from typing import List, Optional, Tuple
 
 import discord
 import lavalink
+from aiohttp import ClientError as AiohttpClientError, ContentTypeError
 from discord import app_commands
 from discord.ext import commands
+from lavalink.errors import ClientError as LavalinkClientError
 
 from src.services.lavalink_service import LavalinkVoiceClient
 from src.utils.embeds import EmbedFactory
 
 URL_REGEX = re.compile(r"https?://", re.IGNORECASE)
 VOICE_PERMISSIONS = ("connect", "speak", "view_channel")
+
+
+class TrackLookupError(Exception):
+    """Raised when Lavalink fails to provide a usable load result."""
 
 
 def ms_to_clock(ms: int) -> str:
@@ -140,19 +146,35 @@ class MusicControls(commands.Cog):
                 track.requester = requester_id
         return tracks
 
+    async def _safe_get_tracks(self, identifier: str) -> lavalink.LoadResult:
+        """Fetch tracks from Lavalink with user-friendly error handling."""
+        try:
+            return await self.bot.lavalink.get_tracks(identifier)
+        except ContentTypeError as exc:
+            status = getattr(exc, "status", "unknown")
+            raise TrackLookupError(
+                f"Lavalink returned an unexpected response (HTTP {status}). Please verify the node is reachable."
+            ) from exc
+        except (AiohttpClientError, LavalinkClientError) as exc:
+            raise TrackLookupError(
+                "Unable to reach the Lavalink node. Please try again in a few moments."
+            ) from exc
+
     async def _resolve(self, query: str) -> lavalink.LoadResult:
         query = query.strip()
+        if not query:
+            raise TrackLookupError("Please provide a search query or URL.")
         if URL_REGEX.match(query):
-            result = await self.bot.lavalink.get_tracks(query)
+            result = await self._safe_get_tracks(query)
             if result.tracks:
                 return result
         last: Optional[lavalink.LoadResult] = None
         for prefix in ("ytsearch", "scsearch", "amsearch"):
-            result = await self.bot.lavalink.get_tracks(f"{prefix}:{query}")
+            result = await self._safe_get_tracks(f"{prefix}:{query}")
             if result.tracks:
                 return result
             last = result
-        return last or await self.bot.lavalink.get_tracks(query)
+        return last or await self._safe_get_tracks(query)
 
     async def _player(self, inter: discord.Interaction) -> Optional[lavalink.DefaultPlayer]:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
@@ -220,7 +242,11 @@ class MusicControls(commands.Cog):
         if not player:
             return
 
-        results = await self._resolve(query)
+        try:
+            results = await self._resolve(query)
+        except TrackLookupError as exc:
+            await inter.followup.send(embed=factory.error(str(exc)), ephemeral=True)
+            return
         if results.load_type == "LOAD_FAILED":
             return await inter.followup.send(embed=factory.error("Loading the track failed."), ephemeral=True)
         if not results.tracks:

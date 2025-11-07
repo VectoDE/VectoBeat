@@ -48,7 +48,24 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
             channel=self.channel, self_deaf=self_deaf, self_mute=self_mute
         )
 
+    def _is_self(self, user_id) -> bool:
+        me = getattr(self.client, "user", None)
+        if not me or user_id is None:
+            return False
+        return str(user_id) == str(me.id)
+
+    def _is_guild(self, guild_id) -> bool:
+        if guild_id is None:
+            return False
+        try:
+            return int(guild_id) == self.guild_id
+        except (TypeError, ValueError):
+            return False
+
     async def on_voice_server_update(self, data):
+        if not self._is_guild(data.get("guild_id")):
+            return
+
         payload = {
             "t": "VOICE_SERVER_UPDATE",
             "d": data,
@@ -56,6 +73,9 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
         await self.lavalink.voice_update_handler(payload)
 
     async def on_voice_state_update(self, data):
+        if not self._is_guild(data.get("guild_id")) or not self._is_self(data.get("user_id")):
+            return
+
         channel_id = data.get("channel_id")
 
         if not channel_id:
