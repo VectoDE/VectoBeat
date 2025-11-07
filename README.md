@@ -326,7 +326,12 @@ AUTOPLAY_RANDOM_PICK=true
 <ol>
   <li>Fork the repository and clone your fork.</li>
 <li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
-  <li>Run <code>python3 -m compileall src</code> and <code>scripts/typecheck.sh</code> before committing.</li>
+<li>Run <code>python3 -m compileall src</code> and <code>scripts/typecheck.sh</code> before committing.</li>
+<li>(Optional) Exercise queue scenarios via <code>scripts/run_scenarios.py tests/scenarios/basic_queue.yaml</code> when touching playback logic.</li>
+  <li>Regenerate the slash-command reference via <code>python scripts/generate_command_reference.py</code> before publishing docs changes.</li>
+  <li>Spin up the local sandbox stack via <code>docker compose -f docker-compose.local.yml up</code> (see <code>docs/local_sandbox.md</code>) when you need Lavalink/Redis/Postgres locally.</li>
+  <li>Tune search caching via the <code>cache</code> section in <code>config.yml</code> to reduce repeated Lavlink lookups.</li>
+  <li>Adjust dynamic search limits via <code>search_limits</code> to balance latency vs. search breadth.</li>
   <li>Submit a pull request describing the motivation, approach, and testing performed.</li>
 </ol>
 
@@ -342,3 +347,4 @@ AUTOPLAY_RANDOM_PICK=true
 <p align="center" style="margin-top: 2rem;">
   <em>VectoBeat — engineered for premium audio experiences and operational clarity.</em>
 </p>
+- Profile the event loop with `python scripts/profile_event_loop.py` (requires pyinstrument) and inspect `profiles/event-loop-profile.html` for hotspots.

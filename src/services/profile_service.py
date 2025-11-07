@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict
 
 DEFAULT_PROFILE_PATH = Path("data/guild_profiles.json")
 ANNOUNCEMENT_STYLES = ("rich", "minimal")
@@ -41,9 +41,10 @@ class GuildProfileManager:
         """Load all guild profiles from disk if present."""
         if self.path.exists():
             try:
-                raw = json.loads(self.path.read_text("utf-8"))
+                data = json.loads(self.path.read_text("utf-8"))
             except json.JSONDecodeError:
-                raw = {}
+                data = {}
+            raw: Dict[str, Dict[str, Any]] = data if isinstance(data, dict) else {}
             for guild_id, payload in raw.items():
                 profile = GuildProfile(**payload)
                 profile.validate()

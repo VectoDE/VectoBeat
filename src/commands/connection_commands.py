@@ -1,5 +1,7 @@
 """Voice connection command set."""
 
+# pyright: reportMissingTypeStubs=false
+
 from __future__ import annotations
 
 import asyncio

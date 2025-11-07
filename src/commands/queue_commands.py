@@ -10,6 +10,7 @@ from discord.ext import commands
 
 from src.services.playlist_service import PlaylistService, PlaylistStorageError
 from src.utils.embeds import EmbedFactory
+from src.utils.progress import SlashProgress
 from src.utils.pagination import EmbedPaginator
 
 
@@ -31,8 +32,40 @@ def track_str(track: lavalink.AudioTrack) -> str:
 class QueueCommands(commands.Cog):
     """Queue management commands."""
 
+    # pyright: reportMissingTypeStubs=false
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
+    def _dj_manager(self):
+        return getattr(self.bot, "dj_permissions", None)
+
+    def _require_dj(self, inter: discord.Interaction) -> Optional[str]:
+        """Return an error message if the invoker lacks DJ permissions."""
+        if not inter.guild:
+            return "This command can only be used inside a guild."
+        manager = self._dj_manager()
+        if not manager or not manager.has_restrictions(inter.guild.id):
+            return None
+        member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
+        if not isinstance(member, discord.Member):
+            return "Unable to resolve invoking member."
+        if manager.has_access(inter.guild.id, member):
+            return None
+        role_ids = manager.get_roles(inter.guild.id)
+        mentions = []
+        for role_id in role_ids:
+            role = inter.guild.get_role(role_id)
+            if role:
+                mentions.append(role.mention)
+        if mentions:
+            return f"You must have one of the DJ roles ({', '.join(mentions)}) or `Manage Server` permission to use this command."
+        return "Only configured DJ roles may use this command. Ask an admin to run `/dj add-role`."
+
+    def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:
+        manager = self._dj_manager()
+        if manager and inter.guild:
+            manager.record_action(inter.guild.id, inter.user, action, details=details)
 
     def _player(self, guild: discord.Guild) -> Optional[lavalink.DefaultPlayer]:
         """Fetch the guild-specific Lavalink player instance."""
@@ -104,6 +137,8 @@ class QueueCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+        if (error := self._require_dj(inter)) is not None:
+            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or not player.queue:
@@ -117,6 +152,7 @@ class QueueCommands(commands.Cog):
         embed = factory.success("Removed", track_str(removed))
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
+        self._log_dj_action(inter, "queue:remove", details=track_str(removed))
 
     @app_commands.command(name="clear", description="Clear the queue.")
     async def clear(self, inter: discord.Interaction):
@@ -124,6 +160,8 @@ class QueueCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+        if (error := self._require_dj(inter)) is not None:
+            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or not player.queue:
@@ -133,6 +171,7 @@ class QueueCommands(commands.Cog):
         player.queue.clear()
         embed = factory.success("Queue Cleared", f"Removed **{cleared}** track(s).")
         await inter.response.send_message(embed=embed, ephemeral=True)
+        self._log_dj_action(inter, "queue:clear", details=f"{cleared} tracks removed")
 
     @app_commands.command(name="shuffle", description="Shuffle the queue.")
     async def shuffle(self, inter: discord.Interaction):
@@ -140,6 +179,8 @@ class QueueCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+        if (error := self._require_dj(inter)) is not None:
+            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or len(player.queue) < 2:
@@ -150,6 +191,7 @@ class QueueCommands(commands.Cog):
         embed = factory.primary("🔀 Shuffled")
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
+        self._log_dj_action(inter, "queue:shuffle", details=f"{len(player.queue)} tracks")
 
     @app_commands.command(name="move", description="Move a track within the queue.")
     @app_commands.describe(src="From (1-based)", dest="To (1-based)")
@@ -164,6 +206,8 @@ class QueueCommands(commands.Cog):
         if not inter.guild:
             error_embed = factory.error("Guild only command.")
             return await inter.response.send_message(embed=error_embed, ephemeral=True)
+        if (error := self._require_dj(inter)) is not None:
+            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or not player.queue:
@@ -181,6 +225,7 @@ class QueueCommands(commands.Cog):
         embed.add_field(name="Track", value=track_str(track), inline=False)
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
+        self._log_dj_action(inter, "queue:move", details=f"{src}->{dest} {track.title}")
 
     @app_commands.command(name="queueinfo", description="Detailed view of the queue with statistics.")
     async def queueinfo(self, inter: discord.Interaction):
@@ -290,6 +335,8 @@ class QueueCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+        if (error := self._require_dj(inter)) is not None:
+            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
 
         player = self._player(inter.guild)
         if not player or not player.is_connected:
@@ -301,6 +348,8 @@ class QueueCommands(commands.Cog):
             return await inter.response.send_message(embed=error_embed, ephemeral=True)
 
         await inter.response.defer(ephemeral=True)
+        progress = SlashProgress(inter, "Playlist Loader")
+        await progress.start("Fetching playlist from storage...")
 
         service = self._playlist_service()
         default_requester = inter.user.id if isinstance(inter.user, discord.User) else None
@@ -329,10 +378,13 @@ class QueueCommands(commands.Cog):
                 )
             error_embed = factory.error("Failed to load playlist from storage. Please try again later.")
             return await inter.followup.send(embed=error_embed, ephemeral=True)
+            await progress.fail("Failed to load playlist from storage. Please try again later.")
+            return
         if not tracks:
             warning = factory.warning(f"No playlist found with the name `{name}`.")
-            return await inter.followup.send(embed=warning, ephemeral=True)
+            return await progress.finish(warning)
 
+        await progress.update(f"Loaded **{len(tracks)}** track(s). Updating queue...")
         autop_flag = player.fetch("autoplay_enabled")
         if replace_queue:
             player.queue.clear()
@@ -364,7 +416,12 @@ class QueueCommands(commands.Cog):
         embed = factory.success("Playlist Loaded", load_message)
         embed.add_field(name="Preview", value=summary, inline=False)
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
-        await inter.followup.send(embed=embed, ephemeral=True)
+        await progress.finish(embed)
+        self._log_dj_action(
+            inter,
+            "playlist:load",
+            details=f"{name} ({len(tracks)} tracks, replace={'yes' if replace_queue else 'no'})",
+        )
 
     @playlist.command(name="list", description="List all saved playlists for this guild.")
     async def playlist_list(self, inter: discord.Interaction):

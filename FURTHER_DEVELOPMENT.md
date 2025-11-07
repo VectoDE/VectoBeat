@@ -127,19 +127,19 @@
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Scenario Test Harness</strong> &mdash; Mock Lavalink responses for integration-style queue and playback validation.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Command Reference Generator</strong> &mdash; Auto-build slash command documentation from source annotations.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Local Sandbox Stack</strong> &mdash; Ship docker-compose with Lavalink, Redis, and Postgres for contributors.
       </label>
     </li>
@@ -151,19 +151,19 @@
   <ul style="list-style: none; padding-left: 0%;">
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Event Loop Profiling</strong> &mdash; Benchmark coroutine hotspots with `pyinstrument` and asyncio debug facilities.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Adaptive Caching</strong> &mdash; Cache heavy search queries with TTLs to curb upstream traffic.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked  disabled />
         <strong>Dynamic Search Limits</strong> &mdash; Tune track search result counts based on latency and guild load.
       </label>
     </li>

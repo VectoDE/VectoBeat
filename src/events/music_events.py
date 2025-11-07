@@ -1,5 +1,7 @@
 """Music related event listeners used to broadcast playback updates."""
 
+# pyright: reportMissingTypeStubs=false
+
 from __future__ import annotations
 
 import asyncio
@@ -27,6 +29,17 @@ class MusicEvents(commands.Cog):
         self._fade_tasks: dict[int, asyncio.Task] = {}
         if hasattr(bot, "lavalink"):
             bot.lavalink.add_event_hooks(self)
+
+    def _telemetry(self):
+        return getattr(self.bot, "queue_telemetry", None)
+
+    async def _emit_queue_event(self, player: VectoPlayer, event: str, payload: dict) -> None:
+        service = self._telemetry()
+        if not service:
+            return
+        guild = self.bot.get_guild(player.guild_id)
+        shard_id = guild.shard_id if guild else None
+        await service.emit(event=event, guild_id=player.guild_id, shard_id=shard_id, payload=payload)
 
     def _requester_name(self, guild: discord.Guild | None, track: lavalink.AudioTrack) -> Optional[str]:
         """Resolve the display name for the requester stored on the track metadata."""
@@ -141,6 +154,20 @@ class MusicEvents(commands.Cog):
         }
         player.store("last_track_metadata", payload)
 
+        lyrics_payload = None
+        lyrics_service = getattr(self.bot, "lyrics_service", None)
+        if lyrics_service:
+            try:
+                lyrics_payload = await lyrics_service.fetch(
+                    title=track.title,
+                    artist=track.author,
+                    duration_ms=getattr(track, "duration", None),
+                )
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("Lyrics lookup failed for '%s': %s", track.title, exc)
+                lyrics_payload = None
+        player.store("lyrics_payload", lyrics_payload)
+
         if autoplay_service:
             try:
                 await autoplay_service.record_play(player.guild_id, track)
@@ -164,10 +191,28 @@ class MusicEvents(commands.Cog):
             thumbnail=getattr(track, "artwork_url", None),
             footer_extra="🎶 Now playing",
         )
+        if lyrics_service and lyrics_payload:
+            snippet = lyrics_service.snippet(lyrics_payload, position_ms=0)
+            if snippet:
+                embed.add_field(name="Lyrics", value=snippet, inline=False)
         try:
             await channel.send(embed=embed, silent=True)
         except Exception as exc:
             logger.error("Failed to send now playing embed: %s", exc)
+        await self._emit_queue_event(
+            player,
+            "play",
+            {
+                "track": {
+                    "title": track.title,
+                    "author": track.author,
+                    "identifier": getattr(track, "identifier", None),
+                    "uri": getattr(track, "uri", None),
+                    "duration": getattr(track, "duration", None),
+                },
+                "requester": getattr(track, "requester", None),
+            },
+        )
 
     @lavalink.listener()
     async def on_queue_end(self, event: QueueEndEvent):
@@ -268,6 +313,14 @@ class MusicEvents(commands.Cog):
             )
         except Exception as exc:
             logger.error("Failed to send queue finished message: %s", exc)
+        await self._emit_queue_event(
+            player,
+            "queue_finished",
+            {
+                "last_track": player.fetch("last_track_metadata"),
+                "autoplay_active": False,
+            },
+        )
 
     @lavalink.listener()
     async def on_track_end(self, event: TrackEndEvent):
