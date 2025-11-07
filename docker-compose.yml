@@ -2,10 +2,21 @@ version: "3.9"
 
 services:
   vectobeat:
-    build: .
     container_name: vectobeat
-    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
     env_file:
       - .env
-    # The bot does not expose HTTP services; no ports are published by default.
-    # Override command or add volumes here if you need additional integration.
+    environment:
+      CONFIG_PATH: /src/config.yml
+      METRICS_ENABLED: "${METRICS_ENABLED:-true}"
+      METRICS_HOST: 0.0.0.0
+      METRICS_PORT: "9333"
+      METRICS_INTERVAL: "${METRICS_INTERVAL:-15}"
+    volumes:
+      - ./config.yml:/src/config.yml:ro
+      - ./data:/src/data
+    ports:
+      - "9333:9333"

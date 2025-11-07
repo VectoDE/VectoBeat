@@ -30,6 +30,15 @@ lavalink:
   https: true
   name: "main"
   region: "eu"
+  # Deprecated single-node fallback. Prefer configuring multiple nodes via ``lavalink_nodes`` below.
+
+lavalink_nodes:
+  - host: "lava-v4.ajieblogs.eu.org"
+    port: 443
+    password: https://dsc.gg/ajidevserver
+    https: true
+    name: "main"
+    region: "eu"
 
 spotify:  # Optional: Für Spotify Support
   client_id: ""  # Setze deinen Spotify Client ID
@@ -59,3 +68,52 @@ redis:
   port: 32768
   password: ""
   db: 0
+
+metrics:
+  enabled: true
+  host: "0.0.0.0"
+  port: 9333
+  collection_interval: 15
+
+chaos:
+  enabled: false
+  interval_minutes: 360
+  scenarios:
+    - disconnect_voice
+    - disconnect_node
+    - inject_error
+  guild_allowlist: []
+
+scaling:
+  enabled: false
+  provider: "nomad"
+  endpoint: "https://nomad.example.com/v1/job/vectobeat/scale"
+  auth_token: ""
+  interval_seconds: 60
+  cooldown_seconds: 300
+  target_guilds_per_shard: 1200
+  target_players_per_node: 150
+  min_shards: 1
+  max_shards: 10
+  min_lavalink_nodes: 1
+  max_lavalink_nodes: 5
+
+analytics:
+  enabled: false
+  endpoint: ""
+  api_key: ""
+  flush_interval_seconds: 30
+  batch_size: 50
+  storage_path: "data/command_analytics.log"
+  hash_salt: "vectobeat"
+
+queue_telemetry:
+  enabled: false
+  endpoint: ""
+  api_key: ""
+  include_guild_metadata: true
+
+cache:
+  search_enabled: true
+  search_ttl_seconds: 60
+  search_max_entries: 200

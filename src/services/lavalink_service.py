@@ -1,13 +1,17 @@
 """Abstractions for managing Lavalink connectivity and Discord voice sessions."""
 
+# pyright: reportMissingTypeStubs=false
+
 import asyncio
 import logging
-from typing import Optional
+from typing import List, Optional, Sequence
 
 import aiohttp
 import discord
 import lavalink
 from lavalink.errors import AuthenticationError
+
+from src.configs.schema import LavalinkConfig
 
 
 class VectoPlayer(lavalink.DefaultPlayer):
@@ -48,24 +52,7 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
             channel=self.channel, self_deaf=self_deaf, self_mute=self_mute
         )
 
-    def _is_self(self, user_id) -> bool:
-        me = getattr(self.client, "user", None)
-        if not me or user_id is None:
-            return False
-        return str(user_id) == str(me.id)
-
-    def _is_guild(self, guild_id) -> bool:
-        if guild_id is None:
-            return False
-        try:
-            return int(guild_id) == self.guild_id
-        except (TypeError, ValueError):
-            return False
-
     async def on_voice_server_update(self, data):
-        if not self._is_guild(data.get("guild_id")):
-            return
-
         payload = {
             "t": "VOICE_SERVER_UPDATE",
             "d": data,
@@ -73,9 +60,6 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
         await self.lavalink.voice_update_handler(payload)
 
     async def on_voice_state_update(self, data):
-        if not self._is_guild(data.get("guild_id")) or not self._is_self(data.get("user_id")):
-            return
-
         channel_id = data.get("channel_id")
 
         if not channel_id:
@@ -116,9 +100,11 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
 class LavalinkManager:
     """Initialises and tears down Lavalink resources for the bot."""
 
-    def __init__(self, bot: discord.Client, config):
+    def __init__(self, bot: discord.Client, nodes: Sequence[LavalinkConfig]):
         self.bot = bot
-        self.config = config
+        self.nodes: List[LavalinkConfig] = list(nodes)
+        if not self.nodes:
+            raise RuntimeError("At least one Lavalink node must be configured.")
         self.logger = logging.getLogger("VectoBeat.Lavalink")
 
     async def connect(self):
@@ -128,56 +114,57 @@ class LavalinkManager:
             )
 
         client: lavalink.Client[VectoPlayer] = self.bot.lavalink
-        existing = next(
-            (node for node in client.node_manager.nodes if node.name == self.config.name),
-            None,
-        )
+        tasks = [self._register_node(client, config) for config in self.nodes]
+        await asyncio.gather(*tasks)
+
+    async def _register_node(self, client: lavalink.Client[VectoPlayer], config: LavalinkConfig):
+        existing = next((node for node in client.node_manager.nodes if node.name == config.name), None)
         if existing:
             self.logger.info("Lavalink node '%s' already registered.", existing.name)
-            return
+            return existing
 
         node = client.add_node(
-            host=self.config.host,
-            port=self.config.port,
-            password=self.config.password,
-            region=self.config.region,
-            name=self.config.name,
-            ssl=self.config.https,
+            host=config.host,
+            port=config.port,
+            password=config.password,
+            region=config.region,
+            name=config.name,
+            ssl=config.https,
             connect=False,
         )
 
         try:
-            # Force an explicit connection attempt so we can surface authentication errors early.
             await node.connect(force=True)
             await asyncio.wait_for(node.get_version(), timeout=5)
         except AuthenticationError:
             self.logger.error(
                 "Lavalink authentication failed for node '%s'. "
                 "Verify the password in config.yml/.env matches the server configuration.",
-                self.config.name,
+                config.name,
             )
         except aiohttp.ClientConnectorError as exc:
             self.logger.error(
                 "Could not reach Lavalink node '%s' at %s:%s (%s). Please ensure the server is running "
                 "and accessible from this host.",
-                self.config.name,
-                self.config.host,
-                self.config.port,
+                config.name,
+                config.host,
+                config.port,
                 exc.strerror or exc,
             )
         except asyncio.TimeoutError:
             self.logger.warning(
                 "Timed out while verifying Lavalink node '%s'. Continuing but playback may fail.",
-                self.config.name,
+                config.name,
             )
         else:
             self.logger.info(
                 "Authenticated Lavalink node %s (%s:%s, ssl=%s)",
-                self.config.name,
-                self.config.host,
-                self.config.port,
-                self.config.https,
+                config.name,
+                config.host,
+                config.port,
+                config.https,
             )
+        return node
 
     async def ensure_ready(self):
         """Ensure all configured nodes are connected and available."""
