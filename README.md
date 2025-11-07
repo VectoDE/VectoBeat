@@ -310,10 +310,6 @@ AUTOPLAY_RANDOM_PICK=true
 <ul>
   <li>Capture <code>stdout</code> for VectoBeat; enable log shipping in production (ELK, CloudWatch, etc.).</li>
   <li>Monitor Lavalink metrics: player count, CPU, memory, frame deficit.</li>
-  <li>Import the bundled Grafana dashboards in <code>docs/grafana</code> for shard latency, node health, and slash command throughput visualisations.</li>
-  <li>Enable the command analytics pipeline (<code>docs/analytics.md</code>) to push anonymised slash usage into your data warehouse.</li>
-  <li>Wire the queue telemetry webhook (<code>docs/queue_telemetry.md</code>) into your status site for real-time “now playing” indicators.</li>
-  <li>Long-running slash commands (e.g. playlist loading) now show live progress embeds so users know what’s happening.</li>
   <li>Regularly patch yt-dlp for source compatibility.</li>
   <li>Monitor Redis availability (<code>INFO</code>/<code>PING</code>) if playlist persistence is enabled.</li>
 </ul>
@@ -325,13 +321,8 @@ AUTOPLAY_RANDOM_PICK=true
 
 <ol>
   <li>Fork the repository and clone your fork.</li>
-<li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
-<li>Run <code>python3 -m compileall src</code> and <code>scripts/typecheck.sh</code> before committing.</li>
-<li>(Optional) Exercise queue scenarios via <code>scripts/run_scenarios.py tests/scenarios/basic_queue.yaml</code> when touching playback logic.</li>
-  <li>Regenerate the slash-command reference via <code>python scripts/generate_command_reference.py</code> before publishing docs changes.</li>
-  <li>Spin up the local sandbox stack via <code>docker compose -f docker-compose.local.yml up</code> (see <code>docs/local_sandbox.md</code>) when you need Lavalink/Redis/Postgres locally.</li>
-  <li>Tune search caching via the <code>cache</code> section in <code>config.yml</code> to reduce repeated Lavlink lookups.</li>
-  <li>Adjust dynamic search limits via <code>search_limits</code> to balance latency vs. search breadth.</li>
+  <li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
+  <li>Run <code>python3 -m compileall src</code> before committing.</li>
   <li>Submit a pull request describing the motivation, approach, and testing performed.</li>
 </ol>
 
@@ -347,4 +338,3 @@ AUTOPLAY_RANDOM_PICK=true
 <p align="center" style="margin-top: 2rem;">
   <em>VectoBeat — engineered for premium audio experiences and operational clarity.</em>
 </p>
-- Profile the event loop with `python scripts/profile_event_loop.py` (requires pyinstrument) and inspect `profiles/event-loop-profile.html` for hotspots.

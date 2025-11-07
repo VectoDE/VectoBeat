@@ -1,17 +1,13 @@
 """Abstractions for managing Lavalink connectivity and Discord voice sessions."""
 
-# pyright: reportMissingTypeStubs=false
-
 import asyncio
 import logging
-from typing import List, Optional, Sequence
+from typing import Optional
 
 import aiohttp
 import discord
 import lavalink
 from lavalink.errors import AuthenticationError
-
-from src.configs.schema import LavalinkConfig
 
 
 class VectoPlayer(lavalink.DefaultPlayer):
@@ -100,11 +96,9 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
 class LavalinkManager:
     """Initialises and tears down Lavalink resources for the bot."""
 
-    def __init__(self, bot: discord.Client, nodes: Sequence[LavalinkConfig]):
+    def __init__(self, bot: discord.Client, config):
         self.bot = bot
-        self.nodes: List[LavalinkConfig] = list(nodes)
-        if not self.nodes:
-            raise RuntimeError("At least one Lavalink node must be configured.")
+        self.config = config
         self.logger = logging.getLogger("VectoBeat.Lavalink")
 
     async def connect(self):
@@ -114,57 +108,56 @@ class LavalinkManager:
             )
 
         client: lavalink.Client[VectoPlayer] = self.bot.lavalink
-        tasks = [self._register_node(client, config) for config in self.nodes]
-        await asyncio.gather(*tasks)
-
-    async def _register_node(self, client: lavalink.Client[VectoPlayer], config: LavalinkConfig):
-        existing = next((node for node in client.node_manager.nodes if node.name == config.name), None)
+        existing = next(
+            (node for node in client.node_manager.nodes if node.name == self.config.name),
+            None,
+        )
         if existing:
             self.logger.info("Lavalink node '%s' already registered.", existing.name)
-            return existing
+            return
 
         node = client.add_node(
-            host=config.host,
-            port=config.port,
-            password=config.password,
-            region=config.region,
-            name=config.name,
-            ssl=config.https,
+            host=self.config.host,
+            port=self.config.port,
+            password=self.config.password,
+            region=self.config.region,
+            name=self.config.name,
+            ssl=self.config.https,
             connect=False,
         )
 
         try:
+            # Force an explicit connection attempt so we can surface authentication errors early.
             await node.connect(force=True)
             await asyncio.wait_for(node.get_version(), timeout=5)
         except AuthenticationError:
             self.logger.error(
                 "Lavalink authentication failed for node '%s'. "
                 "Verify the password in config.yml/.env matches the server configuration.",
-                config.name,
+                self.config.name,
             )
         except aiohttp.ClientConnectorError as exc:
             self.logger.error(
                 "Could not reach Lavalink node '%s' at %s:%s (%s). Please ensure the server is running "
                 "and accessible from this host.",
-                config.name,
-                config.host,
-                config.port,
+                self.config.name,
+                self.config.host,
+                self.config.port,
                 exc.strerror or exc,
             )
         except asyncio.TimeoutError:
             self.logger.warning(
                 "Timed out while verifying Lavalink node '%s'. Continuing but playback may fail.",
-                config.name,
+                self.config.name,
             )
         else:
             self.logger.info(
                 "Authenticated Lavalink node %s (%s:%s, ssl=%s)",
-                config.name,
-                config.host,
-                config.port,
-                config.https,
+                self.config.name,
+                self.config.host,
+                self.config.port,
+                self.config.https,
             )
-        return node
 
     async def ensure_ready(self):
         """Ensure all configured nodes are connected and available."""

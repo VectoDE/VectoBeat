@@ -1,6 +1,6 @@
 """Typed configuration models used throughout the project."""
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from pydantic import BaseModel, field_validator
 
@@ -8,9 +8,9 @@ from pydantic import BaseModel, field_validator
 class LavalinkConfig(BaseModel):
     """Connection settings for the Lavalink cluster."""
 
-    host: str = "192.186.172.12"
+    host: str = "188.195.175.166"
     port: int = 2333
-    password: str = "youshallnotpass"
+    password: str = "BabaPapa1"
     https: bool = False
     name: str = "main"
     region: str = "us"
@@ -99,79 +99,6 @@ class RedisConfig(BaseModel):
     db: int = 0
 
 
-class MetricsConfig(BaseModel):
-    """Settings for the Prometheus metrics exporter."""
-
-    enabled: bool = False
-    host: str = "0.0.0.0"
-    port: int = 9333
-    collection_interval: int = 15
-
-
-class ChaosConfig(BaseModel):
-    """Chaos testing playbook configuration."""
-
-    enabled: bool = False
-    interval_minutes: int = 360
-    scenarios: List[str] = ["disconnect_voice", "disconnect_node", "inject_error"]
-    guild_allowlist: List[int] = []
-
-
-class ScalingConfig(BaseModel):
-    """Auto scaling strategy configuration for shards and Lavalink nodes."""
-
-    enabled: bool = False
-    provider: str = "nomad"
-    endpoint: Optional[str] = None
-    auth_token: Optional[str] = None
-    interval_seconds: int = 60
-    cooldown_seconds: int = 300
-    target_guilds_per_shard: int = 1200
-    target_players_per_node: int = 150
-    min_shards: int = 1
-    max_shards: int = 10
-    min_lavalink_nodes: int = 1
-    max_lavalink_nodes: int = 5
-
-
-class AnalyticsConfig(BaseModel):
-    """Configuration for command analytics export."""
-
-    enabled: bool = False
-    endpoint: Optional[str] = None
-    api_key: Optional[str] = None
-    flush_interval_seconds: int = 30
-    batch_size: int = 50
-    storage_path: str = "data/command_analytics.log"
-    hash_salt: str = "vectobeat"
-
-
-class QueueTelemetryConfig(BaseModel):
-    """Settings for queue telemetry webhooks."""
-
-    enabled: bool = False
-    endpoint: Optional[str] = None
-    api_key: Optional[str] = None
-    include_guild_metadata: bool = True
-
-
-class CacheConfig(BaseModel):
-    """Caching behaviour for expensive operations."""
-
-    search_enabled: bool = True
-    search_ttl_seconds: int = 60
-    search_max_entries: int = 200
-
-
-class SearchLimitsConfig(BaseModel):
-    """Dynamic search result sizing."""
-
-    base_results: int = 5
-    max_results: int = 10
-    min_results: int = 3
-    high_latency_threshold_ms: int = 300
-
-
 class AppConfig(BaseModel):
     """Root configuration container loaded from ``config.yml`` and ``.env``."""
 
@@ -179,17 +106,9 @@ class AppConfig(BaseModel):
     theme: ThemeConfig = ThemeConfig()
     branding: Dict[str, Any] = {}
     lavalink: LavalinkConfig = LavalinkConfig()
-    lavalink_nodes: List[LavalinkConfig] = []
     spotify: Optional[SpotifyConfig] = None
     limits: LimitsConfig = LimitsConfig()
     features: FeaturesConfig = FeaturesConfig()
     autoplay: AutoplayConfig = AutoplayConfig()
     crossfade: CrossfadeConfig = CrossfadeConfig()
     redis: RedisConfig = RedisConfig()
-    metrics: MetricsConfig = MetricsConfig()
-    chaos: ChaosConfig = ChaosConfig()
-    scaling: ScalingConfig = ScalingConfig()
-    analytics: AnalyticsConfig = AnalyticsConfig()
-    queue_telemetry: QueueTelemetryConfig = QueueTelemetryConfig()
-    cache: CacheConfig = CacheConfig()
-    search_limits: SearchLimitsConfig = SearchLimitsConfig()
