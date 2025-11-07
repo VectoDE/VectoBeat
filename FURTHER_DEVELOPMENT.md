@@ -37,13 +37,13 @@
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Lyrics Integration</strong> &mdash; Surface synchronised lyrics (Genius, Musixmatch) within now-playing embeds.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>DJ Permissions Layer</strong> &mdash; Add role-based queue control with an auditable history.
       </label>
     </li>
@@ -55,31 +55,31 @@
   <ul style="list-style: none; padding-left: 0;">
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Multi-Node Lavalink Failover</strong> &mdash; Provision redundant nodes with automatic reconnect and player migration.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Self-Healing Supervisors</strong> &mdash; Watch shard heartbeats and restart or reconnect when anomalies occur.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Structured Alerting</strong> &mdash; Export metrics to Prometheus/Alertmanager for proactive paging.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Chaos Testing Playbook</strong> &mdash; Run scheduled disconnect, latency, and error-injection drills.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Auto Scaling Strategy</strong> &mdash; Integrate with Kubernetes/Nomad to scale shards and nodes based on concurrency dashboards.
       </label>
     </li>
@@ -91,25 +91,25 @@
   <ul style="list-style: none; padding-left: 0;">
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Grafana Dashboards</strong> &mdash; Publish live dashboards for shard health, node stats, and slash command throughput.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Command Analytics Pipeline</strong> &mdash; Stream anonymised command events into a data warehouse for trend analysis.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Real-Time Queue Telemetry</strong> &mdash; Emit queue lifecycle events (play, skip, finish) to webhooks or WebSocket consumers.
       </label>
     </li>
     <li>
       <label>
-        <input type="checkbox" disabled />
+        <input type="checkbox" checked disabled />
         <strong>Enhanced Slash Feedback</strong> &mdash; Display progress bars and follow-ups for long-running operations.
       </label>
     </li>

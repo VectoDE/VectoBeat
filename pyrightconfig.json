@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright-internal/config.schema.json",
+  "include": ["src"],
+  "venvPath": ".",
+  "venv": null,
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": "warning",
+  "reportUntypedClassDecorator": "warning",
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict"
+}

@@ -310,6 +310,10 @@ AUTOPLAY_RANDOM_PICK=true
 <ul>
   <li>Capture <code>stdout</code> for VectoBeat; enable log shipping in production (ELK, CloudWatch, etc.).</li>
   <li>Monitor Lavalink metrics: player count, CPU, memory, frame deficit.</li>
+  <li>Import the bundled Grafana dashboards in <code>docs/grafana</code> for shard latency, node health, and slash command throughput visualisations.</li>
+  <li>Enable the command analytics pipeline (<code>docs/analytics.md</code>) to push anonymised slash usage into your data warehouse.</li>
+  <li>Wire the queue telemetry webhook (<code>docs/queue_telemetry.md</code>) into your status site for real-time “now playing” indicators.</li>
+  <li>Long-running slash commands (e.g. playlist loading) now show live progress embeds so users know what’s happening.</li>
   <li>Regularly patch yt-dlp for source compatibility.</li>
   <li>Monitor Redis availability (<code>INFO</code>/<code>PING</code>) if playlist persistence is enabled.</li>
 </ul>
@@ -321,8 +325,8 @@ AUTOPLAY_RANDOM_PICK=true
 
 <ol>
   <li>Fork the repository and clone your fork.</li>
-  <li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
-  <li>Run <code>python3 -m compileall src</code> before committing.</li>
+<li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
+  <li>Run <code>python3 -m compileall src</code> and <code>scripts/typecheck.sh</code> before committing.</li>
   <li>Submit a pull request describing the motivation, approach, and testing performed.</li>
 </ol>
 
