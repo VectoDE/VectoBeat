@@ -13,6 +13,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      PYTEST_ADDOPTS: "--capture=no --maxfail=1"
     strategy:
       matrix:
         python-version: ["3.10", "3.11"]
