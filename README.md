@@ -152,7 +152,8 @@
 <p style="font-size: 0.85rem; text-align: center;">Source Mermaid definition lives at <code>docs/system_architecture.mmd</code>; regenerate the asset with:</p>
 
 ```bash
-mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -t dark
+npx -y @mermaid-js/mermaid-cli@10.9.0 -p docs/puppeteer-config.json -t dark \
+  -i docs/system_architecture.mmd -o assets/images/architecture.png
 ```
 
 <hr />
