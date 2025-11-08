@@ -64,7 +64,7 @@ jobs:
           target: ${{ secrets.DEPLOY_TARGET_PATH }}
 
       - name: Trigger remote deployment
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.3
         env:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
