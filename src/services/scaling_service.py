@@ -11,7 +11,6 @@ import time
 from typing import Any, Dict, Optional
 
 import aiohttp
-import lavalink
 from discord.ext import commands
 
 from src.configs.schema import ScalingConfig

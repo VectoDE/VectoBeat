@@ -93,7 +93,10 @@ class MusicControls(commands.Cog):
                 mentions.append(role.mention)
         if mentions:
             roles_text = ", ".join(mentions)
-            return f"You must have one of the DJ roles ({roles_text}) or `Manage Server` permission to use this command."
+            return (
+                "You must have one of the DJ roles "
+                f"({roles_text}) or `Manage Server` permission to use this command."
+            )
         return "Only configured DJ roles may use this command. Ask an admin to run `/dj add-role`."
 
     def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:

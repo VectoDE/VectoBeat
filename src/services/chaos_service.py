@@ -7,7 +7,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Deque, List, Optional, Tuple
 from collections import deque
 
 import discord

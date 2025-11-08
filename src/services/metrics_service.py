@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
 import lavalink
 from prometheus_client import CollectorRegistry, Counter, Gauge, start_http_server

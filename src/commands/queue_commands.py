@@ -59,7 +59,11 @@ class QueueCommands(commands.Cog):
             if role:
                 mentions.append(role.mention)
         if mentions:
-            return f"You must have one of the DJ roles ({', '.join(mentions)}) or `Manage Server` permission to use this command."
+            roles = ", ".join(mentions)
+            return (
+                "You must have one of the DJ roles "
+                f"({roles}) or `Manage Server` permission to use this command."
+            )
         return "Only configured DJ roles may use this command. Ask an admin to run `/dj add-role`."
 
     def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:

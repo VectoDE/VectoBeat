@@ -35,7 +35,7 @@ class ChaosCommands(commands.Cog):
         if not isinstance(member, discord.Member):
             return "Unable to resolve member."
         if not member.guild_permissions.manage_guild:
-            return "You need the `Manage Server` permission." 
+            return "You need the `Manage Server` permission."
         return None
 
     @chaos.command(name="status", description="Show recent chaos drills and schedule info.")

@@ -41,7 +41,7 @@ class DJPermissionManager:
             raw = {}
         for guild_id, payload in raw.items():
             roles = [int(role) for role in payload.get("roles", [])]
-            audit = payload.get("audit", [])[-self.max_audit :]
+            audit = payload.get("audit", [])[-self.max_audit:]
             self._configs[guild_id] = DJGuildConfig(roles=roles, audit=audit)
 
     def save(self) -> None:
@@ -62,7 +62,7 @@ class DJPermissionManager:
             self._configs[key] = DJGuildConfig()
         config = self._configs[key]
         if len(config.audit) > self.max_audit:
-            config.audit = config.audit[-self.max_audit :]
+            config.audit = config.audit[-self.max_audit:]
         return config
 
     # ------------------------------------------------------------------ role management
@@ -121,7 +121,7 @@ class DJPermissionManager:
             "details": details or "",
         }
         config.audit.append(entry)
-        config.audit = config.audit[-self.max_audit :]
+        config.audit = config.audit[-self.max_audit:]
         self.save()
 
     def recent_actions(self, guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:

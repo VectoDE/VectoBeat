@@ -131,7 +131,10 @@ class ConnectionCommands(commands.Cog):
         player = self._find_player(self.bot, inter.guild.id)
 
         if not voice_client and not player:
-            return await inter.response.send_message(embed=factory.warning("VectoBeat is not connected."), ephemeral=True)
+            return await inter.response.send_message(
+                embed=factory.warning("VectoBeat is not connected."),
+                ephemeral=True,
+            )
 
         details = []
         if voice_client:
