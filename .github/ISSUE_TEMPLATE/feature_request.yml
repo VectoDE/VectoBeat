@@ -1,0 +1,74 @@
+name: Feature Request
+description: Suggest a new capability or improvement for VectoBeat.
+title: "[Idea]: "
+labels:
+  - enhancement
+  - needs triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We love thoughtful ideas! Tell us what problem you are solving and how the feature should behave.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One sentence describing the feature or improvement.
+      placeholder: Add /lyrics command to fetch synced lyrics for the current track
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: |
+        What problem does this solve? How would the feature benefit bot operators or listeners?
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Affected domain
+      description: Where in the product does this feature live?
+      options:
+        - Playback / Queueing
+        - Diagnostics / Observability
+        - DevEx / Tooling
+        - Infrastructure / Deployment
+        - Documentation
+        - Other
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behaviour, UX, or API shape.
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: Success metrics
+      description: How will we know the feature is successful? Share KPIs, telemetry, or qualitative outcomes.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Share any workarounds or design alternatives you explored.
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout plan
+      description: Mention any migration steps, documentation updates, or feature-flag strategy.
+  - type: textarea
+    id: references
+    attributes:
+      label: Additional context
+      description: Link to mockups, Discord threads, or related issues/PRs.
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched for existing issues to avoid duplicates.
+          required: true
+        - label: I am willing to help with a pull request.

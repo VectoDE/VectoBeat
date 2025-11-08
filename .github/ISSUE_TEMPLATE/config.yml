@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/VectoDE/VectoBeat/tree/main/docs
+    about: Reference architecture, setup guides, and runbooks.
+  - name: 💬 Discord Support
+    url: https://discord.gg/DtHPAEHxZk
+    about: Ask questions and get live help from the community.

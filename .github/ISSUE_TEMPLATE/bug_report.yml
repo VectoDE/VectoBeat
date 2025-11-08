@@ -1,0 +1,94 @@
+name: Bug Report
+description: File a bug report for the VectoBeat Discord bot or its tooling.
+title: "[Bug]: "
+labels:
+  - bug
+  - needs triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us keep VectoBeat stable. Please provide as much context as possible so we can reproduce the issue quickly.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Provide a concise description of the bug.
+      placeholder: When I ran /play ... the bot replied with ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Detail the minimal steps needed to reproduce the issue. Include slash commands, configuration, or API calls.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: Tell us what you expected to happen.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Estimate the operational impact.
+      options:
+        - Critical – outage, security breach, or data loss
+        - High – major feature unusable for many guilds
+        - Medium – degraded experience or incorrect results
+        - Low – cosmetic or documentation issue
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact details
+      description: Share how many guilds/users are affected, and whether a workaround exists.
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression?
+      description: Did this work previously with the same configuration?
+      options:
+        - Yes, it used to work and recently regressed
+        - Unsure
+        - No, it has never worked
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs, stack traces, or screenshots
+      description: Paste console output, Lavalink logs, or attach screenshots. Remove secrets before sharing.
+      render: shell
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Attachments
+      description: Links to screenshots, videos, dashboards, or Grafana traces if helpful.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, Lavalink version, deployment method (docker, bare metal, etc.).
+      placeholder: Ubuntu 22.04 · Python 3.11.6 · Lavalink 4.0.6 · docker-compose
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Checklist
+      options:
+        - label: I am using the latest commit of VectoBeat's `main` branch.
+          required: true
+        - label: I searched open and closed issues to avoid duplicates.
+          required: true
+        - label: I removed sensitive tokens or guild identifiers from logs.
+          required: true

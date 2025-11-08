@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VectoBeat Code Owners
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Ensure every path has at least one active reviewer for enterprise readiness.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Global fallback – every file must have at least one maintainer review.
+* @VectoDE/maintainers @timhauke
+
+# Application source
+/src/ @VectoDE/maintainers @timhauke
+/tests/ @VectoDE/maintainers @timhauke
+
+# Documentation and knowledge base
+/docs/ @VectoDE/docs-team @timhauke
+/README.md @VectoDE/docs-team @timhauke
+
+# Infrastructure and automation
+/.github/ @VectoDE/devops-team @timhauke
+/Dockerfile @VectoDE/devops-team @timhauke
+/docker-compose.yml @VectoDE/devops-team @timhauke
+/docker-compose.local.yml @VectoDE/devops-team @timhauke
+
+# Configuration / operations
+/config.yml @VectoDE/maintainers @timhauke
+/requirements.txt @VectoDE/maintainers @timhauke
+/scripts/ @VectoDE/maintainers @timhauke

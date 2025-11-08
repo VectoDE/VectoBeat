@@ -321,7 +321,7 @@ AUTOPLAY_RANDOM_PICK=true
 <hr />
 
 <h2 id="contributing">🤝 Contributing</h2>
-<p>Contributions are welcome! Please review <a href="CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a> and follow the steps below.</p>
+<p>Contributions are welcome! Please review <a href=".github/CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a> and the <a href=".github/CONTRIBUTING.md">Contributing Guide</a>, then follow the steps below.</p>
 
 <ol>
   <li>Fork the repository and clone your fork.</li>
