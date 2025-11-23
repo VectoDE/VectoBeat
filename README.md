@@ -6,6 +6,8 @@
     <strong>Python</strong>, <strong>discord.py</strong>, and <strong>Lavalink v4</strong>.
   </p>
   <p>
+    <a href="https://discord.com/api/oauth2/authorize?client_id=1435859299028172901&permissions=36768832&scope=bot%20applications.commands%20identify"><img src="https://img.shields.io/badge/Bot%20Invite-Add%20VectoBeat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite the VectoBeat bot"></a>
+    <a href="https://discordbotlist.com/bots/vectobeat"><img src="https://img.shields.io/badge/DiscordBotList-View%20Listing-ff3366?style=for-the-badge&logo=discord&logoColor=white" alt="DiscordBotList listing"></a>
     <a href="https://discord.gg/DtHPAEHxZk"><img src="https://img.shields.io/badge/Discord-Join%20Support-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Support"></a>
     <a href="https://github.com/VectoDE/VectoBeat/stargazers"><img src="https://img.shields.io/github/stars/VectoDE/VectoBeat?style=for-the-badge&logo=github&color=yellow" alt="GitHub Stars"></a>
     <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
@@ -38,7 +40,7 @@
   <a href="#architecture" style="margin: 0 0.5rem;">Architecture</a> ·
   <a href="#setup" style="margin: 0 0.5rem;">Setup</a> ·
   <a href="#slash-commands" style="margin: 0 0.5rem;">Commands</a> ·
-  <a href="#operations-runbook" style="margin: 0 0.5rem;">Operations</a> ·
+  <a href="#operations" style="margin: 0 0.5rem;">Operations</a> ·
   <a href="#contributing" style="margin: 0 0.5rem;">Contributing</a>
 </div>
 
@@ -129,15 +131,16 @@
         <li><strong>LavalinkManager</strong> managing node lifecycle & authentication</li>
         <li><strong>AudioService (yt-dlp)</strong> enabling multi-source fallback</li>
         <li><strong>EmbedFactory</strong> centralising branding assets (logo, colour palette)</li>
+        <li><strong>Next.js App Router</strong> control panel with Prisma/MySQL and durable queue sync store</li>
       </ul>
     </td>
     <td width="50%">
       <h3>Key Modules</h3>
       <ul>
-        <li><code>src/commands</code>: Slash command suites (connection, playback, diagnostics, queue)</li>
-        <li><code>src/events</code>: Presence rotation, playback announcers, global error handling</li>
-        <li><code>src/services</code>: Lavalink glue & audio resolution wrappers</li>
-        <li><code>src/configs</code>: Typed configuration (Pydantic) with `.env` overrides</li>
+        <li><code>bot/src/commands</code>: Slash command suites (connection, playback, diagnostics, queue, ops)</li>
+        <li><code>bot/src/services</code>: Lavalink glue, queue sync, concierge client, status API</li>
+        <li><code>frontend/app/api</code>: Control-panel APIs (account, concierge, security/audit, bot bridges)</li>
+        <li><code>frontend/lib</code>: Auth, plan capabilities, durable queue store</li>
       </ul>
     </td>
   </tr>
@@ -149,140 +152,124 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/architecture.png" alt="VectoBeat System Architecture" width="720" />
 </p>
-<p style="font-size: 0.85rem; text-align: center;">Source Mermaid definition lives at <code>docs/system_architecture.mmd</code>; regenerate the asset with:</p>
+<p style="font-size: 0.9rem; text-align: center;">
+  A prose + Mermaid breakdown of the data flow lives in <code>docs/architecture.md</code> (source: <code>docs/system_architecture.mmd</code>).
+  Regenerate the 4K system diagram with:
+</p>
 
 ```bash
-npx -y @mermaid-js/mermaid-cli@10.9.0 -p docs/puppeteer-config.json -t dark \
-  -i docs/system_architecture.mmd -o assets/images/architecture.png
+npx -y @mermaid-js/mermaid-cli -i docs/system_architecture.mmd -o assets/images/architecture.png -w 3840 -H 2160 -b transparent
 ```
+
+<p style="font-size: 0.9rem; text-align: center;">
+  For the full documentation index (deployment, ops, troubleshooting, and API guides), start at <code>docs/README.md</code>.
+</p>
 
 <hr />
 
 <h2 id="setup">⚙️ Setup</h2>
 
-<h3>1. Environment</h3>
-<pre><code>python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt</code></pre>
+<div style="background:rgba(14,165,233,0.1);border:1px solid #38bdf8;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;">Keep a single root <code>.env</code> for bot + frontend; CI fails on stray env files.</div>
+<div style="background:rgba(251,191,36,0.12);border:1px solid #fbbf24;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;">Compose builds use the repo root as context; ensure <code>plan-capabilities.json</code> and Prisma schema stay present when building images.</div>
+<div style="background:rgba(248,113,113,0.12);border:1px solid #f87171;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;">Never commit secrets: <code>.env</code> is gitignored. Rotate Discord/Stripe/SMTP keys if credentials leak.</div>
 
-<h3>2. Configure Lavalink</h3>
-<ul>
-  <li>Follow <a href="INSTALL_LAVALINK.md">INSTALL_LAVALINK.md</a> for deployment (Docker-ready recipe).</li>
-  <li>Enable desired source managers (YouTube/yt-dlp, SoundCloud, Spotify plugin if licensed).</li>
-  <li>Record host, port, password, SSL and region; update <code>.env</code> and <code>config.yml</code>.</li>
-</ul>
+<div align="center">
+  <table>
+    <tr>
+      <td width="33%">
+        <h3>1️⃣ Env (root only)</h3>
+        <p>Copy <code>.env.example</code> → <code>.env</code>. One file powers bot + frontend.</p>
+        <pre><code>cp .env.example .env
+python3 scripts/validate_env.py</code></pre>
+        <p style="font-size: 0.9rem;">Before publishing invites, swap the hero badge client IDs for your live bot.</p>
+      </td>
+      <td width="33%">
+        <h3>2️⃣ Local dev</h3>
+        <p><strong>Bot:</strong> <code>cd bot && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && set -a && source ../.env && set +a && python -m src.main</code></p>
+        <p><strong>Frontend:</strong> <code>cd frontend && npm install && set -a && source ../.env && set +a && npm run dev</code></p>
+      </td>
+      <td width="33%">
+        <h3>3️⃣ Docker (parity)</h3>
+        <p>Full stack with MySQL, Redis, Lavalink.</p>
+        <pre><code>cp .env.example .env
+docker compose up -d --build
+docker compose logs -f frontend bot</code></pre>
+      </td>
+    </tr>
+  </table>
+</div>
 
-<h3>3. Redis (Playlists & Autoplay)</h3>
-<ul>
-  <li>Prepare a Redis instance (single node is sufficient). Default config assumes <code>45.84.196.19:32768</code>.</li>
-  <li>Set network rules so only the bot host can access Redis.</li>
-  <li>Populate <code>REDIS_HOST</code>/<code>PORT</code>/<code>PASSWORD</code>/<code>DB</code> in <code>.env</code> or adjust <code>config.yml</code>.</li>
-  <li>Tune history-driven autoplay via <code>AUTOPLAY_DISCOVERY_LIMIT</code> and <code>AUTOPLAY_RANDOM_PICK</code> (controls recommendation breadth and randomness).</li>
-</ul>
-
-<h3>4. Bot Configuration</h3>
-<pre><code>.env
-DISCORD_TOKEN=YOUR_BOT_TOKEN
-LAVALINK_HOST=example-host
-LAVALINK_PORT=2333
-LAVALINK_PASSWORD=supersecret
-LAVALINK_HTTPS=false
-LAVALINK_REGION=eu
-REDIS_HOST=45.84.196.19
-REDIS_PORT=32768
-REDIS_PASSWORD=
-REDIS_DB=0
-AUTOPLAY_DISCOVERY_LIMIT=10
-AUTOPLAY_RANDOM_PICK=true
-</code></pre>
-<p>Optional: adjust <code>config.yml</code> for intents, shard count, embed theme.</p>
-
-<h3>5. Launch</h3>
-<pre><code>python -m src.main</code></pre>
-<p>The bot registers slash commands and reports node health on startup. Review the logs for authentication or connectivity hints.</p>
+<p style="text-align: center;">Services: frontend <code>3050</code>, bot status <code>3051</code>, bot metrics <code>3052</code>, Lavalink <code>2333</code>, MySQL <code>3306</code>, Redis <code>6379</code>.</p>
+<p style="text-align: center;">Compose builds from <code>frontend/Dockerfile</code> and <code>bot/Dockerfile</code> using the repo root as context; healthchecks restart until dependencies are ready.</p>
+<p style="text-align: center;">Docs index, deployment, ops, and troubleshooting guides live under <code>docs/</code>.</p>
 
 <hr />
 
-<h2 id="slash-commands">🎮 Slash Commands</h2>
+<h2 id="slash-commands">🎮 Commands</h2>
+<p>Use <code>/help</code> or <code>/commands</code> in Discord for in-bot guidance. Categories below list every command with a short description (see <code>docs/command_reference.md</code> for the generated source).</p>
+<div style="background:rgba(14,165,233,0.1);border:1px solid #38bdf8;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Info:</strong> Spotify tracks are proxied via YouTube search unless a Lavalink Spotify plugin is configured.</div>
+<div style="background:rgba(251,191,36,0.12);border:1px solid #fbbf24;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Warning:</strong> Queue control commands enforce DJ/Manage perms when collaborative mode is off.</div>
+<div style="background:rgba(248,113,113,0.12);border:1px solid #f87171;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Heads up:</strong> Concierge and scaling/chaos commands are gated by plan tier and authenticated bot API calls.</div>
 
 <table>
   <thead>
-    <tr>
-      <th>Category</th>
-      <th>Command</th>
-      <th>Description</th>
-    </tr>
+    <tr><th>Category</th><th>Command</th><th>Description</th></tr>
   </thead>
   <tbody>
-    <tr>
-      <td rowspan="3"><strong>Voice</strong></td>
-      <td><code>/connect</code></td>
-      <td>Join caller’s voice channel, auditing missing permissions and node status.</td>
-    </tr>
-    <tr>
-      <td><code>/disconnect</code></td>
-      <td>Leave voice, destroy the Lavalink player, clear queue state.</td>
-    </tr>
-    <tr>
-      <td><code>/voiceinfo</code></td>
-      <td>Display latency, queue length, active status and permission checklist.</td>
-    </tr>
-    <tr>
-      <td rowspan="8"><strong>Playback</strong></td>
-      <td><code>/play &lt;query|url&gt;</code></td>
-      <td>Resolve search or URL, queue up to three random candidates, start automatically.</td>
-    </tr>
-    <tr><td><code>/skip</code></td><td>Skip current track; embed shows remaining queue size.</td></tr>
-    <tr><td><code>/stop</code></td><td>Stop playback and clear queued tracks.</td></tr>
-    <tr><td><code>/pause</code> / <code>/resume</code></td><td>Pause or resume; embed indicates track title.</td></tr>
-    <tr><td><code>/volume</code></td><td>Set volume between 0 and 200%.</td></tr>
-    <tr><td><code>/loop</code></td><td>Toggle loop mode (Off, Track, Queue).</td></tr>
-    <tr><td><code>/seek mm:ss</code></td><td>Jump to a timestamp within the current track.</td></tr>
-    <tr><td><code>/replay</code></td><td>Restart currently playing track from the beginning.</td></tr>
-    <tr>
-      <td rowspan="6"><strong>Queue</strong></td>
-      <td><code>/queue</code></td>
-      <td>Paginated queue view with “Now Playing” and upcoming entries.</td>
-    </tr>
-    <tr><td><code>/queueinfo</code></td><td>Summary overview (duration, volume, loop state, up-next block).</td></tr>
-    <tr><td><code>/remove &lt;index&gt;</code></td><td>Remove track by its 1-based index.</td></tr>
-    <tr><td><code>/move &lt;from&gt; &lt;to&gt;</code></td><td>Reorder queued items.</td></tr>
-    <tr><td><code>/shuffle</code></td><td>Shuffle queued tracks (requires ≥2).</td></tr>
-    <tr><td><code>/clear</code></td><td>Purge the queued tracks while leaving the current song playing.</td></tr>
-    <tr>
-      <td rowspan="8"><strong>Diagnostics</strong></td>
-      <td><code>/ping</code></td>
-      <td>Latency snapshot (gateway + uptime + shard descriptor).</td>
-    </tr>
-    <tr><td><code>/status</code></td><td>Comprehensive metrics (latency p95, guild footprint, Lavalink stats, CPU/RAM).</td></tr>
-    <tr><td><code>/botinfo</code></td><td>Application metadata, owners, command count, runtime environment.</td></tr>
-    <tr><td><code>/uptime</code></td><td>Formatted uptime with Discord timestamp (absolute & relative).</td></tr>
-    <tr><td><code>/lavalink</code></td><td>Per-node statistics: players, CPU, memory, frame deficit.</td></tr>
-    <tr><td><code>/voiceinfo</code></td><td>See above; duplicated for quick reference.</td></tr>
-    <tr><td><code>/guildinfo</code></td><td>Guild demographics and configuration (requires Manage Guild).</td></tr>
-    <tr><td><code>/permissions</code></td><td>Audit the bot’s channel permissions with checkmarks.</td></tr>
-    <tr>
-      <td rowspan="4"><strong>Configuration</strong></td>
-      <td><code>/profile show</code></td>
-      <td>Display the guild’s playback profile (default volume, autoplay, announcement style).</td>
-    </tr>
-    <tr><td><code>/profile set-volume</code></td><td>Persist a default volume applied whenever the bot joins voice.</td></tr>
-    <tr><td><code>/profile set-autoplay</code></td><td>Toggle automatic queue refill when playback finishes.</td></tr>
-    <tr><td><code>/profile set-announcement</code></td><td>Switch between rich embeds and minimal now-playing text.</td></tr>
-    <tr>
-      <td rowspan="4"><strong>Playlists</strong></td>
-      <td><code>/playlist save</code></td>
-      <td>Persist the current queue (optionally including the active track) to Redis. Requires Manage Server.</td>
-    </tr>
-    <tr><td><code>/playlist load</code></td><td>Load a saved playlist into the queue, optionally replacing current items.</td></tr>
-    <tr><td><code>/playlist list</code></td><td>Enumerate playlists stored for the guild.</td></tr>
-    <tr><td><code>/playlist delete</code></td><td>Remove a playlist from storage. Requires Manage Server.</td></tr>
+    <tr><td rowspan="3"><strong>Voice</strong></td><td><code>/connect</code></td><td>Join caller’s voice channel (permission + node checks).</td></tr>
+    <tr><td><code>/disconnect</code></td><td>Leave voice, destroy player, clear queue state.</td></tr>
+    <tr><td><code>/voiceinfo</code></td><td>Latency, queue length, active status, permission checklist.</td></tr>
+    <tr><td rowspan="9"><strong>Playback</strong></td><td><code>/play</code></td><td>Search/URL resolve (YouTube/SoundCloud/Spotify), enqueue, autoplay.</td></tr>
+    <tr><td><code>/skip</code></td><td>Skip current track.</td></tr>
+    <tr><td><code>/stop</code></td><td>Stop playback and clear queue.</td></tr>
+    <tr><td><code>/pause</code></td><td>Pause playback.</td></tr>
+    <tr><td><code>/resume</code></td><td>Resume playback.</td></tr>
+    <tr><td><code>/volume</code></td><td>Set volume (0–200%).</td></tr>
+    <tr><td><code>/loop</code></td><td>Toggle Off/Track/Queue loop modes.</td></tr>
+    <tr><td><code>/seek</code></td><td>Seek within current track (mm:ss).</td></tr>
+    <tr><td><code>/replay</code></td><td>Restart current track.</td></tr>
+    <tr><td rowspan="6"><strong>Queue</strong></td><td><code>/queue</code></td><td>Paginated queue with now-playing and up-next.</td></tr>
+    <tr><td><code>/queueinfo</code></td><td>Queue summary (duration, loop, up-next).</td></tr>
+    <tr><td><code>/shuffle</code></td><td>Shuffle queued tracks (≥2).</td></tr>
+    <tr><td><code>/move</code></td><td>Reorder items by position.</td></tr>
+    <tr><td><code>/remove</code></td><td>Remove track by 1-based index.</td></tr>
+    <tr><td><code>/clear</code></td><td>Clear queued tracks.</td></tr>
+    <tr><td rowspan="4"><strong>Playlists</strong></td><td><code>/playlist save</code></td><td>Persist current queue as a named playlist.</td></tr>
+    <tr><td><code>/playlist load</code></td><td>Load a saved playlist (append/replace).</td></tr>
+    <tr><td><code>/playlist list</code></td><td>List saved guild playlists.</td></tr>
+    <tr><td><code>/playlist delete</code></td><td>Remove a saved playlist.</td></tr>
+    <tr><td rowspan="4"><strong>Profiles</strong></td><td><code>/profile show</code></td><td>Display default volume/autoplay/embed style.</td></tr>
+    <tr><td><code>/profile set-volume</code></td><td>Persist default volume for the guild.</td></tr>
+    <tr><td><code>/profile set-autoplay</code></td><td>Toggle autoplay when queue finishes.</td></tr>
+    <tr><td><code>/profile set-announcement</code></td><td>Choose between rich embeds and minimal text.</td></tr>
+    <tr><td rowspan="4"><strong>DJ Controls</strong></td><td><code>/dj add-role</code></td><td>Grant DJ permissions to a role.</td></tr>
+    <tr><td><code>/dj remove-role</code></td><td>Revoke DJ permissions from a role.</td></tr>
+    <tr><td><code>/dj clear</code></td><td>Open queue control by clearing DJ roles.</td></tr>
+    <tr><td><code>/dj show</code></td><td>Display configured DJ roles and actions.</td></tr>
+    <tr><td rowspan="8"><strong>Diagnostics</strong></td><td><code>/ping</code></td><td>Gateway latency/uptime snapshot.</td></tr>
+    <tr><td><code>/status</code></td><td>Latency p95, guild footprint, Lavalink stats, CPU/RAM.</td></tr>
+    <tr><td><code>/lavalink</code></td><td>Per-node stats (players, CPU, memory, frame deficit).</td></tr>
+    <tr><td><code>/guildinfo</code></td><td>Guild demographics and configuration.</td></tr>
+    <tr><td><code>/permissions</code></td><td>Audit bot channel permissions with remediation tips.</td></tr>
+    <tr><td><code>/botinfo</code></td><td>Application metadata and runtime.</td></tr>
+    <tr><td><code>/uptime</code></td><td>Formatted uptime with timestamps.</td></tr>
+    <tr><td><code>/lyrics</code></td><td>Fetch lyrics for the current track.</td></tr>
+    <tr><td rowspan="9"><strong>Automation & Ops</strong></td><td><code>/concierge</code></td><td>File/resolve concierge tickets (IDs propagate to email/UI).</td></tr>
+    <tr><td><code>/successpod</code></td><td>Run onboarding playbooks with audit logging.</td></tr>
+    <tr><td><code>/scaling evaluate</code></td><td>Force an autoscaling evaluation.</td></tr>
+    <tr><td><code>/scaling status</code></td><td>Show scaling metrics and last signal.</td></tr>
+    <tr><td><code>/chaos run</code></td><td>Trigger a chaos experiment immediately.</td></tr>
+    <tr><td><code>/chaos status</code></td><td>Show recent chaos drills and schedule.</td></tr>
+    <tr><td><code>/settings queue-limit</code></td><td>Adjust queue limit (persists to control panel).</td></tr>
+    <tr><td><code>/settings collaborative</code></td><td>Toggle collaborative queue (DJ/Manage perms enforced).</td></tr>
+    <tr><td><code>/settings event</code></td><td>Toggle playback/queue embeds.</td></tr>
   </tbody>
 </table>
 
+
 <hr />
 
-<h2 id="operations-runbook">🧭 Operations Runbook</h2>
+<h2 id="operations">🧭 Operations Runbook</h2>
 
 <h3>Health Monitoring</h3>
 <table>
@@ -321,6 +308,25 @@ AUTOPLAY_RANDOM_PICK=true
 
 <hr />
 
+<h2 id="security-compliance">🛡️ Security &amp; Compliance</h2>
+<p>
+  Enterprise customers rely on VectoBeat to demonstrate residency, threat mitigation, and secure coding practices. Two canonical documents now live under
+  <code>docs/security</code>:
+</p>
+<ul>
+  <li><strong>Threat Model</strong> (<code>docs/security/threat-model.md</code>) – enumerates assets, attacker goals, trust boundaries, and mitigation strategies for secrets, automation, and residency.</li>
+  <li><strong>Secure Coding Guidelines</strong> (<code>docs/security/secure-coding-guidelines.md</code>) – covers encryption standards, secret rotation cadence, rate limiting rules, CSRF/CSP expectations, input validation, and incident-response hooks.</li>
+  <li><strong>Privacy-by-Design Controls</strong> (<code>docs/security/privacy-controls.md</code>) – documents retention policies, delete/export workflows, and localized consent notices embedded in the control panel.</li>
+  <li><strong>Compliance Export Jobs</strong> (<code>docs/backend/compliance-export-jobs.md</code>) – explains how scheduled/on-demand export jobs pull queue/moderation/billing data and deliver encrypted payloads via S3/SFTP.</li>
+  <li><strong>Queue-Based Processing</strong> (<code>docs/backend/queue-processing.md</code>) – covers Redis-backed job queues for analytics exports and embed override propagation, plus worker configuration.</li>
+  <li><strong>Observability Metrics</strong> (<code>docs/observability/metrics.md</code>) – enumerates shard load, Lavalink health, automation success, API error budgets, and concierge SLA metrics + alerting guidance.</li>
+</ul>
+<p>
+  Keep both artifacts in sync with your deployments. Any new surface (API route, slash command, or residency zone) must be reflected in the threat model and inherit the published secure coding rules.
+</p>
+
+<hr />
+
 <h2 id="contributing">🤝 Contributing</h2>
 <p>Contributions are welcome! Please review <a href=".github/CODE_OF_CONDUCT.md">CODE_OF_CONDUCT.md</a> and the <a href=".github/CONTRIBUTING.md">Contributing Guide</a>, then follow the steps below.</p>
 
@@ -348,4 +354,3 @@ AUTOPLAY_RANDOM_PICK=true
 <p align="center" style="margin-top: 2rem;">
   <em>VectoBeat — engineered for premium audio experiences and operational clarity.</em>
 </p>
-- Profile the event loop with `python scripts/profile_event_loop.py` (requires pyinstrument) and inspect `profiles/event-loop-profile.html` for hotspots.

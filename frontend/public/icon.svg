@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="VectoBeat icon">
+  <defs>
+    <linearGradient id="vb-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#1f2937" />
+    </linearGradient>
+    <filter id="vb-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="rgba(0,0,0,0.35)" />
+    </filter>
+    <clipPath id="vb-radius">
+      <rect x="0" y="0" width="256" height="256" rx="64" />
+    </clipPath>
+  </defs>
+  <rect width="256" height="256" rx="64" fill="url(#vb-gradient)" filter="url(#vb-shadow)" />
+  <rect width="256" height="256" rx="64" fill="url(#vb-gradient)" />
+  <g clip-path="url(#vb-radius)">
+    <rect width="256" height="256" fill="url(#vb-gradient)" />
+    <image href="logo.png" x="32" y="32" width="192" height="192" preserveAspectRatio="xMidYMid meet" />
+  </g>
+</svg>

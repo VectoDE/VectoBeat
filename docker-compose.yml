@@ -1,22 +1,165 @@
 version: "3.9"
 
 services:
-  vectobeat:
-    container_name: vectobeat
+  frontend:
     build:
       context: .
-      dockerfile: Dockerfile
-    restart: always
+      dockerfile: frontend/Dockerfile
     env_file:
-      - .env
+      - ./.env
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: "3050"
+      DATABASE_URL: "mysql://${DB_USER:-vectobeat}:${DB_PASSWORD:-vectorpass}@mysql:3306/${DB_NAME:-vectobeat}"
+      BOT_STATUS_API_URL: http://bot:3051/status
+    ports:
+      - "3050:3050"
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3050/').then(()=>process.exit(0)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
       CONFIG_PATH: /src/config.yml
       METRICS_ENABLED: "${METRICS_ENABLED:-true}"
       METRICS_HOST: 0.0.0.0
-      METRICS_PORT: "9333"
+      METRICS_PORT: "${METRICS_PORT:-3052}"
       METRICS_INTERVAL: "${METRICS_INTERVAL:-15}"
+      LAVALINK_HOST: lavalink
+      LAVALINK_PORT: "2333"
+      LAVALINK_HTTPS: "false"
+      LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_DB: "${REDIS_DB:-0}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
-      - ./config.yml:/src/config.yml:ro
-      - ./data:/src/data
+      - ./bot/config.yml:/src/config.yml:ro
+      - ./bot/data:/src/data
+    depends_on:
+      - lavalink
+      - redis
     ports:
-      - "9333:9333"
+      - "3052:3052"
+      - "3051:3051"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request,sys;sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:3051/status',timeout=5).status < 500 else sys.exit(1)\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1536M
+        reservations:
+          cpus: "0.35"
+          memory: 768M
+
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: vectobeat-lavalink
+    environment:
+      SERVER_PORT: "2333"
+      LAVALINK_SERVER_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
+    ports:
+      - "2333:2333"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:2333/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 768M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: "${DB_NAME:-vectobeat}"
+      MYSQL_USER: "${DB_USER:-vectobeat}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-vectorpass}"
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-vectorpass_root}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 2G
+        reservations:
+          cpus: "0.3"
+          memory: 1G
+
+volumes:
+  redis_data:
+  mysql_data:

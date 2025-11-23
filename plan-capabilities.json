@@ -1,0 +1,170 @@
+{
+  "free": {
+    "limits": {
+      "queue": 100,
+      "conciergeHours": 0
+    },
+    "concierge": {
+      "slaMinutes": null
+    },
+    "serverSettings": {
+      "multiSourceStreaming": false,
+      "maxSourceAccessLevel": "core",
+      "maxPlaybackQuality": "standard",
+      "playlistSync": false,
+      "maxAnalyticsMode": "basic",
+      "aiRecommendations": false,
+      "maxAutomationLevel": "off",
+      "allowAutomationWindow": false,
+      "allowedLavalinkRegions": ["auto"],
+      "exportWebhooks": false
+    },
+    "features": {
+      "apiTokens": false,
+      "webhookExports": false,
+      "successPod": false,
+      "regionalRouting": false,
+      "concierge": false
+    }
+  },
+  "starter": {
+    "limits": {
+      "queue": null,
+      "conciergeHours": 0
+    },
+    "concierge": {
+      "slaMinutes": null
+    },
+    "serverSettings": {
+      "multiSourceStreaming": true,
+      "maxSourceAccessLevel": "extended",
+      "maxPlaybackQuality": "standard",
+      "playlistSync": true,
+      "maxAnalyticsMode": "advanced",
+      "aiRecommendations": false,
+      "maxAutomationLevel": "off",
+      "allowAutomationWindow": false,
+      "allowedLavalinkRegions": ["auto"],
+      "exportWebhooks": false
+    },
+    "features": {
+      "apiTokens": true,
+      "webhookExports": false,
+      "successPod": false,
+      "regionalRouting": false,
+      "concierge": false
+    }
+  },
+  "pro": {
+    "limits": {
+      "queue": null,
+      "conciergeHours": 0
+    },
+    "concierge": {
+      "slaMinutes": null
+    },
+    "serverSettings": {
+      "multiSourceStreaming": true,
+      "maxSourceAccessLevel": "unlimited",
+      "maxPlaybackQuality": "hires",
+      "playlistSync": true,
+      "maxAnalyticsMode": "advanced",
+      "aiRecommendations": true,
+      "maxAutomationLevel": "smart",
+      "allowAutomationWindow": false,
+      "allowedLavalinkRegions": ["auto"],
+      "exportWebhooks": true
+    },
+    "features": {
+      "apiTokens": true,
+      "webhookExports": true,
+      "successPod": false,
+      "regionalRouting": false,
+      "concierge": false
+    }
+  },
+  "growth": {
+    "limits": {
+      "queue": null,
+      "conciergeHours": 2
+    },
+    "concierge": {
+      "slaMinutes": 240
+    },
+    "serverSettings": {
+      "multiSourceStreaming": true,
+      "maxSourceAccessLevel": "unlimited",
+      "maxPlaybackQuality": "hires",
+      "playlistSync": true,
+      "maxAnalyticsMode": "predictive",
+      "aiRecommendations": true,
+      "maxAutomationLevel": "full",
+      "allowAutomationWindow": true,
+      "allowedLavalinkRegions": ["auto"],
+      "exportWebhooks": true
+    },
+    "features": {
+      "apiTokens": true,
+      "webhookExports": true,
+      "successPod": false,
+      "regionalRouting": false,
+      "concierge": true
+    }
+  },
+  "scale": {
+    "limits": {
+      "queue": null,
+      "conciergeHours": null
+    },
+    "concierge": {
+      "slaMinutes": 60
+    },
+    "serverSettings": {
+      "multiSourceStreaming": true,
+      "maxSourceAccessLevel": "unlimited",
+      "maxPlaybackQuality": "hires",
+      "playlistSync": true,
+      "maxAnalyticsMode": "predictive",
+      "aiRecommendations": true,
+      "maxAutomationLevel": "full",
+      "allowAutomationWindow": true,
+      "allowedLavalinkRegions": ["auto", "us", "eu", "apac"],
+      "exportWebhooks": true
+    },
+    "features": {
+      "apiTokens": true,
+      "webhookExports": true,
+      "successPod": true,
+      "regionalRouting": true,
+      "concierge": true
+    }
+  },
+  "enterprise": {
+    "limits": {
+      "queue": null,
+      "conciergeHours": null
+    },
+    "concierge": {
+      "slaMinutes": 30
+    },
+    "serverSettings": {
+      "multiSourceStreaming": true,
+      "maxSourceAccessLevel": "unlimited",
+      "maxPlaybackQuality": "hires",
+      "playlistSync": true,
+      "maxAnalyticsMode": "predictive",
+      "aiRecommendations": true,
+      "maxAutomationLevel": "full",
+      "allowAutomationWindow": true,
+      "allowedLavalinkRegions": ["auto", "us", "eu", "apac"],
+      "exportWebhooks": true
+    },
+    "features": {
+      "apiTokens": true,
+      "webhookExports": true,
+      "successPod": true,
+      "regionalRouting": true,
+      "concierge": true
+    }
+  }
+}

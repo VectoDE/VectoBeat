@@ -1,43 +1,72 @@
-%% VectoBeat System Architecture Diagram
-graph LR
-  subgraph Discord_Platform[Discord Platform]
-    Users[Discord Users] -->|Interactions & Voice| Gateway[Discord API & Gateway]
+%% VectoBeat System Architecture Diagram (render with mmdc -w 3840 -H 2160)
+flowchart LR
+  classDef service fill:#0f172a,color:#f8fafc,stroke:#334155,stroke-width:1px;
+  classDef datastore fill:#111827,color:#f8fafc,stroke:#475569,stroke-width:1px;
+  classDef boundary fill:#0b1220,color:#e5e7eb,stroke:#3b4252,stroke-width:2px;
+  classDef external fill:#0b2740,color:#e0f2fe,stroke:#2563eb,stroke-width:1px;
+  classDef queue fill:#0f172a,color:#a5f3fc,stroke:#0891b2,stroke-width:1px;
+
+  subgraph Discord[Discord Platform]
+    class Discord boundary
+    Users[Discord Users]:::external -->|Slash cmds + voice| Gateway[Discord API & Gateway]:::external
   end
 
-  subgraph VectoBeat_Runtime[VectoBeat Runtime]
-    Bot[AutoShardedBot Core]
-    Commands[Slash Command Suites]
-    Events[Lifecycle & Music Events]
-    Services[Lavalink Manager & Audio Service]
-    Config["Configuration (.env + config.yml)"]
-    Observability[Logging & Metrics]
+  subgraph ControlPanel["Control Panel (Next.js App Router)"]
+    class ControlPanel boundary
+    NextAPI[Next.js API Routes]:::service
+    Dashboard[Dashboard & Concierge UI]:::service
+    StatusIngest[Bot Status/Event Webhooks]:::service
+    QueueStore[(Durable Queue Sync Store\nRedis / MySQL)]:::queue
+    Database[(MySQL + Prisma ORM)]:::datastore
+    Mailer[SMTP / Notifications]:::service
   end
 
+  subgraph BotRuntime["Bot Runtime (discord.py + Lavalink client)"]
+    class BotRuntime boundary
+    Bot[AutoShardedBot Core]:::service
+    SlashCommands[Slash Command Suites]:::service
+    QueueSync[[Queue Sync Worker]]:::queue
+    ConciergeClient[[Concierge Client]]:::service
+    StatusAPI[Status API :3051]:::service
+    Metrics[Prometheus Metrics :3052]:::service
+    Config["Configuration (.env + config.yml)"]:::service
+  end
+
+  subgraph Media["Media Sources"]
+    class Media boundary
+    YouTube["YouTube / yt-dlp"]:::external
+    SoundCloud["SoundCloud"]:::external
+    Spotify["Spotify (plugins)"]:::external
+    HTTP["Direct HTTP Streams"]:::external
+  end
+
+  %% Discord flows
   Gateway -->|Gateway Events| Bot
   Bot -->|REST Calls| Gateway
-  Bot --> Commands
-  Bot --> Events
-  Commands --> Services
-  Events --> Services
-  Config --> Bot
-  Config --> Services
-  Bot --> Observability
-  Services --> Observability
+  Bot --> SlashCommands
 
-  Services -->|REST + WebSocket| Lavalink[Lavalink Node]
-  Lavalink -->|Voice PCM| VoiceGateway[Discord Voice Gateway]
-  VoiceGateway --> Gateway
+  %% Control panel <-> bot bridges
+  QueueSync -->|Snapshot publish| QueueStore
+  NextAPI -->|Read/write snapshots| QueueStore
+  Bot -->|Status push /api/bot/events| StatusIngest
+  StatusAPI -->|Health & stats| NextAPI
+  ConciergeClient -->|Secret calls /api/bot/concierge| NextAPI
+  NextAPI -->|Quota + concierge responses| ConciergeClient
 
-  subgraph Media_Sources[Media Sources]
-    YouTube["YouTube / yt-dlp"]
-    SoundCloud["SoundCloud"]
-    Spotify["Spotify Plugin"]
-    Apple["Apple Music (via plugins)"]
-    HTTP["Direct HTTP Streams"]
-  end
+  %% Persistence + email
+  NextAPI -->|Prisma read/write| Database
+  Dashboard -->|REST calls| NextAPI
+  NextAPI -->|Notifications| Mailer
 
+  %% Lavalink path
+  Bot -->|WebSocket + REST| Lavalink[Lavalink Node]:::service
+  Lavalink -->|Voice PCM| VoiceGW[Discord Voice Gateway]:::external
+  VoiceGW --> Gateway
   Lavalink --> YouTube
   Lavalink --> SoundCloud
   Lavalink --> Spotify
-  Lavalink --> Apple
   Lavalink --> HTTP
+
+  %% Observability
+  Bot --> Metrics
+  Bot -->|Structured logs| Observability[Logging / APM]:::service

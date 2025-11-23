@@ -1,31 +1,31 @@
 # Local Sandbox Stack
 
-A docker-compose stack is provided for contributors who want to run VectoBeat
-with all required dependencies locally (Lavalink, Redis, Postgres).
+Run the full system locally with the single root `docker-compose.yml`. All services pull configuration from the shared root `.env`.
 
 ## Prerequisites
 - Docker Desktop (or compatible engine)
-- A Discord bot token
+- A populated root `.env` (copy from `.env.example`)
 
 ## Quick Start
-1. Copy `.env.local.example` to `.env.local` and insert your Discord token.
-2. Run the stack:
+1. Populate `.env` in the repo root (Discord token, MySQL creds, Lavalink password, Stripe keys if needed).
+2. Launch everything:
    ```bash
-   docker compose -f docker-compose.local.yml up --build
+   docker compose up -d --build
+   docker compose logs -f frontend bot
    ```
-3. The services that come up:
-   - `lavalink` on `localhost:2333` with password `localpass`
+3. Services:
+   - `frontend` on `http://localhost:3050`
+   - `bot` status on `http://localhost:3051/status` and metrics on `http://localhost:3052/metrics`
+   - `lavalink` on `localhost:2333` (password `localpass` by default)
    - `redis` on `localhost:6379`
-   - `postgres` on `localhost:5432`
-   - `vectobeat` bot service (auto-reloads when files change via bind mount)
+   - `mysql` on `localhost:3306`
 
-You can also run only the dependencies and execute the bot on your host:
+You can also run just the dependencies and execute the bot locally:
 
 ```bash
-docker compose -f docker-compose.local.yml up lavalink redis postgres
-python3 -m src.main
+docker compose up lavalink redis mysql
+cd bot && set -a && source ../.env && set +a && python -m src.main
 ```
 
 ## Cleaning Up
-Stop the compose stack with `Ctrl+C` or `docker compose down`. To wipe the
-Postgres volume, add `--volumes` when running `docker compose down`.
+Stop with `docker compose down`. Add `--volumes` to wipe MySQL/Redis data. Logs remain under the service containers.

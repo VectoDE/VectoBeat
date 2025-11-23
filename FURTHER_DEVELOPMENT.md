@@ -1,219 +1,36 @@
-<div align="center">
-  <h1 style="margin-bottom: 0.4rem;">VectoBeat Development Path</h1>
-  <p style="max-width: 680px;">
-    An implementation checklist that visualises the next waves of improvements for the VectoBeat music bot.
-    Toggle each milestone as releases go out to keep the roadmap transparent for contributors and stakeholders.
-  </p>
-</div>
+# VectoBeat Roadmap (Next Up)
 
-<hr />
+This roadmap lists what has **not** shipped yet and will guide development through 2026. It matches the control-panel `/roadmap` page and accounts for the forum roll-out.
 
-<section>
-  <h2>🎯 Next Steps &mdash; Feature Expansion</h2>
-  <ul style="list-style: none; padding-left: 0;">
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Per-Guild Playback Profiles</strong> &mdash; Allow server owners to customise default volume, autoplay, and announcement styles via slash configuration.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Playlist Persistence</strong> &mdash; Back playlists with persistent storage (PostgreSQL or Redis) plus import/export tooling.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Advanced Autoplay</strong> &mdash; Recommend tracks automatically using guild listening history and source metadata.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Cross-Fade &amp; Gapless Playback</strong> &mdash; Employ Lavalink filters to deliver seamless transitions between songs.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Lyrics Integration</strong> &mdash; Surface synchronised lyrics (Genius, Musixmatch) within now-playing embeds.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>DJ Permissions Layer</strong> &mdash; Add role-based queue control with an auditable history.
-      </label>
-    </li>
-  </ul>
-</section>
+## Reliability & Automation (2026)
+- Self-Healing Voice Grid — auto-replace failing Lavalink nodes and rejoin mid-track (Building).
+- Queue Copilots — AI queue hygiene, loudness smoothing, premium-slot protection (Building).
+- Incident Mirroring — clone live guild configs into staging before fixes (Planned).
+- Charge-Aware Subscriptions — Stripe webhooks unlock tiers instantly per guild (Building).
+- Zero-Downtime Security Patching — monthly CVE sweeps, hot-reloadable bot/worker patches, dependency risk scoring (Planned).
 
-<section>
-  <h2>🛡️ Next Steps &mdash; Reliability &amp; Operations</h2>
-  <ul style="list-style: none; padding-left: 0;">
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Multi-Node Lavalink Failover</strong> &mdash; Provision redundant nodes with automatic reconnect and player migration.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Self-Healing Supervisors</strong> &mdash; Watch shard heartbeats and restart or reconnect when anomalies occur.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Structured Alerting</strong> &mdash; Export metrics to Prometheus/Alertmanager for proactive paging.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Chaos Testing Playbook</strong> &mdash; Run scheduled disconnect, latency, and error-injection drills.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Auto Scaling Strategy</strong> &mdash; Integrate with Kubernetes/Nomad to scale shards and nodes based on concurrency dashboards.
-      </label>
-    </li>
-  </ul>
-</section>
+## Community & Forum Launch
+- Forum Private Alpha — Pro+ communities test topic spaces, playbooks, role-gated threads (Alpha).
+- Support Desk Pairing — solved tickets/retros auto-sync to the forum KB (Building).
+- Moderator Toolkit — macros, templates, badges for community leads (Beta).
+- Public Read Access — browse best practices; posting stays gated to verified customers (Planned).
+- Forum Telemetry — moderation/audit events exposed to admins and SRE dashboards (Planned).
 
-<section>
-  <h2>🔎 Next Steps &mdash; Observability &amp; Diagnostics</h2>
-  <ul style="list-style: none; padding-left: 0;">
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Grafana Dashboards</strong> &mdash; Publish live dashboards for shard health, node stats, and slash command throughput.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Command Analytics Pipeline</strong> &mdash; Stream anonymised command events into a data warehouse for trend analysis.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Real-Time Queue Telemetry</strong> &mdash; Emit queue lifecycle events (play, skip, finish) to webhooks or WebSocket consumers.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Enhanced Slash Feedback</strong> &mdash; Display progress bars and follow-ups for long-running operations.
-      </label>
-    </li>
-  </ul>
-</section>
+## Telemetry, Compliance, & Security
+- Expanded Telemetry Webhooks — live queue/billing/safety events to customer monitoring (Building).
+- Adaptive Mastering Pipeline — per-track loudness normalisation (Planned).
+- Compliance Mode — export-ready safety logs, GDPR tooling, residency controls (Planned).
+- Trust & Safety Exports — one-click bundles with consent, permissions, retention (Planned).
+- Enterprise Hardening Pack — SSO/SAML, SCIM lifecycle, signed audit/event payloads (Planned).
 
-<section>
-  <h2>🧰 Next Steps &mdash; Developer Experience</h2>
-  <ul style="list-style: none; padding-left: 0;">
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Strict Typing Enforcement</strong> &mdash; Gate merges with mypy/pyright and extend type hints across modules.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Scenario Test Harness</strong> &mdash; Mock Lavalink responses for integration-style queue and playback validation.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Command Reference Generator</strong> &mdash; Auto-build slash command documentation from source annotations.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Local Sandbox Stack</strong> &mdash; Ship docker-compose with Lavalink, Redis, and Postgres for contributors.
-      </label>
-    </li>
-  </ul>
-</section>
+## Long-Term Vision
+- Bot-to-Bot Federation — coordinate multiple instances for mega-events (Concept).
+- Predictive Health Scoring — surface degradation before listeners notice (Concept).
+- Plugin Marketplace — automation/analytics/moderation add-ons (Concept).
+- Full White-Label Mode — custom domains, embeds, branding for enterprise (Concept).
 
-<section>
-  <h2>⚡ Next Steps &mdash; Performance</h2>
-  <ul style="list-style: none; padding-left: 0%;">
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Event Loop Profiling</strong> &mdash; Benchmark coroutine hotspots with `pyinstrument` and asyncio debug facilities.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked disabled />
-        <strong>Adaptive Caching</strong> &mdash; Cache heavy search queries with TTLs to curb upstream traffic.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" checked  disabled />
-        <strong>Dynamic Search Limits</strong> &mdash; Tune track search result counts based on latency and guild load.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Batch REST Updates</strong> &mdash; Aggregate Discord REST edits to reduce rate-limit pressure.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Resource Budget Enforcement</strong> &mdash; Throttle high-load guilds once CPU/memory quotas are exceeded.
-      </label>
-    </li>
-  </ul>
-</section>
-
-<section>
-  <h2>🔒 Next Steps &mdash; Security &amp; Compliance</h2>
-  <ul style="list-style: none; padding-left: 0%;">
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Secret Rotation Service</strong> &mdash; Automate token refresh via Vault or cloud secret managers.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Permission Scanner</strong> &mdash; Audit guild voice permissions and notify owners when capabilities are missing.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Audit Trail Ledger</strong> &mdash; Record administrative actions (force skip, queue clear) in immutable storage.
-      </label>
-    </li>
-    <li>
-      <label>
-        <input type="checkbox" disabled />
-        <strong>Privacy &amp; Data Handling Review</strong> &mdash; Document retention policies and offer opt-out controls for stored history.
-      </label>
-    </li>
-  </ul>
-</section>
-
-<hr />
-
-<p align="center" style="font-size: 0.9rem;">
-  Revisit this checklist after each release sprint, update statuses, and circulate progress with the wider team to keep everyone aligned on what ships next.
-</p>
+## Timeline Targets
+- **Mar–Apr 2026**: Self-Healing Voice Grid rollout; charge-aware provisioning; forum private alpha; first zero-downtime security patch wave.
+- **May–Jun 2026**: Queue Copilots closed beta; support desk ↔ forum syncing; moderator toolkit preview.
+- **Jul–Sep 2026**: Incident mirroring + sandbox configs; adaptive mastering pipeline; forum public read access; enterprise hardening pack preview (SSO/SCIM).
+- **Q4 2026 & beyond**: Compliance mode & safety exports; plugin marketplace pilot; bot-to-bot federation research.

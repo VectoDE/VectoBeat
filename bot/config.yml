@@ -1,0 +1,137 @@
+bot:
+  intents:
+    members: true
+    message_content: true
+  presence:
+    status: "online"
+    activity_type: "listening"
+    activity_name: "your commands"
+  sync_commands_on_start: true
+  shard_count: 1
+
+theme:
+  color_primary: 5793266 # 0x5865F2
+  color_success: 5763719 # green-ish
+  color_warning: 16763904 # yellow-ish
+  color_error: 15548997 # red-ish
+  footer_text: "VectoBeat"
+  footer_icon_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+  author_name: "VectoDE"
+  author_icon_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+  thumbnail_url: "https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png"
+
+branding:
+  guild_overrides: {} # future: per-guild brand overrides
+
+lavalink:
+  host: "lava-v4.ajieblogs.eu.org"
+  port: 443
+  password: https://dsc.gg/ajidevserver
+  https: true
+  name: "main"
+  region: "eu"
+  # Deprecated single-node fallback. Prefer configuring multiple nodes via ``lavalink_nodes`` below.
+
+lavalink_nodes:
+  - host: "lava-v4.ajieblogs.eu.org"
+    port: 443
+    password: https://dsc.gg/ajidevserver
+    https: true
+    name: "main"
+    region: "eu"
+
+spotify:  # Optional: Für Spotify Support
+  client_id: ""  # Setze deinen Spotify Client ID
+  client_secret: ""  # Setze deinen Spotify Client Secret
+
+limits:
+  queue_max_length: 500
+  search_timeout_ms: 8000
+
+features:
+  allow_loop: true
+  allow_shuffle: true
+
+autoplay:
+  discovery_limit: 10
+  random_pick: true
+
+crossfade:
+  enabled: true
+  duration_ms: 2500
+  fade_steps: 12
+  floor_volume: 20
+
+redis:
+  # Redis playlist persistence backend
+  host: "45.84.196.19"
+  port: 32768
+  password: ""
+  db: 0
+
+metrics:
+  enabled: true
+  host: "0.0.0.0"
+  port: 3052
+  collection_interval: 15
+
+status_api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 3051
+  api_key: ""
+  cache_ttl_seconds: 5
+  push_endpoint: "http://localhost:3050/api/bot/metrics"
+  push_token: ""
+  event_endpoint: "http://localhost:3050/api/bot/events"
+  event_token: ""
+
+control_panel_api:
+  enabled: true
+  base_url: "http://127.0.0.1:3050"
+  api_key: "vectobeat-settings-secret"
+  timeout_seconds: 8
+  cache_ttl_seconds: 120
+
+chaos:
+  enabled: false
+  interval_minutes: 360
+  scenarios:
+    - disconnect_voice
+    - disconnect_node
+    - inject_error
+  guild_allowlist: []
+
+scaling:
+  enabled: false
+  provider: "nomad"
+  endpoint: "https://nomad.example.com/v1/job/vectobeat/scale"
+  auth_token: ""
+  interval_seconds: 60
+  cooldown_seconds: 300
+  target_guilds_per_shard: 1200
+  target_players_per_node: 150
+  min_shards: 1
+  max_shards: 10
+  min_lavalink_nodes: 1
+  max_lavalink_nodes: 5
+
+analytics:
+  enabled: false
+  endpoint: ""
+  api_key: ""
+  flush_interval_seconds: 30
+  batch_size: 50
+  storage_path: "data/command_analytics.log"
+  hash_salt: "vectobeat"
+
+queue_telemetry:
+  enabled: false
+  endpoint: ""
+  api_key: ""
+  include_guild_metadata: true
+
+cache:
+  search_enabled: true
+  search_ttl_seconds: 60
+  search_max_entries: 200

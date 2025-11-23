@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum BlogReactionType {
+  up
+  down
+}
+
+model UserProfile {
+  discordId        String   @id @map("discord_id")
+  encryptedPayload String   @map("encrypted_payload") @db.LongText
+  iv               String
+  authTag          String   @map("auth_tag")
+  guildCount       Int      @default(0) @map("guild_count")
+  lastSeen         DateTime @default(now()) @map("last_seen")
+  welcomeSentAt    DateTime? @map("welcome_sent_at")
+  username         String?  @map("username")
+  displayName      String?  @map("display_name")
+  avatarUrl        String?  @map("avatar_url")
+  profileSettings  UserProfileSetting?
+
+  @@map("user_profiles")
+}
+
+model UserProfileSetting {
+  discordId   String   @id @map("discord_id")
+  handle      String   @unique
+  profileName String?  @map("profile_name")
+  headline    String?
+  bio         String?  @db.Text
+  location    String?
+  website     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  profile UserProfile @relation(fields: [discordId], references: [discordId], onDelete: Cascade)
+
+  @@map("user_profile_settings")
+}
+
+model SitePageView {
+  id        String   @id @default(uuid())
+  path      String   @db.VarChar(191)
+  referrer  String?
+  referrerHost String? @map("referrer_host")
+  referrerPath String? @map("referrer_path") @db.VarChar(191)
+  country   String?
+  ipHash    String?  @map("ip_hash")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([path, createdAt], name: "site_page_views_path_created_idx")
+  @@index([createdAt], name: "site_page_views_created_idx")
+  @@map("site_page_views")
+}
+
+model BotMetricSnapshot {
+  id              String   @id @default(uuid())
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+  guildCount      Int      @map("guild_count")
+  activeListeners Int      @map("active_listeners")
+  totalStreams    Int      @map("total_streams")
+  uptimePercent   Float    @map("uptime_percent")
+  avgResponseMs   Int      @map("avg_response_ms")
+  voiceConnections Int     @map("voice_connections")
+  incidents24h    Int      @map("incidents_24h")
+  commands24h     Int      @map("commands_24h")
+  shardsOnline    Int      @map("shards_online")
+  shardsTotal     Int      @map("shards_total")
+
+  @@index([recordedAt], name: "bot_metric_snapshots_recorded_at_idx")
+  @@map("bot_metric_snapshots")
+}
+
+model AnalyticsSnapshot {
+  id        String   @id @default(uuid())
+  payload   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], name: "analytics_snapshots_created_idx")
+  @@map("analytics_snapshots")
+}
+
+model BotActivityEvent {
+  id        String   @id @default(uuid())
+  type      String
+  name      String?
+  guildId   String?  @map("guild_id")
+  success   Boolean?
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], name: "bot_activity_events_created_idx")
+  @@index([type], name: "bot_activity_events_type_idx")
+  @@map("bot_activity_events")
+}
+
+model AutomationAction {
+  id          String   @id @default(uuid())
+  guildId     String   @map("guild_id")
+  tier        String?
+  shardId     Int?     @map("shard_id")
+  action      String
+  category    String?
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([guildId, createdAt], name: "automation_actions_guild_created_idx")
+  @@index([createdAt], name: "automation_actions_created_idx")
+  @@map("automation_actions")
+}
+
+model ConciergeRequest {
+  id          String   @id @default(uuid())
+  guildId     String   @map("guild_id")
+  tier        String?
+  contact     String?
+  summary     String
+  hours       Int      @default(1)
+  slaMinutes  Int?     @map("sla_minutes")
+  status      String   @default("open")
+  resolvedBy  String?  @map("resolved_by")
+  resolvedById String? @map("resolved_by_id")
+  resolutionNote String? @map("resolution_note") @db.Text
+  respondedAt DateTime? @map("responded_at")
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([guildId, createdAt], name: "concierge_requests_guild_created_idx")
+  @@map("concierge_requests")
+}
+
+model QueueSnapshot {
+  guildId   String   @id @map("guild_id")
+  tier      String?
+  payload   Json
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([expiresAt], name: "queue_snapshots_expires_idx")
+  @@map("queue_snapshots")
+}
+
+model SuccessPodRequest {
+  id             String            @id @default(uuid())
+  guildId        String            @map("guild_id")
+  guildName      String?           @map("guild_name")
+  tier           String?
+  contact        String?
+  summary        String            @db.Text
+  status         String            @default("submitted")
+  assignedTo     String?           @map("assigned_to")
+  assignedContact String?          @map("assigned_contact")
+  submittedAt    DateTime          @default(now()) @map("submitted_at")
+  acknowledgedAt DateTime?         @map("acknowledged_at")
+  scheduledAt    DateTime?         @map("scheduled_at")
+  scheduledFor   DateTime?         @map("scheduled_for")
+  resolvedAt     DateTime?         @map("resolved_at")
+  resolutionNote String?           @map("resolution_note")
+  createdBy      String?           @map("created_by")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  timelineEntries SuccessPodEvent[]
+
+  @@index([guildId, submittedAt], name: "success_pod_requests_guild_submitted_idx")
+  @@map("success_pod_requests")
+}
+
+model SuccessPodEvent {
+  id        String           @id @default(uuid())
+  requestId String           @map("request_id")
+  kind      String
+  note      String?          @db.Text
+  actor     String?
+  actorId   String?          @map("actor_id")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  request SuccessPodRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId, createdAt], name: "success_pod_events_request_created_idx")
+  @@map("success_pod_events")
+}
+
+model ScaleAccountContact {
+  id               String   @id @default(uuid())
+  guildId          String   @unique @map("guild_id")
+  managerName      String?  @map("manager_name")
+  managerEmail     String?  @map("manager_email")
+  managerDiscord   String?  @map("manager_discord")
+  escalationChannel String? @map("escalation_channel")
+  escalationNotes  String?  @db.Text @map("escalation_notes")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("scale_account_contacts")
+}
+
+model Subscription {
+  id                String   @id
+  discordId         String   @map("discord_id")
+  guildId           String   @map("guild_id")
+  guildName         String?  @map("guild_name")
+  stripeCustomerId  String?  @map("stripe_customer_id")
+  tier              String
+  status            String   @default("active")
+  monthlyPrice      Decimal  @map("monthly_price") @db.Decimal(10, 2)
+  currentPeriodStart DateTime @map("current_period_start")
+  currentPeriodEnd  DateTime @map("current_period_end")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([discordId], name: "subscriptions_discord_id_idx")
+  @@index([guildId], name: "subscriptions_guild_id_idx")
+  @@map("subscriptions")
+}
+
+model BotCommand {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String
+  usage       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([category, name], name: "bot_commands_category_name_key")
+  @@index([category], name: "bot_commands_category_idx")
+  @@map("bot_commands")
+}
+
+model UserContact {
+  discordId String  @id @map("discord_id")
+  email     String?
+  phone     String?
+  stripeCustomerId String? @map("stripe_customer_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user_contacts")
+}
+
+model UserPreference {
+  discordId         String   @id @map("discord_id")
+  emailUpdates      Boolean  @default(true) @map("email_updates")
+  productUpdates    Boolean  @default(true) @map("product_updates")
+  weeklyDigest      Boolean  @default(false) @map("weekly_digest")
+  smsAlerts         Boolean  @default(false) @map("sms_alerts")
+  preferredLanguage String   @default("en") @map("preferred_language")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("user_preferences")
+}
+
+model UserNotification {
+  discordId            String   @id @map("discord_id")
+  maintenanceAlerts    Boolean  @default(true) @map("maintenance_alerts")
+  downtimeAlerts       Boolean  @default(true) @map("downtime_alerts")
+  releaseNotes         Boolean  @default(true) @map("release_notes")
+  securityNotifications Boolean  @default(true) @map("security_notifications")
+  betaProgram          Boolean  @default(false) @map("beta_program")
+  communityEvents      Boolean  @default(false) @map("community_events")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("user_notifications")
+}
+
+model UserPrivacy {
+  discordId        String   @id @map("discord_id")
+  profilePublic    Boolean  @default(false) @map("profile_public")
+  searchVisibility Boolean  @default(true) @map("search_visibility")
+  analyticsOptIn   Boolean  @default(false) @map("analytics_opt_in")
+  dataSharing      Boolean  @default(false) @map("data_sharing")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("user_privacy")
+}
+
+model UserSecurity {
+  discordId          String   @id @map("discord_id")
+  twoFactorEnabled   Boolean  @default(false) @map("two_factor_enabled")
+  twoFactorSecret    String?  @map("two_factor_secret")
+  loginAlerts        Boolean  @default(true) @map("login_alerts")
+  backupCodesRemaining Int     @default(5) @map("backup_codes_remaining")
+  activeSessions     Int      @default(1) @map("active_sessions")
+  lastPasswordChange DateTime? @map("last_password_change")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("user_security")
+}
+
+model UserBotSetting {
+  discordId      String   @id @map("discord_id")
+  autoJoinVoice  Boolean  @default(true) @map("auto_join_voice")
+  announceTracks Boolean  @default(true) @map("announce_tracks")
+  djMode         Boolean  @default(false) @map("dj_mode")
+  normalizeVolume Boolean  @default(true) @map("normalize_volume")
+  defaultVolume  Int      @default(70) @map("default_volume")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("user_bot_settings")
+}
+
+model UserRole {
+  discordId String   @id @map("discord_id")
+  role      String   @default("member")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user_roles")
+}
+
+model UserSession {
+  id         String   @id @default(uuid())
+  discordId  String   @map("discord_id")
+  sessionHash String  @map("session_hash")
+  userAgent  String?  @map("user_agent")
+  ipAddress  String?  @map("ip_address")
+  location   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  lastActive DateTime @default(now()) @map("last_active")
+  revokedAt  DateTime? @map("revoked_at")
+
+  @@unique([discordId, sessionHash], name: "user_sessions_discord_id_session_hash_key")
+  @@index([discordId], name: "user_sessions_discord_id_idx")
+  @@map("user_sessions")
+}
+
+model UserLoginEvent {
+  id        String   @id @default(uuid())
+  discordId String   @map("discord_id")
+  sessionId String?  @map("session_id")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  location  String?
+  notified  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([discordId], name: "user_login_events_discord_id_idx")
+  @@map("user_login_events")
+}
+
+model UserBackupCode {
+  id            String   @id @default(uuid())
+  discordId     String   @map("discord_id")
+  encryptedCode String   @map("encrypted_code")
+  iv            String
+  authTag       String   @map("auth_tag")
+  usedAt        DateTime? @map("used_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([discordId], name: "user_backup_codes_discord_id_idx")
+  @@map("user_backup_codes")
+}
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String
+  author      String
+  category    String?
+  readTime    String?  @map("read_time")
+  views       Int      @default(0)
+  featured    Boolean  @default(false)
+  publishedAt DateTime @default(now()) @map("published_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("blog_posts")
+}
+
+model BlogReaction {
+  id             String          @id @default(uuid())
+  postIdentifier String          @map("post_identifier")
+  reaction       BlogReactionType
+  count          Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@unique([postIdentifier, reaction], name: "blog_reactions_post_identifier_reaction_key")
+  @@index([postIdentifier], name: "blog_reactions_post_idx")
+  @@map("blog_reactions")
+}
+
+model BlogReactionVote {
+  id             String          @id @default(uuid())
+  postIdentifier String          @map("post_identifier")
+  authorId       String          @map("author_id")
+  reaction       BlogReactionType
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  @@unique([postIdentifier, authorId], name: "blog_reaction_votes_post_identifier_author_id_key")
+  @@index([postIdentifier], name: "blog_reaction_votes_post_idx")
+  @@index([authorId], name: "blog_reaction_votes_author_idx")
+  @@map("blog_reaction_votes")
+}
+
+model BlogComment {
+  id             String   @id @default(uuid())
+  postIdentifier String   @map("post_identifier")
+  authorId       String   @map("author_id")
+  author         String
+  body           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([postIdentifier, createdAt], name: "blog_comments_post_idx")
+  @@index([authorId], name: "blog_comments_author_idx")
+  @@map("blog_comments")
+}
+
+model NewsletterSubscriber {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String?
+  subscribedAt DateTime @default(now()) @map("subscribed_at")
+
+  @@map("newsletter_subscribers")
+}
+
+model NewsletterCampaign {
+  id             String   @id @default(uuid())
+  subject        String
+  body           String
+  sentBy         String?  @map("sent_by")
+  sentAt         DateTime? @map("sent_at")
+  recipientCount Int      @default(0) @map("recipient_count")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("newsletter_campaigns")
+}
+
+model ContactMessage {
+  id          String   @id @default(uuid())
+  name        String
+  email       String
+  company     String?
+  topic       String?
+  priority    String   @default("normal")
+  subject     String?
+  message     String
+  status      String   @default("open")
+  response    String?
+  respondedBy String?  @map("responded_by")
+  respondedAt DateTime? @map("responded_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  conversation ContactMessageThread[]
+
+  @@map("contact_messages")
+}
+
+model ContactMessageThread {
+  id            String   @id @default(uuid())
+  ticketId      String   @map("ticket_id")
+  authorId      String?  @map("author_id")
+  authorName    String?  @map("author_name")
+  role          String   @default("user")
+  body          String
+  attachments   Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ticket ContactMessage @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId], name: "contact_message_threads_ticket_id_idx")
+  @@index([ticketId, createdAt], name: "contact_message_threads_ticket_id_created_at_idx")
+  @@map("contact_message_threads")
+}
+
+model ServerSetting {
+  guildId   String   @id @map("guild_id")
+  discordId String   @map("discord_id")
+  settings  Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("server_settings")
+}
+
+model ApiTokenEvent {
+  id        String   @id @default(uuid())
+  guildId   String   @map("guild_id")
+  tokenId   String   @map("token_id")
+  action    String
+  actorId   String?  @map("actor_id")
+  actorName String?  @map("actor_name")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([guildId, createdAt], name: "api_token_events_guild_created_idx")
+  @@map("api_token_events")
+}
+
+model UserLinkedAccount {
+  id        String   @id @default(uuid())
+  discordId String   @map("discord_id")
+  provider  String
+  handle    String
+  metadata  Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("user_linked_accounts")
+}

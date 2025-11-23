@@ -1,0 +1,204 @@
+const BOT_STATUS_API_URL = process.env.BOT_STATUS_API_URL
+// Fallback to STATUS_API_KEY so local/prod configs that only set one variable still authenticate.
+const BOT_STATUS_API_KEY = process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
+const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
+  .split(",")
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+
+const DEFAULT_FALLBACKS = ["http://127.0.0.1:3051/status", "http://localhost:3051/status"]
+const ENDPOINT_COOLDOWN_MS = 30_000
+
+let cachedBotGuilds: {
+  data: Set<string>
+  expires: number
+} = {
+  data: new Set(),
+  expires: 0,
+}
+
+let cachedBotStatus: {
+  data: any
+  expires: number
+} = {
+  data: null,
+  expires: 0,
+}
+
+let preferredEndpoint = BOT_STATUS_API_URL || ""
+let lastErrorKey = ""
+let lastErrorAt = 0
+const endpointCooldowns = new Map<string, number>()
+
+const parseGuildIds = (payload: unknown): string[] => {
+  if (!payload) return []
+  if (Array.isArray(payload)) {
+    return payload.map((value: unknown) => (typeof value === "string" ? value : "")).filter(Boolean)
+  }
+  if (typeof payload === "object" && payload !== null && Array.isArray((payload as { guildIds?: unknown }).guildIds)) {
+    return (payload as { guildIds: unknown[] }).guildIds
+      .map((value: unknown) => (typeof value === "string" ? value : ""))
+      .filter(Boolean)
+  }
+  if (typeof payload === "object" && payload !== null && Array.isArray((payload as { guild_ids?: unknown }).guild_ids)) {
+    return (payload as { guild_ids: unknown[] }).guild_ids
+      .map((value: unknown) => (typeof value === "string" ? value : ""))
+      .filter(Boolean)
+  }
+  return []
+}
+
+export const getBotStatus = async () => {
+  const now = Date.now()
+  if (cachedBotStatus.data && cachedBotStatus.expires > now) {
+    return cachedBotStatus.data
+  }
+
+  const fallbackSources =
+    BOT_STATUS_API_URL || preferredEndpoint ? BOT_STATUS_FALLBACKS : [...BOT_STATUS_FALLBACKS, ...DEFAULT_FALLBACKS]
+
+  const nowMs = Date.now()
+  const candidates = [preferredEndpoint, BOT_STATUS_API_URL || "", ...fallbackSources]
+    .map((endpoint) => endpoint.trim())
+    .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
+    .filter((endpoint) => {
+      const nextRetry = endpointCooldowns.get(endpoint)
+      return !nextRetry || nextRetry <= nowMs
+    })
+
+  let lastError: unknown = null
+  for (const endpoint of candidates) {
+    try {
+      const response = await fetch(endpoint, {
+        headers: BOT_STATUS_API_KEY
+          ? {
+              Authorization: `Bearer ${BOT_STATUS_API_KEY}`,
+            }
+          : undefined,
+        next: {
+          revalidate: 30,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Bot status API responded with ${response.status} (${endpoint})`)
+      }
+
+      let payload: any = null
+      try {
+        payload = await response.json()
+      } catch (error) {
+        throw new Error(`Bot status returned invalid JSON (${endpoint}): ${(error as Error).message}`)
+      }
+      preferredEndpoint = endpoint
+      cachedBotStatus = {
+        data: payload,
+        expires: now + 30 * 1000,
+      }
+      return payload
+    } catch (error) {
+      lastError = error
+      endpointCooldowns.set(endpoint, nowMs + ENDPOINT_COOLDOWN_MS)
+      continue
+    }
+  }
+
+  if (lastError) {
+    const message = lastError instanceof Error ? lastError.message : String(lastError)
+    const dedupeKey = `${message}`
+    if (!lastErrorKey || dedupeKey !== lastErrorKey || now - lastErrorAt > 30_000) {
+      console.error("[VectoBeat] Bot status API error:", lastError)
+      lastErrorKey = dedupeKey
+      lastErrorAt = now
+    }
+  }
+  cachedBotStatus.expires = now + 10 * 1000
+  return cachedBotStatus.data
+}
+
+export const getBotGuildPresence = async (): Promise<Set<string>> => {
+  const now = Date.now()
+  if (cachedBotGuilds.expires > now) {
+    return cachedBotGuilds.data
+  }
+
+  const status = await getBotStatus()
+
+  if (status) {
+    const guildIds = parseGuildIds(status)
+    cachedBotGuilds = {
+      data: new Set(guildIds),
+      expires: now + 30 * 1000,
+    }
+    return cachedBotGuilds.data
+  }
+
+  return cachedBotGuilds.data
+}
+
+const deriveControlEndpoint = (endpoint: string, path = "/reconcile-routing") => {
+  if (!endpoint) return ""
+  const trimmed = endpoint.replace(/\/+$/, "")
+  if (trimmed.endsWith("/status")) {
+    return `${trimmed.slice(0, -7)}${path}`
+  }
+  return `${trimmed}${path}`
+}
+
+const buildControlCandidates = () => {
+  const fallbackSources =
+    BOT_STATUS_API_URL || preferredEndpoint ? BOT_STATUS_FALLBACKS : [...BOT_STATUS_FALLBACKS, ...DEFAULT_FALLBACKS]
+  return [preferredEndpoint, BOT_STATUS_API_URL || "", ...fallbackSources]
+    .map((endpoint) => endpoint.trim())
+    .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
+}
+
+const postToBotControl = async (path: string, body: Record<string, any>): Promise<boolean> => {
+  const nowMs = Date.now()
+  const candidates = buildControlCandidates()
+  let lastError: unknown = null
+  for (const endpoint of candidates) {
+    const target = deriveControlEndpoint(endpoint, path)
+    if (!target) {
+      continue
+    }
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    try {
+      const response = await fetch(target, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(BOT_STATUS_API_KEY ? { Authorization: `Bearer ${BOT_STATUS_API_KEY}` } : {}),
+        },
+        signal: controller.signal,
+        body: JSON.stringify(body),
+      })
+      clearTimeout(timeout)
+      if (!response.ok) {
+        throw new Error(`Bot control endpoint responded with ${response.status}`)
+      }
+      preferredEndpoint = endpoint
+      endpointCooldowns.set(endpoint, nowMs + ENDPOINT_COOLDOWN_MS)
+      return true
+    } catch (error) {
+      clearTimeout(timeout)
+      lastError = error
+      continue
+    }
+  }
+  if (lastError) {
+    const errMessage = lastError instanceof Error ? lastError.message : String(lastError)
+    console.error("[VectoBeat] Bot control request failed:", errMessage)
+  }
+  return false
+}
+
+export const triggerRoutingRebalance = async (guildId: string): Promise<boolean> =>
+  postToBotControl("/reconcile-routing", { guildId })
+
+export const notifySettingsChange = async (guildId: string): Promise<boolean> =>
+  postToBotControl("/reconcile-settings", { guildId })
+
+export const sendBotControlAction = async (action: string, payload: Record<string, any> = {}) =>
+  postToBotControl(`/control/${action}`, { action, ...payload })

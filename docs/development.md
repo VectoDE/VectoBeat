@@ -1,51 +1,29 @@
 # Development Guide
 
-## Type Checking
-We require pyright to pass before merging. Install it globally via npm:
+Use the shared root `.env` for both runtimes. No per-service `.env` files are supported.
 
-```bash
-npm install -g pyright
-```
+## Bot (Python) dev loop
+- Create a venv in `bot/`, then load the root `.env` when running: `set -a && source ../.env && set +a`.
+- Type-check with `scripts/typecheck.sh` (pyright strict).
+- Scenario harness (mock Lavalink) lives in `bot/tests/scenarios/`:
+  ```bash
+  python scripts/run_scenarios.py bot/tests/scenarios/basic_queue.yaml
+  ```
+- Regenerate the slash-command catalogue for docs:
+  ```bash
+  python scripts/generate_command_reference.py
+  ```
 
-Then run:
+## Frontend (Next.js) dev loop
+- Install deps in `frontend/` and run `npm run dev` (loads the root `.env` via your shell or Compose).
+- Primary test suite (auth, control-panel, queue-sync, bot contracts):
+  ```bash
+  cd frontend
+  npm run test:server-settings
+  ```
+- Build: `npm run build`; lint: `npm run lint`.
 
-```bash
-scripts/typecheck.sh
-```
-
-This runs pyright in strict mode using `pyrightconfig.json`.
-
-## Pre-Commit Checklist
-- `python3 -m compileall src`
-- `scripts/typecheck.sh`
-- `python3 -m pytest` (when tests are added)
-
-## Scenario Test Harness
-Use the mock Lavalink harness to validate queue flows:
-
-```bash
-scripts/run_scenarios.py tests/scenarios/basic_queue.yaml
-```
-
-Add new scenarios under `tests/scenarios/` using the YAML schema consumed by
-`ScenarioRunner` (see `tests/scenarios/basic_queue.yaml`).
-
-## Command Reference Generator
-Keep the public slash-command docs in sync:
-
-```bash
-python scripts/generate_command_reference.py
-```
-
-This regenerates `docs/command_reference.md` by scraping `src/commands` for
-decorated slash commands.
-
-## Local Sandbox
-If you need Lavalink/Redis/Postgres locally, copy `.env.local.example` to
-`.env.local`, add your bot token, then run:
-
-```bash
-docker compose -f docker-compose.local.yml up --build
-```
-
-See `docs/local_sandbox.md` for additional details.
+## Local stack
+- Use the root compose file for local work: `docker compose up -d --build`.
+- Services: frontend (3050), bot status (3051), bot metrics (3052), MySQL (3306), Redis (6379), Lavalink (2333).
+- See `docs/local_sandbox.md` for port mappings, health checks, and troubleshooting.
