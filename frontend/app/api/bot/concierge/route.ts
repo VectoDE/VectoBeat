@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import {
   getConciergeUsage,
   recordConciergeRequest,
@@ -8,26 +9,18 @@ import {
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import type { MembershipTier } from "@/lib/memberships"
 
-const SECRET =
-  process.env.CONCIERGE_API_SECRET ||
-  process.env.SERVER_SETTINGS_API_KEY ||
-  process.env.BOT_STATUS_API_KEY ||
-  process.env.AUTOMATION_LOG_SECRET ||
-  ""
+const SECRETS = expandSecrets(
+  process.env.CONCIERGE_API_SECRET,
+  process.env.SERVER_SETTINGS_API_KEY,
+  process.env.BOT_STATUS_API_KEY,
+  process.env.AUTOMATION_LOG_SECRET,
+)
 
 const sanitize = (value: unknown, max = 255) => {
   if (typeof value !== "string") return ""
   const trimmed = value.trim()
   if (!trimmed) return ""
   return trimmed.slice(0, max)
-}
-
-const ensureAuthorized = (request: NextRequest, secret: string) => {
-  if (!secret) {
-    return true
-  }
-  const header = request.headers.get("authorization")
-  return header === `Bearer ${secret}`
 }
 
 type RouteDeps = {
@@ -39,14 +32,14 @@ type RouteDeps = {
 }
 
 export const createBotConciergeHandlers = (deps: RouteDeps = {}) => {
-  const secret = deps.secret ?? SECRET
+  const secrets = deps.secret ? expandSecrets(deps.secret) : SECRETS
   const fetchUsage = deps.fetchUsage ?? getConciergeUsage
   const saveRequest = deps.saveRequest ?? recordConciergeRequest
   const markResolved = deps.markResolved ?? resolveConciergeRequest
   const fetchTier = deps.fetchTier ?? getGuildSubscriptionTier
 
   const getHandler = async (request: NextRequest) => {
-    if (!ensureAuthorized(request, secret)) {
+    if (!authorizeRequest(request, secrets)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
     const action = sanitize(request.nextUrl.searchParams.get("action"), 16).toLowerCase() || "usage"
@@ -69,7 +62,7 @@ export const createBotConciergeHandlers = (deps: RouteDeps = {}) => {
   }
 
   const postHandler = async (request: NextRequest) => {
-    if (!ensureAuthorized(request, secret)) {
+    if (!authorizeRequest(request, secrets)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 

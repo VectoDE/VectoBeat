@@ -7,7 +7,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
+  BOT_IMAGE_NAME: ${{ github.repository }}-bot
 
 permissions:
   contents: read
@@ -16,15 +17,28 @@ permissions:
 jobs:
   publish-image:
     runs-on: ubuntu-latest
+    outputs:
+      frontend-tag: ${{ steps.frontend-tag.outputs.tag }}
+      bot-tag: ${{ steps.bot-tag.outputs.tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract metadata (tags, labels)
-        id: meta
+      - name: Extract frontend metadata (tags, labels)
+        id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=ref,event=release
+            type=ref,event=tag
+            type=raw,value=latest
+
+      - name: Extract bot metadata (tags, labels)
+        id: meta-bot
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BOT_IMAGE_NAME }}
           tags: |
             type=ref,event=release
             type=ref,event=tag
@@ -44,10 +58,27 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: frontend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+
+      - name: Build and push bot image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bot
+          file: ./bot/Dockerfile
+          push: true
+          tags: ${{ steps.meta-bot.outputs.tags }}
+          labels: ${{ steps.meta-bot.outputs.labels }}
+
+      - name: Capture primary frontend tag
+        id: frontend-tag
+        run: echo "tag=$(echo "${{ steps.meta-frontend.outputs.tags }}" | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Capture primary bot tag
+        id: bot-tag
+        run: echo "tag=$(echo "${{ steps.meta-bot.outputs.tags }}" | head -n 1)" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: publish-image
@@ -67,16 +98,28 @@ jobs:
         uses: appleboy/ssh-action@v1.2.3
         env:
           REGISTRY: ${{ env.REGISTRY }}
-          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          FRONTEND_IMAGE: ${{ needs.publish-image.outputs.frontend-tag }}
+          BOT_IMAGE: ${{ needs.publish-image.outputs.bot-tag }}
+          FRONTEND_IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
+          BOT_IMAGE_NAME: ${{ env.BOT_IMAGE_NAME }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           username: ${{ secrets.DEPLOY_SSH_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: REGISTRY,IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
+          envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
             cd ${{ secrets.DEPLOY_TARGET_PATH }}
-            docker compose pull
-            docker compose up -d --remove-orphans
+            FRONTEND_TAG="${FRONTEND_IMAGE:-${REGISTRY}/${FRONTEND_IMAGE_NAME}:latest}"
+            BOT_TAG="${BOT_IMAGE:-${REGISTRY}/${BOT_IMAGE_NAME}:latest}"
+            cat > compose.deploy.yml <<EOF
+            services:
+              frontend:
+                image: $FRONTEND_TAG
+              bot:
+                image: $BOT_TAG
+            EOF
+            docker compose -f docker-compose.yml -f compose.deploy.yml pull
+            docker compose -f docker-compose.yml -f compose.deploy.yml up -d --remove-orphans

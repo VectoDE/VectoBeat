@@ -905,7 +905,7 @@ const profileShareUrl = profileShareSlug
       if (timestamp && Date.now() - Number(timestamp) < 1000 * 60 * 30) {
         return true
       }
-      appRouter.push(`/two-factor?username=${encodeURIComponent(sessionData.username || "VectoBeat")}`)
+      appRouter.push(`/two-factor?context=login&username=${encodeURIComponent(sessionData.username || "VectoBeat")}`)
       return false
     },
     [appRouter],
@@ -1410,7 +1410,7 @@ const profileShareUrl = profileShareSlug
                           }
                           disabled={profileSettingsLoading || profileSettingsSaving}
                           className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm disabled:opacity-60"
-                          placeholder="https://vectobeat.com"
+                          placeholder="https://vectobeat.uplytech.de"
                         />
                       </div>
                     </div>
@@ -1761,7 +1761,7 @@ const profileShareUrl = profileShareSlug
                           </div>
                           <button
                             onClick={() =>
-                              appRouter.push(`/two-factor?username=${encodeURIComponent(formData.username || "VectoBeat")}`)
+                              appRouter.push(`/two-factor?mode=setup&username=${encodeURIComponent(formData.username || "VectoBeat")}`)
                             }
                             className="px-4 py-2 border border-border/50 rounded-lg hover:bg-card/50 transition-colors"
                           >

@@ -7,6 +7,7 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { getBlogPosts } from "@/lib/db"
 import { NewsletterSignup } from "@/components/newsletter-signup"
+import { buildPageMetadata } from "@/lib/seo"
 
 const getBaseUrl = (runtimeOrigin?: string | null) => {
   const candidates = [
@@ -26,7 +27,7 @@ const getBaseUrl = (runtimeOrigin?: string | null) => {
     }
   }
 
-  return "https://vectobeat.com"
+  return "https://vectobeat.uplytech.de"
 }
 
 const getRuntimeOrigin = async () => {

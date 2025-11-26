@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserSubscriptions } from "@/lib/db"
-import { getBotStatus } from "@/lib/bot-status"
+import { getBotStatus, getBotGuildPresence } from "@/lib/bot-status"
 
 const normalizeDate = (value?: string | Date | null) => {
   if (!value) return null
@@ -20,6 +20,7 @@ export const createDashboardOverviewHandlers = (deps: RouteDeps = {}) => {
   const verifyUser = deps.verifyUser ?? verifyRequestForUser
   const fetchSubscriptions = deps.fetchSubscriptions ?? getUserSubscriptions
   const fetchBotStatus = deps.fetchBotStatus ?? getBotStatus
+  const fetchBotGuilds = getBotGuildPresence
 
   const getHandler = async (request: NextRequest) => {
     const discordId = request.nextUrl.searchParams.get("discordId")
@@ -42,7 +43,7 @@ export const createDashboardOverviewHandlers = (deps: RouteDeps = {}) => {
       return new Date(soonest) > current ? sub.currentPeriodEnd : soonest
     }, null)
 
-    const botStatus = await fetchBotStatus()
+    const [botStatus, botGuildPresence] = await Promise.all([fetchBotStatus(), fetchBotGuilds()])
     const botGuildCount =
       typeof botStatus?.guildCount === "number"
         ? botStatus.guildCount
@@ -50,7 +51,9 @@ export const createDashboardOverviewHandlers = (deps: RouteDeps = {}) => {
           ? botStatus.guilds.length
           : Array.isArray(botStatus?.servers)
             ? botStatus.servers.length
-            : undefined
+            : botGuildPresence.size > 0
+              ? botGuildPresence.size
+              : undefined
 
     const activePlayers =
       botStatus?.activePlayers ??

@@ -1,8 +1,16 @@
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo"
 
 const LAST_UPDATED = "2025-11-13"
+
+export const metadata = buildPageMetadata({
+  title: "Terms of Service | VectoBeat",
+  description: "Terms of Service for using VectoBeat's Discord bot, control panel, and related services.",
+  path: "/terms",
+  noindex: true,
+})
 
 const sections = [
   {

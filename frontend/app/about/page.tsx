@@ -6,6 +6,15 @@ import Link from "next/link"
 import Image from "next/image"
 import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
+import { buildPageMetadata } from "@/lib/seo"
+
+export const metadata = buildPageMetadata({
+  title: "About VectoBeat | Mission, Reliability, and Community",
+  description:
+    "Discover how VectoBeat delivers premium Discord audio, automation, and analytics with a reliability-first engineering approach and an active community.",
+  path: "/about",
+  keywords: ["about vectobeat", "discord music bot team", "discord analytics", "discord automation"],
+})
 
 export default async function AboutPage() {
   const metrics = await fetchHomeMetrics()
@@ -55,44 +64,6 @@ export default async function AboutPage() {
     },
   ]
 
-  const nearTermRoadmap = [
-    {
-      title: "Self-healing voice grid",
-      detail: "Automatic node replacement when packet loss or Discord region outages spike.",
-    },
-    {
-      title: "Queue copilots",
-      detail: "Small AI routines that tidy, normalize, and protect shared queues in real time.",
-    },
-    {
-      title: "Incident mirroring",
-      detail: "One-click snapshots that mirror guild configs to a sandbox so fixes never touch production first.",
-    },
-    {
-      title: "Charge-aware subscriptions",
-      detail: "Native Stripe + Discord sync so plan upgrades unlock instantly per guild.",
-    },
-  ]
-
-  const futureRoadmap = [
-    {
-      title: "Bot-to-bot federation",
-      detail: "Coordinate multiple VectoBeat instances for mega-events without touching manual sharding.",
-    },
-    {
-      title: "Predictive health scoring",
-      detail: "Machine learning that flags queues, playlists, or regions before listeners notice degradation.",
-    },
-    {
-      title: "Compliance mode",
-      detail: "Export-ready safety logs, consent records, and data residency controls for regulated communities.",
-    },
-    {
-      title: "Plugin marketplace",
-      detail: "Lightweight extension system so partners can publish moderation, automation, and analytics add-ons.",
-    },
-  ]
-
   const team = [
     {
       role: "Lead Developer",
@@ -103,6 +74,57 @@ export default async function AboutPage() {
       role: "Architecture",
       name: "Lavalink Community",
       bio: "Leveraging the power of Lavalink v4 for world-class audio streaming capabilities.",
+    },
+  ]
+
+  const techStack = [
+    {
+      name: "Next.js 16 + React 19",
+      desc: "App Router UI with streaming SSR, server components, and real-time dashboards for the control panel.",
+    },
+    {
+      name: "TypeScript 5 & Zod",
+      desc: "End-to-end type safety for API routes, plan enforcement, Discord bridges, and runtime validation.",
+    },
+    {
+      name: "Tailwind CSS + Radix UI",
+      desc: "Accessible design system powering every modal, dropdown, tooltip, and responsive control surface.",
+    },
+    {
+      name: "React Hook Form & RHF Resolvers",
+      desc: "High-signal account settings, security flows, and concierge forms with instant schema feedback.",
+    },
+    {
+      name: "Three.js + React Three Fiber",
+      desc: "Hero visuals and animated scenes rendered on the GPU without blocking the rest of the app.",
+    },
+    {
+      name: "Prisma ORM + MySQL 8",
+      desc: "Normalized storage for account data, plan entitlements, audit logs, and regional residency controls.",
+    },
+    {
+      name: "Redis Durable Queue Store",
+      desc: "In-memory cache with TTL/eviction backing queue sync, analytics, and cross-worker socket broadcasts.",
+    },
+    {
+      name: "Python 3.11 + discord.py",
+      desc: "Auto-sharded bot runtime for slash commands, concierge automations, and governance tooling.",
+    },
+    {
+      name: "Lavalink v4 + yt-dlp",
+      desc: "Lossless audio transport with multi-source resolution, crossfade, and resilient reconnects.",
+    },
+    {
+      name: "Socket.IO Bridges",
+      desc: "Low-latency pipes between the bot, durable queue store, and Next.js APIs for telemetry streaming.",
+    },
+    {
+      name: "Stripe Billing + Webhooks",
+      desc: "Subscription management, invoices, and customer portal flows secured with signed webhooks.",
+    },
+    {
+      name: "Docker Compose + GitHub Actions",
+      desc: "Parity between local, staging, and production plus automated tests, scans, and documentation guards.",
     },
   ]
 
@@ -134,7 +156,7 @@ export default async function AboutPage() {
               <p className="text-lg text-foreground/70 mb-4 leading-relaxed">
                 VectoBeat was created with a simple but ambitious goal: to deliver the most reliable, feature-rich, and
                 performant music bot for Discord communities worldwide. Today that vision powers roughly {serverCountDisplay} servers
-                and {userCountDisplay} daily listeners—numbers pulled directly from the live telemetry that powers vectobeat.com.
+                and {userCountDisplay} daily listeners—numbers pulled directly from the live telemetry that powers vectobeat.uplytech.de.
               </p>
               <p className="text-lg text-foreground/70 mb-4 leading-relaxed">
                 Built on Lavalink v4 with meticulous attention to code quality, observability, and user experience,
@@ -218,44 +240,6 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Vision & Future */}
-      <section className="w-full py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold mb-12">Our Vision for the Future</h2>
-
-          <div className="grid md:grid-cols-2 gap-10">
-            <div>
-              <h3 className="text-2xl font-bold mb-4">Next 12 Months</h3>
-              <p className="text-sm text-foreground/60 mb-6">
-                Tactical upgrades that keep the bot fast, safe, and easy to operate for every guild.
-              </p>
-              <div className="space-y-4">
-                {nearTermRoadmap.map((item) => (
-                  <div key={item.title} className="p-4 rounded-xl border border-border/40 bg-card/30">
-                    <p className="text-sm font-semibold text-primary mb-1">{item.title}</p>
-                    <p className="text-sm text-foreground/70">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold mb-4">Long-Term Vision (3-5 Years)</h3>
-              <p className="text-sm text-foreground/60 mb-6">
-                Strategic bets that turn VectoBeat into the automation layer for Discord audio.
-              </p>
-              <div className="space-y-4">
-                {futureRoadmap.map((item) => (
-                  <div key={item.title} className="p-4 rounded-xl border border-border/40 bg-card/30">
-                    <p className="text-sm font-semibold text-secondary mb-1">{item.title}</p>
-                    <p className="text-sm text-foreground/70">{item.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Team Section */}
       <section className="w-full py-20 px-4">
         <div className="max-w-6xl mx-auto">
@@ -285,15 +269,8 @@ export default async function AboutPage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { name: "Python", desc: "Core bot framework for performance and reliability" },
-              { name: "discord.py", desc: "Modern Python Discord API wrapper with async support" },
-              { name: "Lavalink v4", desc: "Professional-grade audio streaming server for pristine quality" },
-              { name: "PostgreSQL", desc: "Robust database for user data and playlist management" },
-              { name: "Redis", desc: "High-performance caching and session management" },
-              { name: "Docker", desc: "Containerized deployment for scalability and consistency" },
-            ].map((tech, i) => (
-              <div key={i} className="p-6 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
+            {techStack.map((tech) => (
+              <div key={tech.name} className="p-6 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
                 <h3 className="font-semibold mb-2">{tech.name}</h3>
                 <p className="text-sm text-foreground/70">{tech.desc}</p>
               </div>

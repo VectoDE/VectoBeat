@@ -48,10 +48,10 @@ export async function POST(
   }
 
   const body = await request.formData()
-  const message = body.get("message")
-  if (typeof message !== "string" || !message.trim()) {
-    return NextResponse.json({ error: "Message required" }, { status: 400 })
-  }
+  const messageValue = body.get("message")
+  const normalizedMessage = typeof messageValue === "string" ? messageValue.trim() : ""
+  const statusInput = body.get("status")
+  const statusUpdate = typeof statusInput === "string" ? statusInput : null
 
   const discordId = request.nextUrl.searchParams.get("discordId")
   const auth = await verifyRequestForUser(request, discordId ?? "")
@@ -78,20 +78,28 @@ export async function POST(
     }
   }
 
-  const entry = await appendContactMessageThread({
-    ticketId,
-    authorId: discordId ?? null,
-    authorName: body.get("authorName")?.toString() ?? null,
-    role,
-    body: message.trim(),
-    attachments: attachments.length ? attachments : null,
-  })
-
-  if (!entry) {
-    return NextResponse.json({ error: "Failed to append message" }, { status: 500 })
+  if (!normalizedMessage && !attachments.length && !statusUpdate) {
+    return NextResponse.json({ error: "Add a message, attachment, or status change." }, { status: 400 })
   }
 
-  if (ticket.email && role !== "member") {
+  let entry = null
+  if (normalizedMessage || attachments.length) {
+    entry = await appendContactMessageThread({
+      ticketId,
+      authorId: discordId ?? null,
+      authorName: body.get("authorName")?.toString() ?? null,
+      role,
+      body: normalizedMessage,
+      attachments: attachments.length ? attachments : null,
+    })
+
+    if (!entry) {
+      return NextResponse.json({ error: "Failed to append message" }, { status: 500 })
+    }
+  }
+
+  if (entry && ticket.email && role !== "member") {
+    const preview = normalizedMessage || (attachments.length ? "New attachments shared via Support Desk." : "")
     void sendTicketEventEmail({
       to: ticket.email,
       customerName: ticket.name,
@@ -100,11 +108,10 @@ export async function POST(
       status: ticket.status,
       event: "response",
       responder: body.get("authorName")?.toString() || "VectoBeat Support",
-      messagePreview: message.trim().slice(0, 400),
+      messagePreview: preview.slice(0, 400),
     })
   }
 
-  const statusUpdate = body.get("status")?.toString()
   if (statusUpdate) {
     await updateContactMessage(ticketId, { status: statusUpdate })
     if (ticket.email && statusUpdate !== ticket.status) {
@@ -119,5 +126,8 @@ export async function POST(
     }
   }
 
-  return NextResponse.json(entry, { status: 201 })
+  return NextResponse.json(
+    entry ?? { ticketId, status: statusUpdate ?? ticket.status },
+    { status: entry ? 201 : 200 },
+  )
 }

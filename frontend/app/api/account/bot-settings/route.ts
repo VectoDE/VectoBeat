@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getBotSettings, updateBotSettings } from "@/lib/db"
+import { emitBotDefaultsUpdate } from "@/lib/server-settings-sync"
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -41,6 +42,7 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
       }
 
       const settings = await saveBotSettings(discordId, updates)
+      void emitBotDefaultsUpdate(discordId, settings)
       return NextResponse.json(settings)
     } catch (error) {
       console.error("[VectoBeat] Failed to update bot settings:", error)

@@ -41,9 +41,7 @@ class SearchCacheService:
         if not entry:
             return None
         _, load_type, tracks = entry
-        reconstructed = [
-            lavalink.AudioTrack(item.track, item.info, requester=None) for item in tracks
-        ]
+        reconstructed = [lavalink.AudioTrack(item.track, item.info) for item in tracks]
         return load_type, reconstructed
 
     def set(self, query: str, result: Any) -> None:

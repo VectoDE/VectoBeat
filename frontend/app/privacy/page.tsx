@@ -1,8 +1,16 @@
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo"
 
 const LAST_UPDATED = "2025-11-13"
+
+export const metadata = buildPageMetadata({
+  title: "Privacy Policy | VectoBeat",
+  description: "Privacy policy for VectoBeat. Learn how we process data for Discord users and administrators.",
+  path: "/privacy",
+  noindex: true,
+})
 
 const sections = [
   {
@@ -105,7 +113,7 @@ const sections = [
     title: "12. Changes",
     content: [
       "This notice reflects legal status as of 13 November 2025. Substantial updates are announced 14 days in advance via email and in-app notifications.",
-      "The current version is always available at https://vectobeat.com/privacy.",
+      "The current version is always available at https://vectobeat.uplytech.de/privacy.",
     ],
   },
 ]

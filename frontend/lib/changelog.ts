@@ -19,6 +19,7 @@ export type ChangelogEntry = {
   publishedAt: string | null
   type: "major" | "minor" | "patch"
   url: string
+  body: string
   highlights: string[]
   changes: Array<{ type: "feature" | "improvement" | "bugfix"; text: string }>
 }
@@ -49,17 +50,50 @@ const parseReleaseBody = (body: string | null) => {
   const lines = body?.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) ?? []
   const highlights: string[] = []
   const changeLines: string[] = []
+  let inHighlightSection = false
 
   lines.forEach((line) => {
-    if (/^[-*]/.test(line)) {
-      changeLines.push(line.replace(/^[-*]\s*/, ""))
-    } else if (!highlights.length) {
+    const headingMatch = line.match(/^#{1,6}\s*(.+)$/)
+    if (headingMatch) {
+      inHighlightSection = headingMatch[1].toLowerCase().includes("highlight")
+      return
+    }
+
+    if (/^highlights:?$/i.test(line)) {
+      inHighlightSection = true
+      return
+    }
+
+    const bulletMatch = line.match(/^[-*+]\s+(.*)/)
+    if (bulletMatch) {
+      const content = bulletMatch[1].trim()
+      if (!content) return
+      if (inHighlightSection) {
+        highlights.push(content)
+      } else {
+        changeLines.push(content)
+      }
+      return
+    }
+
+    if (inHighlightSection && line) {
       highlights.push(line)
+      return
+    }
+
+    if (!highlights.length) {
+      const sanitized = line.replace(/^#{1,6}\s*/, "")
+      if (sanitized) {
+        highlights.push(sanitized)
+      }
     }
   })
 
   if (!highlights.length && lines.length) {
-    highlights.push(lines[0])
+    const fallback = lines[0].replace(/^#{1,6}\s*/, "")
+    if (fallback) {
+      highlights.push(fallback)
+    }
   }
 
   return {
@@ -99,6 +133,7 @@ export const fetchChangelog = async (): Promise<ChangelogEntry[]> => {
         publishedAt: release.published_at,
         type: classifyReleaseType(release.tag_name),
         url: release.html_url,
+        body: release.body ?? "",
         highlights,
         changes,
       }

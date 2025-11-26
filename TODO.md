@@ -1,1 +1,0 @@
-[ ] Route "GET /api/control-panel/server-settings?guildId=879435075710746684&discordId=335228120816943114 403" hat Forbidden fehler muss behoben werden durch konfiguration

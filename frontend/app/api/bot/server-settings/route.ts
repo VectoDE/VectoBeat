@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
+import { authorizeRequest, expandSecrets, extractToken } from "@/lib/api-auth"
 import { getGuildSubscriptionTier, getServerSettings, updateServerSettings } from "@/lib/db"
 import {
   SERVER_FEATURE_GROUPS,
@@ -13,53 +14,23 @@ import type { MembershipTier } from "@/lib/memberships"
 import { notifySettingsChange } from "@/lib/bot-status"
 import { emitServerSettingsUpdate } from "@/lib/server-settings-sync"
 
-const AUTH_TOKENS = [
+const AUTH_TOKENS = expandSecrets(
   process.env.CONTROL_PANEL_API_KEY,
   process.env.SERVER_SETTINGS_API_KEY,
   process.env.STATUS_API_PUSH_SECRET,
   process.env.STATUS_API_KEY,
   process.env.BOT_STATUS_API_KEY,
-].filter((value): value is string => Boolean(value && value.trim()))
+)
 const BOT_ACTOR_ID =
   process.env.SERVER_SETTINGS_BOT_ACTOR_ID ||
   process.env.DISCORD_CLIENT_ID ||
   "vectobeat-bot"
 
-const isLocalRequest = (request: NextRequest) => {
-  const host = (request.headers.get("host") || "").toLowerCase()
-  if (host.includes("localhost") || host.startsWith("127.0.0.1") || host.startsWith("[::1]") || host.startsWith("::1")) {
-    return true
-  }
-  const forwarded = request.headers.get("x-forwarded-for") || ""
-  const forwardedIp = forwarded.split(",")[0]?.trim()
-  return forwardedIp === "127.0.0.1" || forwardedIp === "::1"
-}
-
-const resolveToken = (request: NextRequest) => {
-  const bearer = request.headers.get("authorization") || ""
-  if (bearer) {
-    const token = bearer.replace(/^Bearer\s+/i, "").trim()
-    if (token) return token
-  }
-  const headerToken =
-    request.headers.get("x-api-key") ||
-    request.headers.get("x-server-settings-key") ||
-    request.headers.get("x-status-key") ||
-    request.headers.get("x-analytics-key")
-  if (headerToken && headerToken.trim()) {
-    return headerToken.trim()
-  }
-  const queryToken = request.nextUrl.searchParams.get("token") || request.nextUrl.searchParams.get("key")
-  return queryToken?.trim() || null
-}
-
-const isAuthorized = (request: NextRequest) => {
-  if (!AUTH_TOKENS.length) return true
-  if (isLocalRequest(request)) return true
-  const token = resolveToken(request)
-  if (!token) return false
-  return AUTH_TOKENS.includes(token)
-}
+const isAuthorized = (request: NextRequest) =>
+  authorizeRequest(request, AUTH_TOKENS, {
+    allowLocalhost: true,
+    headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
+  })
 
 const HEX_COLOR = /^#([0-9a-f]{6})$/i
 const DOMAIN_STATUS_VALUES = new Set(["unconfigured", "pending_dns", "pending_tls", "verified", "failed"])

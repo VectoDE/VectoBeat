@@ -353,10 +353,19 @@ export function SupportDeskPanel() {
     setReplyStatus((current) => (current === normalized ? current : normalized))
   }, [selectedTicket?.status, thread?.status])
 
+  const trimmedReplyMessage = replyMessage.trim()
+  const currentTicketStatus = useMemo(() => {
+    const source = thread?.status || selectedTicket?.status || "open"
+    return USER_STATUS_VALUES.has(source) ? source : "open"
+  }, [selectedTicket?.status, thread?.status])
   const scanInProgress = attachmentPreviews.some((preview) => preview.status === "scanning")
   const hasBlockedAttachment = attachmentPreviews.some((preview) => preview.status === "blocked")
+  const hasReadyAttachments = replyAttachments.length > 0
+  const statusChanged = replyStatus !== currentTicketStatus
+  const hasMessage = trimmedReplyMessage.length > 0
 
-  const canReply = !!selectedTicket && !!replyMessage.trim() && !replying && !scanInProgress && !hasBlockedAttachment
+  const canReply =
+    !!selectedTicket && !replying && !scanInProgress && !hasBlockedAttachment && (hasMessage || hasReadyAttachments || statusChanged)
 
   const handleAttachmentChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
@@ -470,13 +479,14 @@ export function SupportDeskPanel() {
 
   const handleReplySubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (!selectedTicket || !sessionInfo || !replyMessage.trim() || scanInProgress || hasBlockedAttachment) return
+    if (!selectedTicket || !sessionInfo || scanInProgress || hasBlockedAttachment) return
+    if (!hasMessage && !hasReadyAttachments && !statusChanged) return
     setReplying(true)
     setThreadError(null)
     try {
       const params = new URLSearchParams({ discordId: sessionInfo.discordId })
       const formData = new FormData()
-      formData.set("message", replyMessage.trim())
+      formData.set("message", trimmedReplyMessage)
       formData.set("authorName", sessionInfo.name)
       const normalizedStatus = USER_STATUS_VALUES.has(replyStatus) ? replyStatus : "open"
       formData.set("status", normalizedStatus)

@@ -7,6 +7,7 @@ import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
 import { HomePlanCarousel } from "@/components/home-plan-carousel"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
+import { buildPageMetadata } from "@/lib/seo"
 
 const formatTemplate = (template?: string, vars: Record<string, string | number> = {}) => {
   if (!template) return ""
@@ -15,6 +16,14 @@ const formatTemplate = (template?: string, vars: Record<string, string | number>
     template,
   )
 }
+
+export const metadata = buildPageMetadata({
+  title: "Pricing | VectoBeat Plans for Discord Music and Analytics",
+  description:
+    "Compare VectoBeat plans for Discord: premium audio streaming, automation, analytics, and support tiers for every community size.",
+  path: "/pricing",
+  keywords: ["vectobeat pricing", "discord music bot pricing", "discord analytics pricing", "premium discord bot"],
+})
 
 export default async function PricingPage() {
   const metrics = await fetchHomeMetrics()

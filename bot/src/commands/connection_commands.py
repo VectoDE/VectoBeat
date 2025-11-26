@@ -108,12 +108,16 @@ class ConnectionCommands(commands.Cog):
             if player:
                 player.text_channel_id = getattr(inter.channel, "id", None)
                 manager = getattr(self.bot, "profile_manager", None)
+                settings_service = getattr(self.bot, "server_settings", None)
                 if manager:
                     profile = manager.get(inter.guild.id)
                     player.store("autoplay_enabled", profile.autoplay)
                     player.store("announcement_style", profile.announcement_style)
-                    if player.volume != profile.default_volume:
-                        await player.set_volume(profile.default_volume)
+                    desired_volume = (
+                        settings_service.global_default_volume() if settings_service else None
+                    ) or profile.default_volume
+                    if player.volume != desired_volume:
+                        await player.set_volume(desired_volume)
 
             connection_details = f"Joined voice channel:\n{self._channel_info(channel)}"
             embed = factory.success("Connected", connection_details)

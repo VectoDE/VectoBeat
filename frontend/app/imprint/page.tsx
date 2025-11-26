@@ -1,8 +1,16 @@
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo"
 
 const LAST_UPDATED = "2025-11-13"
+
+export const metadata = buildPageMetadata({
+  title: "Imprint | VectoBeat",
+  description: "Imprint and legal disclosure for VectoBeat.",
+  path: "/imprint",
+  noindex: true,
+})
 
 export default function ImprintPage() {
   return (
@@ -121,7 +129,7 @@ export default function ImprintPage() {
               <strong>Gültigkeitsdatum:</strong> {new Date(LAST_UPDATED).toLocaleDateString("de-DE")}
             </p>
             <p>Diese Fassung berücksichtigt deutsches, europäisches und internationales Recht mit Stand 13. November 2025.</p>
-            <p className="mt-1">Die aktuelle Version ist dauerhaft unter https://vectobeat.com/imprint abrufbar.</p>
+            <p className="mt-1">Die aktuelle Version ist dauerhaft unter https://vectobeat.uplytech.de/imprint abrufbar.</p>
           </div>
         </div>
       </section>

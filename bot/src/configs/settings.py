@@ -151,7 +151,12 @@ status_push = os.getenv("STATUS_API_PUSH_URL")
 status_push_token = os.getenv("STATUS_API_PUSH_SECRET")
 status_push_interval = os.getenv("STATUS_API_PUSH_INTERVAL")
 status_event = os.getenv("STATUS_API_EVENT_URL")
-status_event_token = os.getenv("STATUS_API_EVENT_SECRET")
+status_event_token = (
+    os.getenv("STATUS_API_EVENT_SECRET")
+    or status_push_token
+    or status_key
+    or os.getenv("BOT_STATUS_API_KEY")
+)
 if (
     status_enabled
     or status_host
@@ -171,10 +176,10 @@ if (
         api_key=status_key or CONFIG.status_api.api_key,
         cache_ttl_seconds=int(status_cache) if status_cache else CONFIG.status_api.cache_ttl_seconds,
         push_endpoint=status_push or CONFIG.status_api.push_endpoint,
-        push_token=status_push_token or CONFIG.status_api.push_token,
+        push_token=status_push_token or status_key or CONFIG.status_api.push_token,
         push_interval_seconds=int(status_push_interval) if status_push_interval else CONFIG.status_api.push_interval_seconds,
         event_endpoint=status_event or CONFIG.status_api.event_endpoint,
-        event_token=status_event_token or CONFIG.status_api.event_token,
+        event_token=status_event_token or status_push_token or status_key or CONFIG.status_api.event_token,
     )
 
 chaos_enabled = os.getenv("CHAOS_ENABLED")

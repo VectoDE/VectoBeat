@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import {
   listGuildServerSettings,
   listActiveSubscriptionTiers,
@@ -7,20 +8,14 @@ import {
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import { evaluateEntitlementDrift } from "@/lib/entitlement-drift"
 
-const AUDIT_SECRET =
-  process.env.ENTITLEMENT_AUDIT_SECRET ||
-  process.env.STATUS_API_PUSH_SECRET ||
-  process.env.SERVER_SETTINGS_API_KEY ||
-  ""
-
-const isAuthorized = (request: NextRequest) => {
-  if (!AUDIT_SECRET) return true
-  const header = request.headers.get("authorization")
-  return header === `Bearer ${AUDIT_SECRET}`
-}
+const AUDIT_SECRETS = expandSecrets(
+  process.env.ENTITLEMENT_AUDIT_SECRET,
+  process.env.STATUS_API_PUSH_SECRET,
+  process.env.SERVER_SETTINGS_API_KEY,
+)
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!authorizeRequest(request, AUDIT_SECRETS)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

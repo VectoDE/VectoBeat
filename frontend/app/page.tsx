@@ -10,6 +10,7 @@ import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
 import { Music, Zap, Radio, BarChart3, Users, Shield, AlertCircle, TrendingUp, GitBranch, Clock, Lock } from "lucide-react"
 import { HomePlanCarousel } from "@/components/home-plan-carousel"
+import { buildPageMetadata } from "@/lib/seo"
 
 const formatTemplate = (template?: string, vars: Record<string, string | number> = {}) => {
   if (!template) return ""
@@ -51,6 +52,22 @@ const formatMetricValue = (
 }
 
 const HERO_WORDS = ["Playback", "Automation", "Telemetry", "Reliability", "Security"]
+
+export const metadata = buildPageMetadata({
+  title: "VectoBeat | Discord Music Bot with Premium Audio & Analytics",
+  description:
+    "Stream high-fidelity music on Discord with VectoBeat. Premium audio, smart automation, telemetry, and control panel insights built for growing communities.",
+  path: "/",
+  keywords: [
+    "discord music bot",
+    "premium discord bot",
+    "lavalink v4",
+    "discord audio streaming",
+    "discord analytics",
+    "discord automation",
+    "vectobeat",
+  ],
+})
 
 const JOURNEY_STEPS = [
   {
@@ -207,7 +224,7 @@ export default async function Home() {
                 <div className="p-4 rounded-lg border border-primary/30 bg-primary/10">
                   <h3 className="font-semibold text-primary mb-2">Live Operations</h3>
                   <p className="text-sm text-foreground/70">
-                    Monitor latency, uptime, and stream counts in real time under vectobeat.com/stats via live Socket.IO
+                    Monitor latency, uptime, and stream counts in real time under vectobeat.uplytech.de/stats via live Socket.IO
                     updates.
                   </p>
                 </div>
@@ -718,7 +735,7 @@ export default async function Home() {
               Ready to bring professional music automation to your Discord?
             </h2>
             <p className="text-xl text-foreground/70 mb-8 animate-fade-in-up animation-delay-200">
-              {render("Join {{servers}}+ communities already streaming with VectoBeat every day.")}
+              {render("Join {{servers}} communities already streaming with VectoBeat every day.")}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <a

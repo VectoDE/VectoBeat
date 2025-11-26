@@ -8,6 +8,7 @@ const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
 
 const DEFAULT_FALLBACKS = ["http://127.0.0.1:3051/status", "http://localhost:3051/status"]
 const ENDPOINT_COOLDOWN_MS = 30_000
+const FETCH_TIMEOUT_MS = 8_000
 
 let cachedBotGuilds: {
   data: Set<string>
@@ -30,22 +31,46 @@ let lastErrorKey = ""
 let lastErrorAt = 0
 const endpointCooldowns = new Map<string, number>()
 
+const normalizeEndpoint = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
+  try {
+    const parsed = new URL(withScheme)
+    return parsed.toString()
+  } catch {
+    return ""
+  }
+}
+
 const parseGuildIds = (payload: unknown): string[] => {
+  const normalizeEntry = (value: unknown) => {
+    if (typeof value === "string") return value
+    if (value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string") {
+      return (value as { id: string }).id
+    }
+    if (value && typeof value === "object" && typeof (value as { guildId?: unknown }).guildId === "string") {
+      return (value as { guildId: string }).guildId
+    }
+    return ""
+  }
+
   if (!payload) return []
   if (Array.isArray(payload)) {
-    return payload.map((value: unknown) => (typeof value === "string" ? value : "")).filter(Boolean)
+    return payload.map(normalizeEntry).filter(Boolean)
   }
-  if (typeof payload === "object" && payload !== null && Array.isArray((payload as { guildIds?: unknown }).guildIds)) {
-    return (payload as { guildIds: unknown[] }).guildIds
-      .map((value: unknown) => (typeof value === "string" ? value : ""))
-      .filter(Boolean)
-  }
-  if (typeof payload === "object" && payload !== null && Array.isArray((payload as { guild_ids?: unknown }).guild_ids)) {
-    return (payload as { guild_ids: unknown[] }).guild_ids
-      .map((value: unknown) => (typeof value === "string" ? value : ""))
-      .filter(Boolean)
-  }
-  return []
+
+  const maybeObject = typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : null
+  if (!maybeObject) return []
+
+  const candidates: unknown[] =
+    (Array.isArray(maybeObject.guildIds) && maybeObject.guildIds) ||
+    (Array.isArray((maybeObject as any).guild_ids) && (maybeObject as any).guild_ids) ||
+    (Array.isArray(maybeObject.guilds) && maybeObject.guilds) ||
+    (Array.isArray((maybeObject as any).servers) && (maybeObject as any).servers) ||
+    []
+
+  return candidates.map(normalizeEntry).filter(Boolean)
 }
 
 export const getBotStatus = async () => {
@@ -58,8 +83,8 @@ export const getBotStatus = async () => {
     BOT_STATUS_API_URL || preferredEndpoint ? BOT_STATUS_FALLBACKS : [...BOT_STATUS_FALLBACKS, ...DEFAULT_FALLBACKS]
 
   const nowMs = Date.now()
-  const candidates = [preferredEndpoint, BOT_STATUS_API_URL || "", ...fallbackSources]
-    .map((endpoint) => endpoint.trim())
+  const candidates = [BOT_STATUS_API_URL || "", preferredEndpoint, ...DEFAULT_FALLBACKS, ...fallbackSources]
+    .map((endpoint) => normalizeEndpoint(endpoint))
     .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
     .filter((endpoint) => {
       const nextRetry = endpointCooldowns.get(endpoint)
@@ -68,6 +93,8 @@ export const getBotStatus = async () => {
 
   let lastError: unknown = null
   for (const endpoint of candidates) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     try {
       const response = await fetch(endpoint, {
         headers: BOT_STATUS_API_KEY
@@ -78,7 +105,9 @@ export const getBotStatus = async () => {
         next: {
           revalidate: 30,
         },
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
 
       if (!response.ok) {
         throw new Error(`Bot status API responded with ${response.status} (${endpoint})`)
@@ -97,6 +126,13 @@ export const getBotStatus = async () => {
       }
       return payload
     } catch (error) {
+      clearTimeout(timeout)
+      if (error instanceof DOMException && error.name === "AbortError") {
+        // Drop aborted attempts quietly; we'll fall through to other endpoints.
+        lastError = new Error(`Bot status request timed out after ${FETCH_TIMEOUT_MS}ms (${endpoint})`)
+      } else {
+        lastError = error
+      }
       lastError = error
       endpointCooldowns.set(endpoint, nowMs + ENDPOINT_COOLDOWN_MS)
       continue
@@ -137,8 +173,9 @@ export const getBotGuildPresence = async (): Promise<Set<string>> => {
 }
 
 const deriveControlEndpoint = (endpoint: string, path = "/reconcile-routing") => {
-  if (!endpoint) return ""
-  const trimmed = endpoint.replace(/\/+$/, "")
+  const normalized = normalizeEndpoint(endpoint)
+  if (!normalized) return ""
+  const trimmed = normalized.replace(/\/+$/, "")
   if (trimmed.endsWith("/status")) {
     return `${trimmed.slice(0, -7)}${path}`
   }

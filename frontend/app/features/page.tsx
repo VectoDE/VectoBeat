@@ -18,6 +18,15 @@ import {
   ArrowRight,
 } from "lucide-react"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo"
+
+export const metadata = buildPageMetadata({
+  title: "Features | VectoBeat Discord Music Bot & Automation",
+  description:
+    "Explore VectoBeat capabilities: premium audio streaming, smart queue automation, telemetry, analytics, and secure control panel for Discord servers.",
+  path: "/features",
+  keywords: ["vectobeat features", "discord bot features", "discord automation", "discord analytics", "lavalink v4"],
+})
 import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
 import { getBotCommands } from "@/lib/commands"

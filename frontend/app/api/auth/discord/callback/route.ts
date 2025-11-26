@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
     const guilds = await guildsResponse.json()
 
     const security = await getUserSecurity(userData.id)
-    const redirectPath = security.twoFactorEnabled ? "/two-factor" : "/control-panel"
+    const redirectPath = security.twoFactorEnabled ? "/two-factor?context=login" : "/control-panel"
     const stateOverride = decodedState ? decodedState.u ?? null : undefined
     const stateRedirect = !security.twoFactorEnabled
       ? resolveStateRedirect(request, stateOverride, decodedState ? false : true)

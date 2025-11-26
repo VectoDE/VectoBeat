@@ -23,14 +23,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build container image
+      - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: frontend/Dockerfile
           push: false
           load: true
-          tags: vectobeat:ci
+          tags: vectobeat-frontend:ci
 
-      - name: Smoke test container
-        run: docker run --rm vectobeat:ci python -m compileall src
+      - name: Smoke test frontend container
+        run: docker run --rm vectobeat-frontend:ci node -v
+
+      - name: Build bot image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./bot
+          file: ./bot/Dockerfile
+          push: false
+          load: true
+          tags: vectobeat-bot:ci
+
+      - name: Smoke test bot container
+        run: docker run --rm vectobeat-bot:ci python -m compileall src

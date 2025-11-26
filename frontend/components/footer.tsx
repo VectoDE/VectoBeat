@@ -109,7 +109,7 @@ export default function Footer() {
               </div>
               <p className="text-foreground/70 text-sm leading-relaxed">
                 High-availability Discord music streaming tailored for the VectoBeat bot, with transparent telemetry, audited
-                security workflows, and on-call engineers in three regions. Every stat on vectobeat.com reflects real bot
+                security workflows, and on-call engineers in three regions. Every stat on vectobeat.uplytech.de reflects real bot
                 data—no placeholders, no mockups.
               </p>
             </div>
@@ -123,7 +123,7 @@ export default function Footer() {
                 <p className="text-xs text-foreground/70 leading-relaxed">
                   Monitor latency, uptime, and stream counts in real time at{" "}
                   <Link href="/stats" className="text-primary hover:underline underline-offset-2">
-                    vectobeat.com/stats
+                    vectobeat.uplytech.de/stats
                   </Link>
                 </p>
               </div>

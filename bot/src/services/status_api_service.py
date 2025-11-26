@@ -45,7 +45,7 @@ class StatusAPIService:
         self._push_token = config.push_token or config.api_key
         self._push_interval = max(10, int(getattr(config, "push_interval_seconds", 30)))
         self._event_endpoint = config.event_endpoint
-        self._event_token = config.event_token or config.api_key
+        self._event_token = config.event_token or config.push_token or config.api_key
         self._push_task: Optional[asyncio.Task] = None
         self._event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
         self._event_worker: Optional[asyncio.Task] = None
@@ -64,6 +64,7 @@ class StatusAPIService:
         self._app.router.add_get("/status", self._handle_status)
         self._app.router.add_post("/reconcile-routing", self._handle_reconcile)
         self._app.router.add_post("/reconcile-settings", self._handle_reconcile_settings)
+        self._app.router.add_post("/reconcile-defaults", self._handle_reconcile_defaults)
 
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
@@ -460,6 +461,28 @@ class StatusAPIService:
             except Exception as exc:  # pragma: no cover - best-effort warmup
                 self.logger.debug("Settings prefetch failed for guild %s: %s", resolved_guild, exc)
 
+        return web.json_response({"ok": True})
+
+    async def _handle_reconcile_defaults(self, request: web.Request) -> web.Response:
+        if self.config.api_key:
+            auth_header = request.headers.get("Authorization")
+            if auth_header != f"Bearer {self.config.api_key}":
+                return web.json_response({"error": "unauthorized"}, status=401)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            return web.json_response({"error": "invalid_json"}, status=400)
+
+        discord_id = payload.get("discordId") or payload.get("discord_id")
+        settings = payload.get("settings") if isinstance(payload, dict) else None
+        settings_service = getattr(self.bot, "server_settings", None)
+        if settings_service and isinstance(settings, dict):
+            try:
+                settings_service.invalidate_all()
+                await settings_service.refresh_global_defaults(discord_id, settings)
+            except Exception as exc:  # pragma: no cover - best effort
+                self.logger.warning("Failed to apply global defaults: %s", exc)
         return web.json_response({"ok": True})
 
     @staticmethod

@@ -6,7 +6,7 @@ import { defaultServerFeatureSettings, type ServerFeatureSettings } from "@/lib/
 import { verifyControlPanelGuildAccess } from "@/lib/control-panel-auth"
 
 const DOMAIN_TARGET =
-  process.env.BRANDING_CNAME_TARGET || process.env.NEXT_PUBLIC_BRANDING_CNAME_TARGET || "cname.vectobeat.com"
+  process.env.BRANDING_CNAME_TARGET || process.env.NEXT_PUBLIC_BRANDING_CNAME_TARGET || "cname.vectobeat.uplytech.de"
 
 const sanitizeDomain = (value?: string | null) => {
   if (typeof value !== "string") return ""

@@ -504,20 +504,49 @@ export default function ControlPanelPage() {
       if (timestamp && Date.now() - Number(timestamp) < 1000 * 60 * 30) {
         return true
       }
-      router.push(`/two-factor?username=${encodeURIComponent(sessionData.username || "VectoBeat")}`)
+      router.push(`/two-factor?context=login&username=${encodeURIComponent(sessionData.username || "VectoBeat")}`)
       return false
     },
     [router],
   )
 
   const subscribedGuildIds = useMemo(() => new Set(subscriptions.map((sub) => sub.discordServerId)), [subscriptions])
+  const botGuildIdSet = useMemo(() => {
+    const raw = overviewData?.bot?.raw
+    const ids = new Set<string>()
+    if (raw) {
+      const candidateLists = [
+        (Array.isArray(raw.guildIds) && raw.guildIds) || [],
+        (Array.isArray(raw.guild_ids) && raw.guild_ids) || [],
+        (Array.isArray(raw.guilds) && raw.guilds) || [],
+        (Array.isArray(raw.servers) && raw.servers) || [],
+      ]
+      for (const list of candidateLists) {
+        for (const entry of list as any[]) {
+          if (typeof entry === "string") {
+            ids.add(entry)
+          } else if (entry && typeof entry === "object") {
+            if (typeof (entry as any).id === "string") ids.add((entry as any).id)
+            if (typeof (entry as any).guildId === "string") ids.add((entry as any).guildId)
+          }
+        }
+      }
+    }
+    return ids
+  }, [overviewData?.bot?.raw])
   const guildsWithBot = useMemo(
-    () => adminGuilds.filter((guild) => guild.hasBot || subscribedGuildIds.has(guild.id)),
-    [adminGuilds, subscribedGuildIds],
+    () =>
+      adminGuilds.filter(
+        (guild) => guild.hasBot || subscribedGuildIds.has(guild.id) || botGuildIdSet.has(guild.id),
+      ),
+    [adminGuilds, subscribedGuildIds, botGuildIdSet],
   )
   const guildsWithoutBot = useMemo(
-    () => adminGuilds.filter((guild) => !(guild.hasBot || subscribedGuildIds.has(guild.id))),
-    [adminGuilds, subscribedGuildIds],
+    () =>
+      adminGuilds.filter(
+        (guild) => !(guild.hasBot || subscribedGuildIds.has(guild.id) || botGuildIdSet.has(guild.id)),
+      ),
+    [adminGuilds, subscribedGuildIds, botGuildIdSet],
   )
   const subscriptionTierByGuild = useMemo(() => {
     const map = new Map<string, MembershipTier>()
@@ -1897,7 +1926,7 @@ export default function ControlPanelPage() {
     ? nextRenewalDate.toLocaleDateString()
     : "No subscription scheduled"
   const showPayNowButton = Boolean(nextRenewalDate && renewSoon)
-  const botGuildCount = overviewData?.bot?.guildCount ?? guildsWithBot.length
+  const botGuildCount = overviewData?.bot?.guildCount ?? (botGuildIdSet.size > 0 ? botGuildIdSet.size : guildsWithBot.length)
   const botActivePlayers = overviewData?.bot?.activePlayers ?? null
 
   const formatDuration = (value?: number | null) => {

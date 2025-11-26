@@ -131,6 +131,7 @@ class ServerSettingsService:
         self._endpoint = "/api/bot/server-settings"
         self.default_prefix = default_prefix or "!"
         self._default_brand_color = DEFAULT_SERVER_SETTINGS["brandingAccentColor"]
+        self._global_defaults: Dict[str, Any] = {}
 
     async def start(self) -> None:
         """Initialise the HTTP session."""
@@ -150,6 +151,12 @@ class ServerSettingsService:
             self._session = None
         self._cache.clear()
         self._locks.clear()
+        self._global_defaults.clear()
+
+    def invalidate_all(self) -> None:
+        """Drop all cached guild settings and global defaults."""
+        self._cache.clear()
+        self._global_defaults.clear()
 
     async def get_settings(self, guild_id: int) -> GuildSettingsState:
         """Return cached settings for ``guild_id``."""
@@ -178,6 +185,20 @@ class ServerSettingsService:
         state = await self.get_settings(guild_id)
         tier = state.tier or "free"
         return tier.lower()
+
+    async def refresh_global_defaults(self, discord_id: Optional[str], settings: Dict[str, Any]) -> None:
+        """Update in-memory defaults pushed from the control panel."""
+        self._global_defaults = settings or {}
+        self.logger.info("Updated global defaults from control panel for user=%s", discord_id)
+
+    def global_default_volume(self) -> Optional[int]:
+        """Return global default volume if configured via control panel defaults."""
+        value = self._global_defaults.get("defaultVolume") or self._global_defaults.get("default_volume")
+        try:
+            number = int(value)  # type: ignore[arg-type]
+            return max(0, min(200, number))
+        except Exception:
+            return None
 
     async def allows_ai_recommendations(self, guild_id: int) -> bool:
         """Return True if AI recommendations are enabled for the guild."""

@@ -10,16 +10,49 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "VectoBeat - Premium Discord Music Bot | Professional Audio Streaming",
+  metadataBase: new URL("https://vectobeat.uplytech.de"),
+  title: {
+    default: "VectoBeat - Premium Discord Music Bot | Professional Audio Streaming",
+    template: "%s | VectoBeat",
+  },
   description:
     "The ultimate Discord music bot with high-fidelity audio streaming, advanced playback controls, multi-source support, and premium features for communities of any size.",
+  applicationName: "VectoBeat",
   generator: "VectoBeat",
-  keywords: "Discord, music bot, streaming, audio, VectoBeat, premium, Lavalink v4",
+  keywords: [
+    "Discord music bot",
+    "VectoBeat",
+    "Lavalink v4",
+    "audio streaming",
+    "premium music bot",
+    "discord automation",
+    "discord analytics",
+    "discord dj",
+  ],
   openGraph: {
     title: "VectoBeat - Premium Discord Music Bot",
     description: "Professional-grade music streaming for Discord servers",
     type: "website",
-    url: "https://vectobeat.com",
+    url: "/",
+    siteName: "VectoBeat",
+    images: [
+      {
+        url: "/og/vectobeat-og.png",
+        width: 1200,
+        height: 630,
+        alt: "VectoBeat - Premium Discord Music Bot",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VectoBeat - Premium Discord Music Bot",
+    description: "Professional-grade music streaming for Discord servers",
+    images: ["/og/vectobeat-og.png"],
+    creator: "@vectobeat",
+  },
+  alternates: {
+    canonical: "/",
   },
   icons: {
     icon: [

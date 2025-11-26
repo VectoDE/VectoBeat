@@ -12,6 +12,52 @@ import {
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 
+const PDF_CHAR_REPLACEMENTS: Record<string, string> = {
+  "’": "'",
+  "‘": "'",
+  "‚": ",",
+  "“": '"',
+  "”": '"',
+  "„": '"',
+  "—": "-",
+  "–": "-",
+  "-": "-",
+  "·": "-",
+  "…": "...",
+  "->": "->",
+  "←": "<-",
+  "↔": "<->",
+  "↗": "->",
+  "↘": "->",
+  "™": "TM",
+  "®": "(R)",
+  "©": "(C)",
+  " ": " ",
+  " ": " ",
+}
+
+const sanitizePdfText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ""
+  }
+  const input = String(value)
+  let output = ""
+  for (const char of input) {
+    const replacement = PDF_CHAR_REPLACEMENTS[char]
+    if (replacement) {
+      output += replacement
+      continue
+    }
+    const code = char.charCodeAt(0)
+    if (code === 0 || code > 255) {
+      output += "?"
+      continue
+    }
+    output += char
+  }
+  return output
+}
+
 const loadLogo = async () => {
   try {
     const logoPath = path.join(process.cwd(), "public", "logo.png")
@@ -54,7 +100,7 @@ export async function GET(request: NextRequest) {
 
   const drawText = (text: string, options: { size?: number; bold?: boolean; color?: [number, number, number] } = {}) => {
     const { size = 12, bold = false, color = [0, 0, 0] as [number, number, number] } = options
-    const lines = text.split("\n")
+    const lines = sanitizePdfText(text).split("\n")
     for (const line of lines) {
       if (cursorY < margin) {
         page = doc.addPage([pageSize.width, pageSize.height])
@@ -141,10 +187,10 @@ export async function GET(request: NextRequest) {
     drawText("No active subscriptions", { size: 11 })
   } else {
     subscriptions.forEach((sub) => {
-      drawText(`${sub.tier.toUpperCase()} • ${sub.name}`, { size: 12, bold: true })
+      drawText(`${sub.tier.toUpperCase()} - ${sub.name}`, { size: 12, bold: true })
       drawText(`Status: ${sub.status} | Monthly: $${sub.pricePerMonth.toFixed(2)}`, { size: 11 })
       drawText(
-        `Period: ${new Date(sub.currentPeriodStart).toLocaleDateString()} → ${new Date(sub.currentPeriodEnd).toLocaleDateString()}`,
+        `Period: ${new Date(sub.currentPeriodStart).toLocaleDateString()} -> ${new Date(sub.currentPeriodEnd).toLocaleDateString()}`,
         { size: 11 },
       )
       cursorY -= 6

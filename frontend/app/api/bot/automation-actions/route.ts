@@ -1,19 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import { recordAutomationAction } from "@/lib/db"
 
-const SECRET =
-  process.env.AUTOMATION_LOG_SECRET ||
-  process.env.STATUS_API_PUSH_SECRET ||
-  process.env.SERVER_SETTINGS_API_KEY ||
-  process.env.BOT_STATUS_API_KEY ||
-  ""
+const SECRETS = expandSecrets(
+  process.env.AUTOMATION_LOG_SECRET,
+  process.env.STATUS_API_PUSH_SECRET,
+  process.env.SERVER_SETTINGS_API_KEY,
+  process.env.BOT_STATUS_API_KEY,
+)
 
 export async function POST(request: NextRequest) {
-  if (SECRET) {
-    const header = request.headers.get("authorization")
-    if (header !== `Bearer ${SECRET}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
+  if (!authorizeRequest(request, SECRETS)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
   let payload: any

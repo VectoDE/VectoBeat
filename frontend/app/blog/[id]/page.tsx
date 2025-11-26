@@ -8,6 +8,7 @@ import { MarkdownContent } from "@/components/markdown-content"
 import { BlogReactions } from "@/components/blog-reactions"
 import { BlogComments } from "@/components/blog-comments"
 import { BlogSessionBootstrap } from "@/components/blog-session-bootstrap"
+import { buildBlogPostMetadata, defaultBlogPostMetadata } from "./metadata"
 import {
   getBlogPostByIdentifier,
   getBlogPosts,
@@ -37,7 +38,7 @@ const getBaseUrl = (runtimeOrigin?: string | null) => {
     }
   }
 
-  return "https://vectobeat.com"
+  return "https://vectobeat.uplytech.de"
 }
 
 const getRuntimeOrigin = async () => {
@@ -57,6 +58,24 @@ const sanitizeSlug = (value: string | number | null | undefined) => {
         ? String(value)
         : ""
   return /^[A-Za-z0-9-_]+$/.test(raw) ? raw : encodeURIComponent(raw)
+}
+
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const slug = sanitizeSlug(params.id)
+  try {
+    const post = await getBlogPostByIdentifier(slug)
+    if (!post) {
+      return defaultBlogPostMetadata(slug)
+    }
+    return buildBlogPostMetadata({
+      title: post.title,
+      excerpt: post.excerpt,
+      slug,
+      image: post.image,
+    })
+  } catch {
+    return defaultBlogPostMetadata(slug)
+  }
 }
 
 type BlogPageParams = { params: Promise<{ id: string }> | { id: string } }

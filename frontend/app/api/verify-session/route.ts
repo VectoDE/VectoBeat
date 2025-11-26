@@ -189,8 +189,7 @@ export async function GET(request: NextRequest) {
     }
 
     const botGuildIds = await getBotGuildPresence()
-
-    const fallbackHasBot = botGuildIds.size === 0
+    const fallbackHasBot = false
     const simplifiedGuilds = guilds.map((g: any) => ({
       id: g.id,
       name: g.name,
@@ -202,7 +201,8 @@ export async function GET(request: NextRequest) {
     }))
     const membershipGuilds = simplifiedGuilds
     const adminGuilds = membershipGuilds.filter((guild: any) => guild.isAdmin)
-    const botGuildCount = adminGuilds.filter((guild: any) => guild.hasBot).length
+    const botGuildCount =
+      botGuildIds.size > 0 ? botGuildIds.size : membershipGuilds.filter((guild: any) => guild.hasBot).length
 
     const avatarUrl = buildAvatarUrl({
       id: userData.id,

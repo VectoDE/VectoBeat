@@ -52,4 +52,4 @@ export const buildDiscordLoginUrl = (customRedirectUri?: string) => {
 }
 
 export const BRANDING_CNAME_TARGET =
-  process.env.NEXT_PUBLIC_BRANDING_CNAME_TARGET || process.env.BRANDING_CNAME_TARGET || "cname.vectobeat.com"
+  process.env.NEXT_PUBLIC_BRANDING_CNAME_TARGET || process.env.BRANDING_CNAME_TARGET || "cname.vectobeat.uplytech.de"

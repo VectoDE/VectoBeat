@@ -1854,7 +1854,7 @@ export const recordSitePageView = async ({
     if (!db) return
     const { host: referrerHost, path: referrerPath } = parseReferrerForStorage(referrer)
     const normalizedPath = path.slice(0, 191)
-    const normalizedReferrer = referrer ? referrer.slice(0, 512) : null
+    const normalizedReferrer = referrer ? referrer.slice(0, 190) : null
     const normalizedReferrerPath = referrerPath ? referrerPath.slice(0, 191) : null
 
     await db.sitePageView.create({

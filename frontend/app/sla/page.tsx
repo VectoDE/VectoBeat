@@ -1,8 +1,16 @@
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo"
 
 const LAST_UPDATED = "2025-11-13"
+
+export const metadata = buildPageMetadata({
+  title: "Service Level Agreement | VectoBeat",
+  description: "Service Level Agreement outlining uptime, support response, and reliability commitments for VectoBeat.",
+  path: "/sla",
+  noindex: true,
+})
 
 const sections = [
   {

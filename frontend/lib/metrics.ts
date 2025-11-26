@@ -140,7 +140,30 @@ const formatUptimeLabel = (value: number) => {
 }
 
 const buildBaseMetrics = async (): Promise<BaseMetrics> => {
-  const [posts, botStatus, traffic] = await Promise.all([getBlogPosts(), getBotStatus(), getSiteTrafficSummary()])
+  const [postsResult, botStatusResult, trafficResult] = await Promise.allSettled([
+    getBlogPosts(),
+    getBotStatus(),
+    getSiteTrafficSummary(),
+  ])
+  const posts = postsResult.status === "fulfilled" ? postsResult.value : []
+  const botStatus = botStatusResult.status === "fulfilled" ? botStatusResult.value : null
+  const traffic =
+    trafficResult.status === "fulfilled"
+      ? trafficResult.value
+      : {
+          totalViews: 0,
+          uniquePaths: 0,
+          uniqueVisitors: 0,
+          last24hViews: 0,
+          last24hVisitors: 0,
+          topPages: [],
+          referrers: [],
+          referrerHosts: [],
+          referrerPaths: [],
+          geo: [],
+          dailySeries: [],
+          monthlySeries: [],
+        }
   let fallbackSnapshot: BotMetricHistoryEntry | null = null
   if (!botStatus) {
     const history = await getBotMetricHistory(1)

@@ -1,48 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import { getBotMetricHistory, recordBotMetricSnapshot } from "@/lib/db"
 
-const AUTH_TOKENS = [
+const AUTH_TOKENS = expandSecrets(
   process.env.STATUS_API_PUSH_SECRET,
   process.env.STATUS_API_KEY,
   process.env.BOT_STATUS_API_KEY,
   process.env.CONTROL_PANEL_API_KEY,
-].filter((value): value is string => Boolean(value && value.trim()))
-
-const isLocalRequest = (request: NextRequest) => {
-  const host = (request.headers.get("host") || "").toLowerCase()
-  if (host.includes("localhost") || host.startsWith("127.0.0.1") || host.startsWith("[::1]") || host.startsWith("::1")) {
-    return true
-  }
-  const forwarded = request.headers.get("x-forwarded-for") || ""
-  const forwardedIp = forwarded.split(",")[0]?.trim()
-  return forwardedIp === "127.0.0.1" || forwardedIp === "::1"
-}
-
-const resolveToken = (request: NextRequest) => {
-  const bearer = request.headers.get("authorization") || ""
-  if (bearer) {
-    const token = bearer.replace(/^Bearer\s+/i, "").trim()
-    if (token) return token
-  }
-  const headerToken =
-    request.headers.get("x-api-key") ||
-    request.headers.get("x-metrics-key") ||
-    request.headers.get("x-status-key") ||
-    request.headers.get("x-analytics-key")
-  if (headerToken && headerToken.trim()) {
-    return headerToken.trim()
-  }
-  const queryToken = request.nextUrl.searchParams.get("token") || request.nextUrl.searchParams.get("key")
-  return queryToken?.trim() || null
-}
-
-const isAuthorized = (request: NextRequest) => {
-  if (!AUTH_TOKENS.length) return true
-  if (isLocalRequest(request)) return true
-  const token = resolveToken(request)
-  if (!token) return false
-  return AUTH_TOKENS.includes(token)
-}
+)
 
 const parseNumber = (value: unknown, fallback = 0) => {
   const number = Number(value)
@@ -50,7 +15,7 @@ const parseNumber = (value: unknown, fallback = 0) => {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!authorizeRequest(request, AUTH_TOKENS, { allowLocalhost: true })) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

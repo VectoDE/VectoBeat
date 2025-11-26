@@ -1,15 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import { recordBotActivityEvent } from "@/lib/db"
 
-const EVENT_SECRET =
-  process.env.STATUS_API_EVENT_SECRET || process.env.STATUS_API_PUSH_SECRET || process.env.BOT_STATUS_API_KEY || ""
-
 export async function POST(request: NextRequest) {
-  if (EVENT_SECRET) {
-    const header = request.headers.get("authorization")
-    if (header !== `Bearer ${EVENT_SECRET}`) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-    }
+  // Resolve at request time so env changes are picked up without restart.
+  const secrets = expandSecrets(
+    process.env.STATUS_API_EVENT_SECRET,
+    process.env.STATUS_API_PUSH_SECRET,
+    process.env.STATUS_API_KEY,
+    process.env.BOT_STATUS_API_KEY,
+  )
+  if (
+    !authorizeRequest(request, secrets, {
+      allowLocalhost: true,
+    })
+  ) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
   let payload: any
