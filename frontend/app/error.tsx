@@ -32,6 +32,8 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     }
   }
 
+  const incidentQuery = correlationId || ""
+
   return (
     <div className="px-4 py-12">
       <div className="mx-auto max-w-2xl rounded-2xl border border-border/50 bg-card/80 px-6 py-8 shadow-2xl backdrop-blur">
@@ -72,7 +74,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             Retry loading
           </button>
           <Link
-            href={`/support-desk?incident=${encodeURIComponent(correlationId)}`}
+            href={{ pathname: "/support-desk", query: { incident: incidentQuery } }}
             className="w-full rounded-lg border border-border/60 px-4 py-3 text-center text-sm font-semibold text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             Contact support
@@ -81,8 +83,8 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
 
         <p className="mt-4 text-center text-xs text-foreground/60">
           Need help fast? Send the correlation ID to{" "}
-          <a href="mailto:support@vectobeat.com" className="font-semibold text-primary hover:underline">
-            support@vectobeat.com
+          <a href="mailto:timhauke@uplytech.de" className="font-semibold text-primary hover:underline">
+            timhauke@uplytech.de
           </a>
           .
         </p>

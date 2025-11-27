@@ -68,22 +68,23 @@ export async function POST(request: NextRequest) {
 
   const eventsInput = Array.isArray(body?.events) ? body.events : [body]
   const events = eventsInput
-    .map((item) => {
+    .map((item: unknown) => {
       if (!item || typeof item !== "object") return null
-      const type = typeof item.type === "string" ? item.type : null
+      const typed = item as Record<string, unknown>
+      const type = typeof typed.type === "string" ? typed.type : null
       if (!type) return null
       return {
         type,
-        name: typeof item.name === "string" ? item.name : null,
-        guildId: typeof item.guildId === "string" ? item.guildId : null,
+        name: typeof typed.name === "string" ? typed.name : null,
+        guildId: typeof typed.guildId === "string" ? typed.guildId : null,
         success:
-          typeof item.success === "boolean"
-            ? item.success
-            : typeof item.success === "string"
-              ? item.success.toLowerCase() === "true"
+          typeof typed.success === "boolean"
+            ? typed.success
+            : typeof typed.success === "string"
+              ? typed.success.toLowerCase() === "true"
               : null,
-        metadata: item.metadata && typeof item.metadata === "object" ? item.metadata : null,
-        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+        metadata: typed.metadata && typeof typed.metadata === "object" ? (typed.metadata as Record<string, unknown>) : null,
+        createdAt: typed.createdAt ? new Date(typed.createdAt as string) : new Date(),
       }
     })
     .filter(Boolean) as Array<{

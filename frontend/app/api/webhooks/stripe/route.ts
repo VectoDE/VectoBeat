@@ -47,14 +47,14 @@ const handleSubscriptionUpsert = async (subscription: StripeSubscriptionWithPeri
   const guildId = extractGuildId(metadata, discordId || subscription.id)
   const customerEmail =
     metadata.customerEmail ||
-    subscription.customer_email ||
-    subscription.customer_details?.email ||
+    (subscription as any).customer_email ||
+    (subscription as any).customer_details?.email ||
     (typeof subscription.customer === "object" && subscription.customer
       ? ((subscription.customer as Stripe.Customer).email as string | null) || undefined
       : undefined)
   const customerPhone =
     metadata.customerPhone ||
-    subscription.customer_details?.phone ||
+    (subscription as any).customer_details?.phone ||
     (typeof subscription.customer === "object" && subscription.customer
       ? ((subscription.customer as Stripe.Customer).phone as string | null) || undefined
       : undefined)

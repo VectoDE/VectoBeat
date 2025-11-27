@@ -8,6 +8,6 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2025-10-29.clover",
   appInfo: {
     name: "VectoBeat",
-    version: "3.5.0",
+    version: "2.0.0",
   },
 })

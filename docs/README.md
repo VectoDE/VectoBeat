@@ -17,7 +17,8 @@ This index keeps the bot and control-panel references in one discoverable place.
 - [`docs/observability/metrics.md`](./observability/metrics.md): Metrics surface and scraping guidance.
 - [`docs/grafana/README.md`](./grafana/README.md): Prebuilt Grafana dashboards for Lavalink and shard health.
 - [`docs/security/threat-model.md`](./security/threat-model.md): Threat model and incident-response checkpoints.
-- [`docs/queue_telemetry.md`](./queue_telemetry.md): Queue-sync internals and retention/TTL semantics.
+- [`docs/queue_telemetry.md`](./queue_telemetry.md): Queue telemetry webhook modes, payloads, and redaction rules.
+- [`docs/queue_sync.md`](./queue_sync.md): Queue snapshot publisher payloads, plan gating, and consumer guidance.
 - [`docs/performance.md`](./performance.md): Load-testing notes and tuning levers.
 
 ## Troubleshooting

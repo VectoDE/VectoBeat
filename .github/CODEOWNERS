@@ -7,21 +7,26 @@
 # Global fallback – every file must have at least one maintainer review.
 * @VectoDE/maintainers @timhauke
 
-# Application source
-/src/ @VectoDE/maintainers @timhauke
-/tests/ @VectoDE/maintainers @timhauke
+# Bot runtime (Python + Lavalink integration)
+/bot/ @VectoDE/maintainers @timhauke
 
-# Documentation and knowledge base
+# Control panel (Next.js + Prisma)
+/frontend/ @VectoDE/maintainers @timhauke
+
+# Documentation and assets
 /docs/ @VectoDE/docs-team @timhauke
 /README.md @VectoDE/docs-team @timhauke
+/FURTHER_DEVELOPMENT.md @VectoDE/docs-team @timhauke
+/assets/ @VectoDE/docs-team @timhauke
 
 # Infrastructure and automation
 /.github/ @VectoDE/devops-team @timhauke
-/Dockerfile @VectoDE/devops-team @timhauke
 /docker-compose.yml @VectoDE/devops-team @timhauke
-/docker-compose.local.yml @VectoDE/devops-team @timhauke
+/lavalink/ @VectoDE/devops-team @timhauke
+/bot/Dockerfile @VectoDE/devops-team @timhauke
+/frontend/Dockerfile @VectoDE/devops-team @timhauke
+/scripts/ @VectoDE/devops-team @timhauke
 
-# Configuration / operations
-/config.yml @VectoDE/maintainers @timhauke
-/requirements.txt @VectoDE/maintainers @timhauke
-/scripts/ @VectoDE/maintainers @timhauke
+# Shared config and capabilities
+/.env.example @VectoDE/maintainers @timhauke
+/plan-capabilities.json @VectoDE/maintainers @timhauke

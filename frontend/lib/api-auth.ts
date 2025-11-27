@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server"
+import { verifyUserApiKey } from "./db"
 
 const DEFAULT_HEADER_KEYS = [
   "authorization",
@@ -92,5 +93,17 @@ export const authorizeRequest = (
 
   const token = normalizeToken(extractToken(request, options))
   if (!token) return false
-  return allowedSecrets.includes(token)
+  if (allowedSecrets.includes(token)) return true
+
+  // Allow user-scoped API keys as a fallback when provided with a discordId hint.
+  const discordId =
+    request.headers.get("x-discord-id")?.trim() ||
+    request.nextUrl.searchParams.get("discordId")?.trim() ||
+    request.nextUrl.searchParams.get("userId")?.trim() ||
+    null
+  if (discordId && verifyUserApiKey(token, discordId)) {
+    return true
+  }
+
+  return false
 }

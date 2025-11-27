@@ -32,7 +32,7 @@ type StoredToken = {
   lastUsedAt?: string | null
   scopes: string[]
   createdBy?: string | null
-  status?: "active" | "disabled"
+  status: "active" | "disabled"
   expiresAt?: string | null
   leakDetected?: boolean
 }
@@ -57,7 +57,7 @@ const toMaskedToken = (token: StoredToken) => ({
   rotatedAt: token.rotatedAt ?? null,
   lastUsedAt: token.lastUsedAt ?? null,
   scopes: normalizeScopes(token),
-  status: token.status ?? "active",
+  status: token.status === "disabled" ? "disabled" : ("active" as const),
   expiresAt: token.expiresAt ?? null,
   leakDetected: Boolean(token.leakDetected),
 })

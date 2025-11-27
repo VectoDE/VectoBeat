@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Set, Tuple, Union
 
 import aiohttp
@@ -132,6 +134,8 @@ class ServerSettingsService:
         self.default_prefix = default_prefix or "!"
         self._default_brand_color = DEFAULT_SERVER_SETTINGS["brandingAccentColor"]
         self._global_defaults: Dict[str, Any] = {}
+        self._defaults_path = Path("data/bot_defaults.json")
+        self._restore_global_defaults()
 
     async def start(self) -> None:
         """Initialise the HTTP session."""
@@ -157,6 +161,7 @@ class ServerSettingsService:
         """Drop all cached guild settings and global defaults."""
         self._cache.clear()
         self._global_defaults.clear()
+        self._persist_global_defaults()
 
     async def get_settings(self, guild_id: int) -> GuildSettingsState:
         """Return cached settings for ``guild_id``."""
@@ -189,6 +194,7 @@ class ServerSettingsService:
     async def refresh_global_defaults(self, discord_id: Optional[str], settings: Dict[str, Any]) -> None:
         """Update in-memory defaults pushed from the control panel."""
         self._global_defaults = settings or {}
+        self._persist_global_defaults()
         self.logger.info("Updated global defaults from control panel for user=%s", discord_id)
 
     def global_default_volume(self) -> Optional[int]:
@@ -557,3 +563,24 @@ class ServerSettingsService:
         else:
             sig_value = None
         return GuildSettingsState(tier=tier, settings=merged, signature=sig_value)
+
+    # ------------------------------------------------------------------ global default persistence helpers
+    def _restore_global_defaults(self) -> None:
+        """Load last-applied global defaults from disk so they survive restarts."""
+        try:
+            if self._defaults_path.exists():
+                raw = json.loads(self._defaults_path.read_text("utf-8"))
+                if isinstance(raw, dict):
+                    self._global_defaults = raw
+                    self.logger.info("Restored %s global bot defaults from disk.", len(raw))
+        except Exception as exc:  # pragma: no cover - defensive
+            self.logger.warning("Failed to restore global defaults: %s", exc)
+
+    def _persist_global_defaults(self) -> None:
+        """Persist global defaults to disk for reuse after bot restarts."""
+        try:
+            if not self._defaults_path.parent.exists():
+                self._defaults_path.parent.mkdir(parents=True, exist_ok=True)
+            self._defaults_path.write_text(json.dumps(self._global_defaults, indent=2, sort_keys=True), "utf-8")
+        except Exception as exc:  # pragma: no cover - best-effort persistence
+            self.logger.debug("Unable to persist global defaults: %s", exc)

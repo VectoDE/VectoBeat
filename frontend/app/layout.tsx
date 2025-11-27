@@ -1,13 +1,14 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { CookieBanner } from "@/components/cookie-banner"
 import { Analytics } from "@vercel/analytics/react"
 import { SiteAnalyticsTracker } from "@/components/site-analytics"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const _geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
+const _geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vectobeat.uplytech.de"),
@@ -80,7 +81,12 @@ export default async function RootLayout({
 }>) {
   const language = "en"
   return (
-    <html lang={language} suppressHydrationWarning data-language={language}>
+    <html
+      lang={language}
+      suppressHydrationWarning
+      data-language={language}
+      className={`${_geist.variable} ${_geistMono.variable}`}
+    >
       <head>
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
@@ -93,7 +99,9 @@ export default async function RootLayout({
         {children}
         <CookieBanner />
         <Analytics />
-        <SiteAnalyticsTracker />
+        <Suspense fallback={null}>
+          <SiteAnalyticsTracker />
+        </Suspense>
       </body>
     </html>
   )

@@ -1,35 +1,35 @@
 # Frontend (Next.js) Overview
 
-The control panel is a Next.js App Router project that shares the root `.env` with the bot. Only `frontend/Dockerfile` is used for container builds.
+The control panel is a Next.js App Router project that shares the root `.env` with the bot. `frontend/Dockerfile` is the single build target and expects `plan-capabilities.json` plus the Prisma schema at build time.
 
 ## Stack
-- Next.js 16 (App Router), React 19, TypeScript 5
-- Prisma (MySQL) for persistence
-- Socket.IO for queue/analytics broadcasts
-- Stripe for billing
+- Next.js 16 (App Router), React 19, TypeScript 5 on Node 20
+- Prisma (MySQL) for persistence and plan enforcement
+- Socket.IO for queue/analytics broadcasts and dashboard live updates
+- Stripe for billing and entitlement provisioning
 
 ## Running locally
 ```bash
 cd frontend
 npm install
 set -a && source ../.env && set +a   # export the shared env
-npm run dev
+npm run dev -p 3050
 ```
-The app listens on `http://localhost:3000` and assumes MySQL/Redis/Lavalink from the root compose stack.
+The app listens on `http://localhost:3050` and assumes MySQL/Redis/Lavalink from the root compose stack.
 
 ## Tests & quality
-- Integration and contract tests: `npm run test:server-settings`
+- Integration and contract suite: `npm run test:server-settings` (auth gates, plan drift, queue-sync store durability, bot bridge contracts, concierge/success pod APIs).
 - Lint: `npm run lint`
 - Build: `npm run build`
-- The suite includes auth gates, concierge flows, queue-sync durability, bot contract tests, and CI safety checks (env/doc consistency).
 
 ## Deployment
-- Built via `frontend/Dockerfile`; the root `docker-compose.yml` references this file directly.
-- Provide the same keys as `.env.example` via your orchestrator; Prisma migrations run with `npx prisma migrate deploy`.
+- Built via `frontend/Dockerfile` using the repo root as context; the compose file and CI jobs mirror this.
+- Provide the same keys as `.env.example` via your orchestrator; run `npx prisma migrate deploy` before serving traffic.
+- The runtime honours `PORT=3050` and pushes bot metrics/events when `BOT_STATUS_API_URL`/`BOT_STATUS_API_KEY` are set.
 
 ## Key APIs
-- `/api/dashboard/*` for analytics and overview
-- `/api/concierge` (user-facing) and `/api/bot/concierge` (bot bridge)
-- `/api/control-panel/*` for enterprise settings, audit, and API tokens
+- `/api/dashboard/*` and `/api/control-panel/*` for analytics, plan enforcement, routing, and audit trails.
+- `/api/concierge` (user-facing) and `/api/bot/concierge` (bot bridge).
+- `/api/bot/server-settings`, `/api/bot/events`, `/api/bot/queue-sync`, `/api/bot/success-pod`, `/api/bot/scale-contact` for bot bridges and durable queue sync.
 
 See `docs/architecture.md` for end-to-end data flow and `docs/deployment.md` for compose tips.

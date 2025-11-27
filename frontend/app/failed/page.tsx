@@ -5,7 +5,7 @@ import Footer from "@/components/footer"
 import { XCircle, ArrowLeft, RefreshCcw, ShieldAlert, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 
 type CheckoutSummary = {
   id: string
@@ -27,6 +27,14 @@ const maskSessionId = (value: string | null) => {
 }
 
 export default function FailedPage() {
+  return (
+    <Suspense fallback={null}>
+      <FailedContent />
+    </Suspense>
+  )
+}
+
+function FailedContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams?.get("session_id") ?? null

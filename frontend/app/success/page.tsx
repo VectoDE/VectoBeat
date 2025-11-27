@@ -5,7 +5,7 @@ import Footer from "@/components/footer"
 import { CheckCircle, ArrowRight, Download, FileText, ShieldCheck, Clock } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
 
 interface CheckoutSummary {
@@ -35,6 +35,14 @@ const maskSessionId = (value: string | null) => {
 }
 
 export default function SuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <SuccessContent />
+    </Suspense>
+  )
+}
+
+function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams?.get("session_id") ?? null

@@ -314,7 +314,9 @@ export default function ControlPanelPage() {
   const [activeTab, setActiveTab] = useState("overview")
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [authToken, setAuthToken] = useState<string | null>(null)
   const [overviewData, setOverviewData] = useState<any>(null)
+  const skipHref = `#${MAIN_CONTENT_ID}`
   const [botSettings, setBotSettings] = useState({
     autoJoinVoice: true,
     announceTracks: true,
@@ -906,6 +908,7 @@ export default function ControlPanelPage() {
         if (!sessionData?.authenticated) {
           throw new Error("unauthenticated")
         }
+        setAuthToken(token || null)
 
         if (!ensureTwoFactor(sessionData) || cancelled) {
           return
@@ -942,6 +945,7 @@ export default function ControlPanelPage() {
         void fetchBotSettings(resolvedUserId)
       } catch (error) {
         console.error("Auth check failed:", error)
+        setAuthToken(null)
         localStorage.removeItem("discord_token")
         localStorage.removeItem("discord_user_id")
         if (!cancelled) {
@@ -1321,7 +1325,7 @@ export default function ControlPanelPage() {
     return () => {
       cancelled = true
     }
-  }, [planAllowsAutomation, planAllowsConcierge, selectedGuildId, selectedGuildHasBot, user?.id])
+  }, [planAllowsAutomation, planAllowsConcierge, selectedGuildId, selectedGuildHasBot, authToken, user?.id])
 
   useEffect(() => {
     void fetchSuccessPodRequests()
@@ -2092,15 +2096,20 @@ export default function ControlPanelPage() {
                       </div>
                       <input
                         type="range"
-                        min={20}
-                        max={100}
-                        step={5}
+                        min={0}
+                        max={200}
+                        step={1}
                         value={botSettings.defaultVolume}
                         disabled={botSettingsSaving}
                         onChange={(e) => handleBotSettingChange("defaultVolume", Number(e.target.value))}
                         className="w-full"
                         style={{ accentColor: "var(--primary)" }}
                       />
+                      <div className="flex justify-between text-[11px] text-foreground/60 mt-1">
+                        <span>0%</span>
+                        <span>100%</span>
+                        <span>200%</span>
+                      </div>
                       <p className="text-xs text-foreground/60 mt-2">Applies when the bot joins a new voice channel.</p>
                     </div>
                   </div>
@@ -2688,7 +2697,11 @@ export default function ControlPanelPage() {
               <p className="text-sm font-semibold text-primary">{managerName}</p>
               {scaleContact?.managerEmail && (
                 <a
-                  href={`mailto:${scaleContact.managerEmail}`}
+                  href={
+                    scaleContact.managerEmail
+                      ? `mailto:${encodeURIComponent(scaleContact.managerEmail)}`
+                      : "#"
+                  }
                   className="text-xs text-primary/80 hover:underline break-all"
                 >
                   {scaleContact.managerEmail}
@@ -4107,7 +4120,7 @@ Target: ${dnsRecord}`}
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-background muted-scrollbar flex flex-col">
-        <a href={`#${MAIN_CONTENT_ID}`} className="skip-link">
+        <a href={skipHref} className="skip-link">
           Skip to control panel content
         </a>
         <Navigation />
@@ -4118,7 +4131,7 @@ Target: ${dnsRecord}`}
               {authError || "Sign in with Discord to open the control panel."}
             </p>
             <a
-              href={loginHref}
+              href={loginHref || "#"}
               className="inline-flex px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold"
             >
               Sign in with Discord
@@ -4132,7 +4145,7 @@ Target: ${dnsRecord}`}
 
   return (
     <div className="min-h-screen bg-background flex flex-col muted-scrollbar">
-      <a href={`#${MAIN_CONTENT_ID}`} className="skip-link">
+      <a href={skipHref} className="skip-link">
         Skip to control panel content
       </a>
       <Navigation />

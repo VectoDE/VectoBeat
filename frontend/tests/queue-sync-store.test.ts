@@ -37,7 +37,7 @@ test("queue store evicts expired snapshots", async () => {
   const store = createQueueStore({
     fetchTier: async () => "growth",
     persist: async () => {},
-    load: async () => ({
+    load: async (): Promise<{ snapshot: QueueSnapshot; expiresAt: Date | null } | null> => ({
       snapshot: baseSnapshot,
       expiresAt: new Date(-1000),
     }),

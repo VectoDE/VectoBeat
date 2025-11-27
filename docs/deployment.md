@@ -1,6 +1,6 @@
 # Deployment Guide
 
-VectoBeat ships with a single `docker-compose.yml` at the repository root that builds exactly two service images: `frontend/Dockerfile` and `bot/Dockerfile`. Everything else (MySQL, Redis, Lavalink) is pulled as images from Docker Hub/GHCR. Keep all environment variables in the root `.env` so both services stay in sync in every environment.
+VectoBeat ships with a single `docker-compose.yml` at the repository root that builds exactly two service images: `frontend/Dockerfile` and `bot/Dockerfile` using the repository root as build context. Everything else (MySQL, Redis, Lavalink) is pulled as images from Docker Hub/GHCR. Keep all environment variables in the root `.env` so both services stay in sync in every environment.
 
 ## One-time setup
 - Copy `.env.example` to `.env` in the repo root and fill in secrets once. Do **not** create per-service `.env` files; CI fails if it finds any.
@@ -12,7 +12,7 @@ VectoBeat ships with a single `docker-compose.yml` at the repository root that b
 docker compose up -d --build
 docker compose logs -f frontend bot
 ```
-- Compose automatically loads the root `.env`, mounts `bot/config.yml`, and maps `bot/data` for persistence. The frontend build uses the repo root as context so `plan-capabilities.json` and Prisma schema are included; `frontend/Dockerfile` runs `npm ci`, `prisma generate`, and `next build` automatically.
+- Compose automatically loads the root `.env`, mounts `bot/config.yml`, and maps `bot/data` for persistence. Both images use the repo root as context so `plan-capabilities.json`, assets, and Prisma schema are available; `frontend/Dockerfile` runs `npm ci`, `prisma generate`, and `next build` automatically.
 - Use an override file (e.g. `docker-compose.override.yml`) to tune CPU/memory reservations without touching the base file.
 - Regenerate Prisma migrations before the first boot if you change the schema: `cd frontend && npx prisma migrate dev`.
 

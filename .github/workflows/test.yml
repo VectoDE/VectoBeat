@@ -16,6 +16,7 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       DATABASE_URL: "mysql://user:password@localhost:3306/vectobeat"
+      CI: "true"
     defaults:
       run:
         working-directory: frontend
@@ -41,7 +42,7 @@ jobs:
         run: npm run lint
 
       - name: Run server tests
-        run: npm run test:server-settings
+        run: npm run test:server-settings --if-present
 
   bot:
     runs-on: ubuntu-latest

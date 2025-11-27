@@ -18,6 +18,7 @@ from aiohttp import ClientSession, web
 from lavalink.events import TrackStartEvent
 
 from src.configs.schema import StatusAPIConfig
+from src.configs.settings import CONFIG
 from src.services.health_service import HealthState
 from src.services.lavalink_service import VectoPlayer
 
@@ -41,11 +42,14 @@ class StatusAPIService:
         self._listener_events: deque[Tuple[float, int]] = deque()
         self._commands_total = 0
         self._incidents_total = 0
-        self._push_endpoint = config.push_endpoint
-        self._push_token = config.push_token or config.api_key
+        control_panel_base = getattr(CONFIG, "control_panel_api", None)
+        cp_base_url = getattr(control_panel_base, "base_url", None)
+        cp_api_key = getattr(control_panel_base, "api_key", None)
+        self._push_endpoint = config.push_endpoint or (f"{cp_base_url.rstrip('/')}/api/bot/metrics" if cp_base_url else None)
+        self._push_token = config.push_token or config.api_key or cp_api_key
         self._push_interval = max(10, int(getattr(config, "push_interval_seconds", 30)))
-        self._event_endpoint = config.event_endpoint
-        self._event_token = config.event_token or config.push_token or config.api_key
+        self._event_endpoint = config.event_endpoint or (f"{cp_base_url.rstrip('/')}/api/bot/events" if cp_base_url else None)
+        self._event_token = config.event_token or config.push_token or config.api_key or cp_api_key
         self._push_task: Optional[asyncio.Task] = None
         self._event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
         self._event_worker: Optional[asyncio.Task] = None
@@ -73,6 +77,7 @@ class StatusAPIService:
         self.logger.info("Status API listening on %s:%s", self.config.host, self.config.port)
         if self._push_endpoint or self._event_endpoint:
             self._http_session = ClientSession()
+            await self._bootstrap_counters()
         if self._push_endpoint:
             self._push_task = asyncio.create_task(self._push_loop())
         if self._event_endpoint:
@@ -340,6 +345,35 @@ class StatusAPIService:
                 self.logger.warning("Failed to push bot metrics: %s", exc)
             await asyncio.sleep(self._push_interval)
 
+    async def _bootstrap_counters(self) -> None:
+        """Seed counters from the control panel so they persist across bot restarts."""
+        if not self._push_endpoint or not self._http_session:
+            return
+        try:
+            async with self._http_session.get(
+                self._push_endpoint.replace("/api/bot/metrics", "/api/bot/metrics"),
+                headers={"Authorization": f"Bearer {self._push_token}"} if self._push_token else None,
+                timeout=5,
+            ) as resp:
+                if resp.status >= 400:
+                    return
+                payload = await resp.json()
+        except Exception:
+            return
+
+        snapshot = payload.get("snapshot") if isinstance(payload, dict) else None
+        if not isinstance(snapshot, dict):
+            return
+        streams = snapshot.get("totalStreams")
+        commands_24h = snapshot.get("commands24h") or snapshot.get("commands")
+        try:
+            if isinstance(streams, (int, float)) and streams > self._streams_total:
+                self._streams_total = int(streams)
+            if isinstance(commands_24h, (int, float)) and commands_24h > self._commands_total:
+                self._commands_total = int(commands_24h)
+        except Exception:
+            return
+
     async def _publish_payload(self, payload: Dict[str, Any]) -> None:
         if not self._push_endpoint or not self._http_session:
             return
@@ -377,6 +411,77 @@ class StatusAPIService:
                     self.logger.warning("Bot event push failed (%s): %s", resp.status, text[:200])
         except Exception as exc:
             self.logger.warning("Bot event transport error: %s", exc)
+
+    async def _reapply_all_server_policies(self) -> None:
+        """Re-apply playback/queue policies to all active players."""
+        players = list(getattr(self.bot.lavalink.player_manager, "players", {}).values())
+        for player in players:
+            await self._reapply_guild_server_policies(player.guild_id)
+
+    async def _reapply_guild_server_policies(self, guild_id: int) -> None:
+        """Apply current control-panel settings (volume/quality/queue) to a guild's player."""
+        player = self.bot.lavalink.player_manager.get(guild_id)
+        if not player:
+            return
+        settings_service = getattr(self.bot, "server_settings", None)
+        profile_manager = getattr(self.bot, "profile_manager", None)
+        if settings_service:
+            try:
+                state = await settings_service.get_settings(guild_id)
+            except Exception:
+                state = None
+        else:
+            state = None
+
+        # Playback quality
+        quality_source = state.settings if state else {}
+        quality = str(quality_source.get("playbackQuality") or "standard").lower()
+        cached = player.fetch("playback_quality_mode")
+        if quality != cached:
+            player.store("playback_quality_mode", quality)
+            try:
+                if quality == "hires":
+                    await player.remove_filter(lavalink.LowPass)
+                else:
+                    await player.set_filter(lavalink.LowPass(smoothing=20.0))
+            except Exception as exc:  # pragma: no cover - best effort
+                self.logger.debug("Failed to reapply playback quality for guild %s: %s", guild_id, exc)
+
+        # Volume defaults
+        desired_volume = None
+        if settings_service:
+            desired_volume = settings_service.global_default_volume()
+        if desired_volume is None and profile_manager:
+            try:
+                profile = profile_manager.get(guild_id)
+                desired_volume = getattr(profile, "default_volume", None)
+            except Exception:
+                desired_volume = None
+        if desired_volume is not None and player.volume != desired_volume:
+            try:
+                await player.set_volume(int(desired_volume))
+            except Exception as exc:  # pragma: no cover - best effort
+                self.logger.debug("Failed to set desired volume for guild %s: %s", guild_id, exc)
+
+        # Queue limits: trim if the queue exceeds the current cap.
+        try:
+            raw_limit = settings_service._coerce_queue_limit(state.settings.get("queueLimit") if state else None) if settings_service else None
+            plan_cap = settings_service._plan_queue_cap(state.tier if state else "free") if settings_service else None
+            if raw_limit is not None:
+                effective_limit = min(raw_limit, plan_cap) if plan_cap else raw_limit
+                queue = getattr(player, "queue", None)
+                if queue is not None and len(queue) > effective_limit:
+                    # keep the earliest items, drop the overflow
+                    overflow = len(queue) - effective_limit
+                    del queue[-overflow:]
+                    self.logger.info(
+                        "Trimmed queue to %s items for guild %s after settings update (dropped %s).",
+                        effective_limit,
+                        guild_id,
+                        overflow,
+                    )
+        except Exception as exc:  # pragma: no cover - defensive
+            self.logger.debug("Failed to reconcile queue limit for guild %s: %s", guild_id, exc)
 
     def _player_states(self, players: List[VectoPlayer], listener_map: Dict[int, int]) -> List[Dict[str, Any]]:
         states: List[Dict[str, Any]] = []
@@ -460,6 +565,7 @@ class StatusAPIService:
                 await settings_service.get_settings(resolved_guild)
             except Exception as exc:  # pragma: no cover - best-effort warmup
                 self.logger.debug("Settings prefetch failed for guild %s: %s", resolved_guild, exc)
+            await self._reapply_guild_server_policies(resolved_guild)
 
         return web.json_response({"ok": True})
 
@@ -481,6 +587,7 @@ class StatusAPIService:
             try:
                 settings_service.invalidate_all()
                 await settings_service.refresh_global_defaults(discord_id, settings)
+                await self._reapply_all_server_policies()
             except Exception as exc:  # pragma: no cover - best effort
                 self.logger.warning("Failed to apply global defaults: %s", exc)
         return web.json_response({"ok": True})

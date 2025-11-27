@@ -2,8 +2,8 @@
   <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/logo.png" alt="VectoBeat Logo" width="280" />
   <p style="font-size: 1.2rem;"><strong>Music Bot for Discord</strong></p>
   <p style="max-width: 640px;">
-    VectoBeat delivers premium audio playback, meticulous observability, and a polished operations toolchain built on
-    <strong>Python</strong>, <strong>discord.py</strong>, and <strong>Lavalink v4</strong>.
+    VectoBeat delivers premium audio playback, plan-aware control panel workflows, concierge/success pod tooling, and meticulous observability built on
+    <strong>Python</strong>, <strong>discord.py</strong>, <strong>Lavalink v4</strong>, and a <strong>Next.js</strong> control panel.
   </p>
   <p>
     <a href="https://discord.com/api/oauth2/authorize?client_id=1435859299028172901&permissions=36768832&scope=bot%20applications.commands%20identify"><img src="https://img.shields.io/badge/Bot%20Invite-Add%20VectoBeat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite the VectoBeat bot"></a>
@@ -49,7 +49,7 @@
 <h2 id="overview">🎯 Overview</h2>
 <p>
   VectoBeat is a production-ready Discord music bot that emphasises audibility, runtime transparency, and administrative control.
-  The bot uses Lavalink for audio transport, yt-dlp for multi-source ingestion, and a thoughtfully designed slash-command surface.
+  Lavalink powers audio transport and yt-dlp handles multi-source ingestion while the control panel enforces plan rules, queue sync, concierge/success pod workflows, and compliance exports.
 </p>
 
 <table>
@@ -67,6 +67,7 @@
       <ul>
         <li>/status and /lavalink diagnostics</li>
         <li>/voiceinfo with latency + permission audit</li>
+        <li>Queue sync + telemetry webhooks with plan-aware redaction</li>
         <li>Structured logging and error surfacing</li>
       </ul>
     </td>
@@ -75,7 +76,8 @@
       <ul>
         <li>Themed embed factory with single-source branding</li>
         <li>Typed configuration (Pydantic) and `.env` overrides</li>
-        <li>Well documented commands and service boundaries</li>
+        <li>Control panel bridges for concierge/success pod + server settings</li>
+        <li>Well documented commands, service boundaries, and plan enforcement</li>
       </ul>
     </td>
   </tr>
@@ -108,6 +110,10 @@
       <td>/status (latency, CPU, RAM, guild footprint), /lavalink node stats, /permissions check, /voiceinfo latency+perms</td>
     </tr>
     <tr>
+      <td><strong>Control Panel &amp; Ops</strong></td>
+      <td>Queue sync + telemetry webhooks, plan-aware `/settings`, concierge/success pod lifecycle, compliance exports, regional routing</td>
+    </tr>
+    <tr>
       <td><strong>Branding</strong></td>
       <td>Config-driven logos, colours, author/footers across all embeds, with overrides per guild if required</td>
     </tr>
@@ -127,10 +133,10 @@
     <td width="50%">
       <h3>Runtime Stack</h3>
       <ul>
-        <li><strong>discord.py AutoShardedBot</strong> for automatic horizontal scaling</li>
+        <li><strong>discord.py AutoShardedBot</strong> with plan-aware settings, concierge/success pod, and audit bridges</li>
         <li><strong>LavalinkManager</strong> managing node lifecycle & authentication</li>
         <li><strong>AudioService (yt-dlp)</strong> enabling multi-source fallback</li>
-        <li><strong>EmbedFactory</strong> centralising branding assets (logo, colour palette)</li>
+        <li><strong>QueueSync + Telemetry services</strong> mirroring state to the control panel and webhooks</li>
         <li><strong>Next.js App Router</strong> control panel with Prisma/MySQL and durable queue sync store</li>
       </ul>
     </td>
@@ -186,7 +192,7 @@ python3 scripts/validate_env.py</code></pre>
       <td width="33%">
         <h3>2️⃣ Local dev</h3>
         <p><strong>Bot:</strong> <code>cd bot && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && set -a && source ../.env && set +a && python -m src.main</code></p>
-        <p><strong>Frontend:</strong> <code>cd frontend && npm install && set -a && source ../.env && set +a && npm run dev</code></p>
+        <p><strong>Frontend:</strong> <code>cd frontend && npm install && set -a && source ../.env && set +a && npm run dev -p 3050</code></p>
       </td>
       <td width="33%">
         <h3>3️⃣ Docker (parity)</h3>
@@ -206,7 +212,7 @@ docker compose logs -f frontend bot</code></pre>
 <hr />
 
 <h2 id="slash-commands">🎮 Commands</h2>
-<p>Use <code>/help</code> or <code>/commands</code> in Discord for in-bot guidance. Categories below list every command with a short description (see <code>docs/command_reference.md</code> for the generated source).</p>
+<p>Use <code>/help</code> in Discord for in-bot guidance. Categories below list every command with a short description (see <code>docs/command_reference.md</code> for the generated source).</p>
 <div style="background:rgba(14,165,233,0.1);border:1px solid #38bdf8;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Info:</strong> Spotify tracks are proxied via YouTube search unless a Lavalink Spotify plugin is configured.</div>
 <div style="background:rgba(251,191,36,0.12);border:1px solid #fbbf24;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Warning:</strong> Queue control commands enforce DJ/Manage perms when collaborative mode is off.</div>
 <div style="background:rgba(248,113,113,0.12);border:1px solid #f87171;color:#ffffff;padding:0.75rem 1rem;border-radius:8px;margin:0.75rem 0;"><strong>Heads up:</strong> Concierge and scaling/chaos commands are gated by plan tier and authenticated bot API calls.</div>
@@ -219,12 +225,14 @@ docker compose logs -f frontend bot</code></pre>
     <tr><td rowspan="3"><strong>Voice</strong></td><td><code>/connect</code></td><td>Join caller’s voice channel (permission + node checks).</td></tr>
     <tr><td><code>/disconnect</code></td><td>Leave voice, destroy player, clear queue state.</td></tr>
     <tr><td><code>/voiceinfo</code></td><td>Latency, queue length, active status, permission checklist.</td></tr>
-    <tr><td rowspan="9"><strong>Playback</strong></td><td><code>/play</code></td><td>Search/URL resolve (YouTube/SoundCloud/Spotify), enqueue, autoplay.</td></tr>
+    <tr><td rowspan="11"><strong>Playback</strong></td><td><code>/play</code></td><td>Search/URL resolve (YouTube/SoundCloud/Spotify), enqueue, autoplay.</td></tr>
+    <tr><td><code>/nowplaying</code></td><td>Live now-playing embed with progress.</td></tr>
     <tr><td><code>/skip</code></td><td>Skip current track.</td></tr>
     <tr><td><code>/stop</code></td><td>Stop playback and clear queue.</td></tr>
     <tr><td><code>/pause</code></td><td>Pause playback.</td></tr>
     <tr><td><code>/resume</code></td><td>Resume playback.</td></tr>
     <tr><td><code>/volume</code></td><td>Set volume (0–200%).</td></tr>
+    <tr><td><code>/volume-info</code></td><td>Show current and default volume.</td></tr>
     <tr><td><code>/loop</code></td><td>Toggle Off/Track/Queue loop modes.</td></tr>
     <tr><td><code>/seek</code></td><td>Seek within current track (mm:ss).</td></tr>
     <tr><td><code>/replay</code></td><td>Restart current track.</td></tr>
@@ -234,10 +242,11 @@ docker compose logs -f frontend bot</code></pre>
     <tr><td><code>/move</code></td><td>Reorder items by position.</td></tr>
     <tr><td><code>/remove</code></td><td>Remove track by 1-based index.</td></tr>
     <tr><td><code>/clear</code></td><td>Clear queued tracks.</td></tr>
-    <tr><td rowspan="4"><strong>Playlists</strong></td><td><code>/playlist save</code></td><td>Persist current queue as a named playlist.</td></tr>
+    <tr><td rowspan="5"><strong>Playlists</strong></td><td><code>/playlist save</code></td><td>Persist current queue as a named playlist.</td></tr>
     <tr><td><code>/playlist load</code></td><td>Load a saved playlist (append/replace).</td></tr>
     <tr><td><code>/playlist list</code></td><td>List saved guild playlists.</td></tr>
     <tr><td><code>/playlist delete</code></td><td>Remove a saved playlist.</td></tr>
+    <tr><td><code>/playlist sync</code></td><td>Attach an external URL to a saved playlist.</td></tr>
     <tr><td rowspan="4"><strong>Profiles</strong></td><td><code>/profile show</code></td><td>Display default volume/autoplay/embed style.</td></tr>
     <tr><td><code>/profile set-volume</code></td><td>Persist default volume for the guild.</td></tr>
     <tr><td><code>/profile set-autoplay</code></td><td>Toggle autoplay when queue finishes.</td></tr>
@@ -246,23 +255,31 @@ docker compose logs -f frontend bot</code></pre>
     <tr><td><code>/dj remove-role</code></td><td>Revoke DJ permissions from a role.</td></tr>
     <tr><td><code>/dj clear</code></td><td>Open queue control by clearing DJ roles.</td></tr>
     <tr><td><code>/dj show</code></td><td>Display configured DJ roles and actions.</td></tr>
-    <tr><td rowspan="8"><strong>Diagnostics</strong></td><td><code>/ping</code></td><td>Gateway latency/uptime snapshot.</td></tr>
+    <tr><td rowspan="8"><strong>Diagnostics &amp; Help</strong></td><td><code>/ping</code></td><td>Gateway latency/uptime snapshot.</td></tr>
     <tr><td><code>/status</code></td><td>Latency p95, guild footprint, Lavalink stats, CPU/RAM.</td></tr>
     <tr><td><code>/lavalink</code></td><td>Per-node stats (players, CPU, memory, frame deficit).</td></tr>
     <tr><td><code>/guildinfo</code></td><td>Guild demographics and configuration.</td></tr>
     <tr><td><code>/permissions</code></td><td>Audit bot channel permissions with remediation tips.</td></tr>
     <tr><td><code>/botinfo</code></td><td>Application metadata and runtime.</td></tr>
     <tr><td><code>/uptime</code></td><td>Formatted uptime with timestamps.</td></tr>
-    <tr><td><code>/lyrics</code></td><td>Fetch lyrics for the current track.</td></tr>
-    <tr><td rowspan="9"><strong>Automation & Ops</strong></td><td><code>/concierge</code></td><td>File/resolve concierge tickets (IDs propagate to email/UI).</td></tr>
-    <tr><td><code>/successpod</code></td><td>Run onboarding playbooks with audit logging.</td></tr>
+    <tr><td><code>/help</code></td><td>Grouped list of available commands.</td></tr>
+    <tr><td rowspan="17"><strong>Automation &amp; Ops</strong></td><td><code>/concierge request</code></td><td>File a concierge ticket for migrations/incidents (Growth+).</td></tr>
+    <tr><td><code>/concierge usage</code></td><td>Show remaining concierge hours this cycle.</td></tr>
+    <tr><td><code>/concierge resolve</code></td><td>Staff: resolve a concierge ticket.</td></tr>
+    <tr><td><code>/success request</code></td><td>Submit a request to your success pod (Scale).</td></tr>
+    <tr><td><code>/success status</code></td><td>View recent success pod lifecycle updates.</td></tr>
+    <tr><td><code>/success contact</code></td><td>Show your account manager and escalation path.</td></tr>
+    <tr><td><code>/success acknowledge</code></td><td>Staff: acknowledge and assign a success pod request.</td></tr>
+    <tr><td><code>/success schedule</code></td><td>Staff: schedule a success pod session.</td></tr>
+    <tr><td><code>/success resolve</code></td><td>Staff: resolve a success pod request.</td></tr>
+    <tr><td><code>/success set-contact</code></td><td>Staff: update account manager contact info.</td></tr>
+    <tr><td><code>/settings queue-limit</code></td><td>Adjust queue cap (plan-aware).</td></tr>
+    <tr><td><code>/settings collaborative</code></td><td>Toggle collaborative queue (DJ/Manage perms enforced).</td></tr>
     <tr><td><code>/scaling evaluate</code></td><td>Force an autoscaling evaluation.</td></tr>
     <tr><td><code>/scaling status</code></td><td>Show scaling metrics and last signal.</td></tr>
     <tr><td><code>/chaos run</code></td><td>Trigger a chaos experiment immediately.</td></tr>
     <tr><td><code>/chaos status</code></td><td>Show recent chaos drills and schedule.</td></tr>
-    <tr><td><code>/settings queue-limit</code></td><td>Adjust queue limit (persists to control panel).</td></tr>
-    <tr><td><code>/settings collaborative</code></td><td>Toggle collaborative queue (DJ/Manage perms enforced).</td></tr>
-    <tr><td><code>/settings event</code></td><td>Toggle playback/queue embeds.</td></tr>
+    <tr><td><code>/compliance export</code></td><td>Download compliance-ready JSONL events (admins).</td></tr>
   </tbody>
 </table>
 
@@ -301,6 +318,7 @@ docker compose logs -f frontend bot</code></pre>
   <li>Import the bundled Grafana dashboards in <code>docs/grafana</code> for shard latency, node health, and slash command throughput visualisations.</li>
   <li>Enable the command analytics pipeline (<code>docs/analytics.md</code>) to push anonymised slash usage into your data warehouse.</li>
   <li>Wire the queue telemetry webhook (<code>docs/queue_telemetry.md</code>) into your status site for real-time “now playing” indicators.</li>
+  <li>Keep the queue sync publisher healthy (<code>docs/queue_sync.md</code>) so the control panel reflects live queues.</li>
   <li>Long-running slash commands (e.g. playlist loading) now show live progress embeds so users know what’s happening.</li>
   <li>Regularly patch yt-dlp for source compatibility.</li>
   <li>Monitor Redis availability (<code>INFO</code>/<code>PING</code>) if playlist persistence is enabled.</li>
@@ -332,13 +350,13 @@ docker compose logs -f frontend bot</code></pre>
 
 <ol>
   <li>Fork the repository and clone your fork.</li>
-<li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
-<li>Run <code>python3 -m compileall src</code> and <code>scripts/typecheck.sh</code> before committing.</li>
-<li>(Optional) Exercise queue scenarios via <code>scripts/run_scenarios.py tests/scenarios/basic_queue.yaml</code> when touching playback logic.</li>
-  <li>Regenerate the slash-command reference via <code>python scripts/generate_command_reference.py</code> before publishing docs changes.</li>
-  <li>Spin up the local sandbox stack via <code>docker compose -f docker-compose.local.yml up</code> (see <code>docs/local_sandbox.md</code>) when you need Lavalink/Redis/Postgres locally.</li>
-  <li>Tune search caching via the <code>cache</code> section in <code>config.yml</code> to reduce repeated Lavlink lookups.</li>
-  <li>Adjust dynamic search limits via <code>search_limits</code> to balance latency vs. search breadth.</li>
+  <li>Create a feature branch <code>git checkout -b feature/amazing-improvement</code>.</li>
+  <li>Bot checks: <code>cd bot && python -m compileall src && pytest -q</code> (plus <code>../scripts/typecheck.sh</code> if pyright is installed).</li>
+  <li>Frontend checks: <code>cd frontend && npm run lint && npm run test:server-settings</code>.</li>
+  <li>(Optional) Exercise queue scenarios via <code>python scripts/run_scenarios.py bot/tests/scenarios/basic_queue.yaml</code> when touching playback logic.</li>
+  <li>Regenerate slash-command docs if commands change: <code>python scripts/generate_command_reference.py</code> (see <code>docs/command_reference.md</code>).</li>
+  <li>Update diagrams when <code>docs/system_architecture.mmd</code> changes: <code>npx -y @mermaid-js/mermaid-cli -i docs/system_architecture.mmd -o assets/images/architecture.png -w 3840 -H 2160 -b transparent</code>.</li>
+  <li>Spin up the sandbox via <code>docker compose up -d --build</code> (see <code>docs/local_sandbox.md</code>) to verify Lavalink/Redis/MySQL locally.</li>
   <li>Submit a pull request describing the motivation, approach, and testing performed.</li>
 </ol>
 

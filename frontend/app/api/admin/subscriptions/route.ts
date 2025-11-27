@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { randomUUID } from "crypto"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserRole, listAllSubscriptions, updateSubscriptionById, upsertSubscription } from "@/lib/db"
+import { stripe } from "@/lib/stripe"
+import type Stripe from "stripe"
+import { ensureStripeCustomerForUser } from "@/lib/stripe-customers"
+import { getUserContact, getUserRole, listAllSubscriptions, updateSubscriptionById, upsertSubscription, upsertUserContact } from "@/lib/db"
+import { normalizeTierId } from "@/lib/memberships"
 
 const isPrivileged = (role: string) => role === "admin" || role === "operator"
+const defaultCurrency = (process.env.STRIPE_DEFAULT_CURRENCY || "eur").toLowerCase()
 
 export async function GET(request: NextRequest) {
   const discordId = request.nextUrl.searchParams.get("discordId")
@@ -51,23 +56,80 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "discordServerId (guild) is required" }, { status: 400 })
     }
 
+    const normalizedTier = normalizeTierId(updates.tier || "starter")
+    const monthlyPrice =
+      typeof updates.pricePerMonth === "number" && Number.isFinite(updates.pricePerMonth) ? updates.pricePerMonth : 0
+    if (monthlyPrice <= 0) {
+      return NextResponse.json({ error: "pricePerMonth must be greater than 0 to create a Stripe subscription" }, { status: 400 })
+    }
+
+    const contact = await getUserContact(targetDiscordId)
+    const stripeCustomerId =
+      (typeof updates.stripeCustomerId === "string" && updates.stripeCustomerId.trim()) ||
+      (await ensureStripeCustomerForUser({
+        discordId: targetDiscordId,
+        email: contact?.email ?? undefined,
+        phone: contact?.phone ?? undefined,
+        name: updates.guildName || updates.name || null,
+        contact,
+      }))
+
+    if (!stripeCustomerId) {
+      return NextResponse.json({ error: "Unable to resolve or create Stripe customer" }, { status: 500 })
+    }
+
+    await upsertUserContact({ discordId: targetDiscordId, stripeCustomerId })
+
     const parseDate = (value: any) => {
       const date = value ? new Date(value) : null
       return date && !Number.isNaN(date.getTime()) ? date : null
     }
 
-    const currentPeriodStart = parseDate(updates.currentPeriodStart) ?? new Date()
-    const currentPeriodEnd = parseDate(updates.currentPeriodEnd) ?? new Date()
+    const stripeSubscription = await stripe.subscriptions.create({
+      customer: stripeCustomerId,
+      description: `Admin-created ${normalizedTier} subscription for guild ${guildId}`,
+      payment_behavior: "default_incomplete",
+      collection_method: "charge_automatically",
+      metadata: {
+        discordId: targetDiscordId,
+        guildId,
+        guildName: updates.name || updates.guildName || "",
+        tier: normalizedTier,
+        createdBy: discordId,
+        source: "admin_portal",
+      },
+      items: [
+        {
+          price_data: {
+            currency: defaultCurrency,
+            unit_amount: Math.round(monthlyPrice * 100),
+            recurring: { interval: "month" },
+            product_data: {
+              name: `${normalizedTier.toUpperCase()} — ${updates.name || updates.guildName || guildId}`,
+            },
+          } as unknown as Stripe.SubscriptionCreateParams.Item["price_data"],
+        },
+      ],
+    })
+
+    const currentPeriodStart =
+      typeof (stripeSubscription as any).current_period_start === "number"
+        ? new Date((stripeSubscription as any).current_period_start * 1000)
+        : parseDate(updates.currentPeriodStart) ?? new Date()
+    const currentPeriodEnd =
+      typeof (stripeSubscription as any).current_period_end === "number"
+        ? new Date((stripeSubscription as any).current_period_end * 1000)
+        : parseDate(updates.currentPeriodEnd) ?? new Date()
 
     const subscription = await upsertSubscription({
-      id: updates.subscriptionId || updates.id || `manual_${randomUUID()}`,
+      id: stripeSubscription.id || updates.subscriptionId || updates.id || `manual_${randomUUID()}`,
       discordId: targetDiscordId,
       guildId,
       guildName: updates.name ?? updates.guildName ?? null,
-      stripeCustomerId: updates.stripeCustomerId ?? null,
-      tier: updates.tier || "starter",
-      status: updates.status || "active",
-      monthlyPrice: typeof updates.pricePerMonth === "number" ? updates.pricePerMonth : 0,
+      stripeCustomerId,
+      tier: normalizedTier,
+      status: stripeSubscription.status || updates.status || "active",
+      monthlyPrice,
       currentPeriodStart,
       currentPeriodEnd,
     })

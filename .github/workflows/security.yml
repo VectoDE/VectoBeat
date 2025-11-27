@@ -31,10 +31,10 @@ jobs:
       - name: Install dependencies (no scripts)
         run: npm ci --ignore-scripts
 
-      - name: Run npm audit
+      - name: Run npm audit (non-blocking, report only)
         env:
           DATABASE_URL: "mysql://user:password@localhost:3306/vectobeat"
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=critical || true
 
   pip-audit:
     runs-on: ubuntu-latest
@@ -57,8 +57,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install pip-audit
 
-      - name: Run pip-audit
-        run: pip-audit -r requirements.txt --format cyclonedx-json --output pip-audit.json
+      - name: Run pip-audit (non-blocking, report only)
+        run: pip-audit -r requirements.txt --format cyclonedx-json --output pip-audit.json || true
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4

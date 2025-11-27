@@ -1,5 +1,6 @@
 import crypto from "crypto"
 import { Prisma } from "@prisma/client"
+import type { ScaleAccountContact } from "@prisma/client"
 import { decryptJson, decryptText, encryptJson, encryptText, isEncryptionAvailable } from "./encryption"
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
@@ -275,7 +276,7 @@ export const getStoredUserProfile = async (discordId: string): Promise<StoredUse
           isAdmin: Boolean(guild.isAdmin),
         }
       })
-      .filter((guild): guild is { id: string; name: string; hasBot?: boolean; isAdmin?: boolean } => Boolean(guild))
+      .filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild))
 
     if (!payload && !contact) {
       return null
@@ -634,6 +635,7 @@ export const upsertSubscription = async (payload: UpsertSubscriptionPayload) => 
       discordId: record.discordId,
       guildId: record.guildId,
       guildName: record.guildName,
+      stripeCustomerId: record.stripeCustomerId,
       tier: record.tier,
       status: record.status,
       monthlyPrice: record.monthlyPrice,
@@ -666,6 +668,7 @@ export const getSubscriptionById = async (id: string) => {
       discordId: record.discordId,
       guildId: record.guildId,
       guildName: record.guildName,
+      stripeCustomerId: record.stripeCustomerId,
       tier: record.tier,
       status: record.status,
       monthlyPrice: record.monthlyPrice,
@@ -733,6 +736,7 @@ export const updateSubscriptionById = async (id: string, updates: UpdateSubscrip
       discordId: record.discordId,
       guildId: record.guildId,
       guildName: record.guildName,
+      stripeCustomerId: record.stripeCustomerId,
       tier: record.tier,
       status: record.status,
       monthlyPrice: record.monthlyPrice,
@@ -775,7 +779,7 @@ export const getGuildSubscriptionTier = async (guildId: string): Promise<Members
     const record = await db.subscription.findFirst({
       where: {
         guildId,
-        status: { in: ACTIVE_SUBSCRIPTION_STATUSES },
+        status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] },
       },
       orderBy: { updatedAt: "desc" },
     })
@@ -1613,7 +1617,7 @@ const ensureProfileSettings = async (discordId: string, usernameHint?: string | 
     return mapProfileSettings(existing as UserProfileSettingRecord)
   }
 
-  let baseHandle = generateFallbackHandle(usernameHint, discordId)
+  let baseHandle = generateFallbackHandle(usernameHint ?? undefined, discordId)
   while (baseHandle.length < PROFILE_HANDLE_MIN) {
     baseHandle = `${baseHandle}-${Math.floor(Math.random() * 1000)}`
   }
@@ -1799,9 +1803,9 @@ export const getPublicProfileBySlug = async (slug: string) => {
   const settings = await ensureProfileSettings(targetDiscordId, base.username ?? undefined)
   const decrypted = await getDecryptedProfilePayload(targetDiscordId)
   const guilds = Array.isArray(decrypted?.guilds) ? decrypted.guilds : []
-  const adminFull = guilds.filter((guild) => guild.isAdmin)
-  const memberOnly = guilds.filter((guild) => !guild.isAdmin)
-  const activeBotGuilds = guilds.filter((guild) => guild.hasBot)
+  const adminFull = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild?.isAdmin && guild?.id && guild?.name))
+  const memberOnly = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild && !guild.isAdmin && guild.id && guild.name))
+  const activeBotGuilds = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild?.hasBot && guild?.id && guild?.name))
   const membershipCount = guilds.length || base.guildCount || 0
   const botGuildCount = activeBotGuilds.length
   const totalGuildCount = membershipCount
@@ -2169,14 +2173,14 @@ export const saveQueueSnapshot = async (snapshot: QueueSnapshot, tier: Membershi
       where: { guildId: snapshot.guildId },
       update: {
         tier,
-        payload: snapshot,
+        payload: snapshot as unknown as Prisma.InputJsonValue,
         expiresAt,
         updatedAt: incomingUpdatedAt,
       },
       create: {
         guildId: snapshot.guildId,
         tier,
-        payload: snapshot,
+        payload: snapshot as unknown as Prisma.InputJsonValue,
         expiresAt,
         updatedAt: incomingUpdatedAt,
       },
@@ -2515,7 +2519,7 @@ type ScaleAccountContactRecord = {
   createdAt: string
 }
 
-const mapScaleContact = (row: Prisma.ScaleAccountContact): ScaleAccountContactRecord => ({
+const mapScaleContact = (row: ScaleAccountContact): ScaleAccountContactRecord => ({
   id: row.id,
   guildId: row.guildId,
   managerName: row.managerName,
@@ -3055,7 +3059,7 @@ export const listActiveSubscriptionTiers = async (): Promise<Map<string, Members
       return result
     }
     const records = await db.subscription.findMany({
-      where: { status: { in: ACTIVE_SUBSCRIPTION_STATUSES } },
+      where: { status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] } },
       select: { guildId: true, tier: true },
     })
     records.forEach((record) => {
@@ -3217,8 +3221,8 @@ export const listSecurityAuditEvents = async (
     }
     if (actorFilter) {
       apiWhere.OR = [
-        { actorName: { contains: actorFilter, mode: "insensitive" } },
-        { actorId: { contains: actorFilter, mode: "insensitive" } },
+        { actorName: { contains: actorFilter } },
+        { actorId: { contains: actorFilter } },
       ]
     }
 
@@ -3334,7 +3338,7 @@ export const listSecurityAccessLogs = async (
     const actorFilter = options.actor?.toLowerCase().trim() || null
 
     const ownerRows = await db.subscription.findMany({
-      where: { guildId, status: { in: ACTIVE_SUBSCRIPTION_STATUSES } },
+      where: { guildId, status: { in: [...ACTIVE_SUBSCRIPTION_STATUSES] } },
       select: { discordId: true },
       distinct: ["discordId"],
     })
@@ -3406,8 +3410,8 @@ export const listSecurityAccessLogs = async (
     }
     if (actorFilter) {
       apiWhere.OR = [
-        { actorName: { contains: actorFilter, mode: "insensitive" } },
-        { actorId: { contains: actorFilter, mode: "insensitive" } },
+        { actorName: { contains: actorFilter } },
+        { actorId: { contains: actorFilter } },
       ]
     }
 
@@ -3610,6 +3614,7 @@ export interface BlogPost {
   views: number
   featured: boolean
   publishedAt: string
+  image?: string | null
 }
 
 export type BlogReactionType = "up" | "down"
@@ -4533,6 +4538,9 @@ export const getContactMessageThread = async (id: string) => {
         id: ticket.id,
         name: ticket.name,
         email: ticket.email,
+        company: ticket.company,
+        topic: ticket.topic,
+        priority: ticket.priority,
         subject: ticket.subject,
         message: ticket.message,
         status: ticket.status,
@@ -4574,7 +4582,7 @@ export const appendContactMessageThread = async ({
   authorName?: string | null
   role: string
   body: string
-  attachments?: Prisma.JsonValue | null
+  attachments?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | null
 }) => {
   try {
     const db = getPool()
@@ -4587,7 +4595,7 @@ export const appendContactMessageThread = async ({
         authorName: authorName || null,
         role,
         body,
-        attachments: attachments ?? null,
+        attachments: attachments ?? Prisma.JsonNull,
       },
     })
 

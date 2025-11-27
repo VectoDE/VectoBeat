@@ -10,7 +10,9 @@ import {
   getUserRole,
   hasWelcomeEmailBeenSent,
   markWelcomeEmailSent,
+  getUserApiKey,
 } from "@/lib/db"
+import { ensureStripeCustomerForUser } from "@/lib/stripe-customers"
 import { getBotGuildPresence } from "@/lib/bot-status"
 import { hashSessionToken } from "@/lib/session"
 import { sendSecurityAlert } from "@/lib/alerts"
@@ -83,7 +85,7 @@ const discordFetch = async (path: string, token: string, attempt = 1): Promise<D
   const response = await fetch(`https://discord.com/api/v10${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "User-Agent": "VectoBeat/3.5.0",
+      "User-Agent": "VectoBeat/2.0.0",
     },
   })
 
@@ -143,8 +145,13 @@ export async function GET(request: NextRequest) {
 
     const userAgent = request.headers.get("user-agent") || null
     const extendedRequest = request as ExtendedNextRequest
-    const ipAddress = resolveClientIp(request)
-    const location = resolveClientLocation(request)
+    const resolverRequest = {
+      headers: request.headers,
+      ip: extendedRequest.ip ?? null,
+      geo: extendedRequest.geo ?? undefined,
+    } as NextRequest & { ip?: string | null; geo?: { city?: string | null; region?: string | null; country?: string | null } }
+    const ipAddress = resolveClientIp(resolverRequest)
+    const location = resolveClientLocation(resolverRequest)
 
     // Validate token format (Discord tokens are alphanumeric)
     if (!/^[A-Za-z0-9._-]+$/.test(token)) {
@@ -228,7 +235,19 @@ export async function GET(request: NextRequest) {
       phone: userData.phone,
     })
 
+    // Ensure the user has a persisted API key for authenticated API usage.
+    await getUserApiKey(userData.id)
+
     const contact = await getUserContact(userData.id)
+    const stripeCustomerId =
+      (contact && "stripeCustomerId" in contact && contact.stripeCustomerId) ||
+      (await ensureStripeCustomerForUser({
+        discordId: userData.id,
+        email: contact?.email ?? userData.email ?? null,
+        phone: contact?.phone ?? userData.phone ?? null,
+        name: userData.global_name || userData.display_name || userData.username,
+        contact,
+      }))
     if (contact?.email) {
       void (async () => {
         const alreadySent = await hasWelcomeEmailBeenSent(userData.id)
@@ -310,6 +329,7 @@ export async function GET(request: NextRequest) {
       requiresTwoFactor: Boolean(security.twoFactorEnabled),
       role,
       currentSessionId: sessionInfo.sessionId,
+      stripeCustomerId: stripeCustomerId ?? null,
     }
 
     sessionCache.set(token, {

@@ -1,12 +1,12 @@
 # Command Analytics Pipeline
 
-VectoBeat ships with an opt-in command analytics exporter that streams anonymised
-slash command events into your own data warehouse or a local log for later ETL.
+VectoBeat ships with an opt-in command analytics exporter that streams anonymised slash-command events into your own data warehouse or a local log for later ETL.
 
 ## Configuration
 Add the `analytics` block in `config.yml` (defaults shown):
 
-```yamlanalytics:
+```yaml
+analytics:
   enabled: true
   endpoint: "https://warehouse.example.com/v1/events"
   api_key: "super-secret"
@@ -16,12 +16,10 @@ Add the `analytics` block in `config.yml` (defaults shown):
   hash_salt: "vectobeat"
 ```
 
-* If `endpoint` is set, events are batched and delivered as JSON via HTTP POST.
-* If `endpoint` is empty, events are appended as NDJSON to `storage_path`.
-* `hash_salt` is used to derive deterministic, non-reversible user hashes.
-
-Environment variables (e.g. `ANALYTICS_ENDPOINT`) override the YAML values,
-matching the fields in `src/configs/settings.py`.
+- If `endpoint` is set, events are batched and delivered as JSON via HTTP POST with an optional bearer token.
+- If `endpoint` is empty, events are appended as NDJSON to `storage_path`.
+- `hash_salt` is used to derive deterministic, non-reversible user hashes.
+- Environment overrides mirror the keys above (`ANALYTICS_ENABLED`, `ANALYTICS_ENDPOINT`, `ANALYTICS_API_KEY`, etc.) and are populated from `.env` in `src/configs/settings.py`.
 
 ## Event schema
 Each event follows this shape:
@@ -39,10 +37,7 @@ Each event follows this shape:
 }
 ```
 
-`meta` only appears on failures, exposing the error class without leaking stack
-traces. All personally identifiable information is replaced with one-way hashes.
+`meta` only appears on failures, exposing the error class without leaking stack traces. Personally identifiable information is replaced with one-way hashes.
 
 ## Wiring
-The `ObservabilityEvents` cog automatically records completion/error events and
-pushes them into `CommandAnalyticsService`. As long as analytics are enabled,
-no additional setup is necessary.
+`CommandAnalyticsService` is started with the bot and receives events from the observability cog. No additional setup is necessary beyond the config block; the service automatically flushes when the batch size or flush interval is reached.

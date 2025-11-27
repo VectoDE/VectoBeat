@@ -58,8 +58,8 @@ export const createConciergeHandlers = (deps: RouteDeps = {}) => {
   const notify = deps.notify ?? sendNotificationEmail
 
   const getHandler = async (request: NextRequest) => {
-    const guildId = sanitize(request.nextUrl.searchParams.get("guildId"), 32)
-    const discordId = sanitize(request.nextUrl.searchParams.get("discordId"), 32)
+    const guildId = sanitize(request.nextUrl.searchParams.get("guildId") ?? undefined, 32)
+    const discordId = sanitize(request.nextUrl.searchParams.get("discordId") ?? undefined, 32)
     if (!guildId || !discordId) {
       return NextResponse.json({ error: "guildId_and_discordId_required" }, { status: 400 })
     }

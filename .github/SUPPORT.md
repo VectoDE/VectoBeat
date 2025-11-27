@@ -65,7 +65,7 @@
       <h3>Playback Issues</h3>
       <ul>
         <li>Run <code>/status</code> and <code>/lavalink</code>; attach embed outputs.</li>
-        <li>Verify Lavalink node health via <code>scripts/check_lavalink.py</code>.</li>
+        <li>Verify Lavalink node health via <code>curl -H \"Authorization: $LAVALINK_PASSWORD\" http://&lt;host&gt;:&lt;port&gt;/version</code> or the failover checker in <code>scripts/lavalink-failover-check.mjs</code>.</li>
         <li>Use <code>scripts/run_scenarios.py</code> to reproduce queue operations.</li>
       </ul>
     </td>

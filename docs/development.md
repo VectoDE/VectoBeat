@@ -15,7 +15,7 @@ Use the shared root `.env` for both runtimes. No per-service `.env` files are su
   ```
 
 ## Frontend (Next.js) dev loop
-- Install deps in `frontend/` and run `npm run dev` (loads the root `.env` via your shell or Compose).
+- Install deps in `frontend/` and run `npm run dev -p 3050` (loads the root `.env` via your shell or Compose).
 - Primary test suite (auth, control-panel, queue-sync, bot contracts):
   ```bash
   cd frontend

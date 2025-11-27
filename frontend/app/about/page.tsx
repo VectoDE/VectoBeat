@@ -16,6 +16,8 @@ export const metadata = buildPageMetadata({
   keywords: ["about vectobeat", "discord music bot team", "discord analytics", "discord automation"],
 })
 
+export const dynamic = "force-dynamic"
+
 export default async function AboutPage() {
   const metrics = await fetchHomeMetrics()
   const serverCountDisplay = formatCountWithPlus(metrics?.totals.serverCount)

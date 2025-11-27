@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BOT_ROOT = REPO_ROOT / "bot"
 COMMANDS_DIR = BOT_ROOT / "src" / "commands"
-OUTPUT = BOT_ROOT / "docs" / "command_reference.md"
+OUTPUT = REPO_ROOT / "docs" / "command_reference.md"
 
 
 def attr_name(node: ast.AST) -> str:

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib"
+import { PDFDocument, StandardFonts, rgb, type Color } from "pdf-lib"
 import { stripe } from "@/lib/stripe"
 import type Stripe from "stripe"
 import { readFile } from "fs/promises"
@@ -11,8 +11,8 @@ const COMPANY = {
   line2: "Breitenburger Straße 15",
   city: "25524 Itzehoe",
   country: "Germany",
-  email: "billing@vectobeat.com",
-  phone: "+49 40 1234 5678",
+  email: "billing@uplytech.de",
+  phone: "+49 172 6166860",
   vatId: "DE123456789",
 }
 
@@ -32,20 +32,27 @@ const retrieveFromCheckout = async (sessionId: string) => {
     expand: ["line_items", "customer_details.address"],
   })
   if (!session) return null
+  const sessionSubscription = (typeof session.subscription === "object" ? session.subscription : null) as any
+  const periodEnd =
+    typeof sessionSubscription?.current_period_end === "number"
+      ? new Date(sessionSubscription.current_period_end * 1000).toISOString()
+      : new Date().toISOString()
   return {
     invoiceNumber: session.id,
     issueDate: new Date().toISOString(),
-    dueDate:
-      typeof session.subscription === "object" && session.subscription?.current_period_end
-        ? new Date(session.subscription.current_period_end * 1000).toISOString()
-        : new Date().toISOString(),
+    dueDate: periodEnd,
     customerName: session.customer_details?.name || "VectoBeat Subscriber",
     customerEmail: session.customer_details?.email || "",
     customerAddress: session.customer_details?.address,
     currency: session.currency || "eur",
     lineItems:
       session.line_items?.data.map((item) => ({
-        description: item.description || item.price?.product?.name || "Subscription",
+        description:
+          item.description ||
+          (typeof item.price?.product === "object" && item.price?.product
+            ? (item.price.product as Stripe.Product).name
+            : null) ||
+          "Subscription",
         quantity: item.quantity || 1,
         unitAmount: item.price?.unit_amount ?? item.amount_subtotal ?? 0,
         totalAmount: item.amount_total ?? (item.price?.unit_amount ?? 0) * (item.quantity || 1),
@@ -77,14 +84,21 @@ const retrieveFromSubscription = async (subscriptionId: string) => {
     customerEmail: customer?.email || invoice?.customer_email || "",
     customerAddress: customer?.address || invoice?.customer_address,
     currency: invoice?.currency || subscription.currency || "eur",
-    lineItems: lines.map((item) => ({
-      description: item.description || item.plan?.nickname || "Subscription",
-      quantity: item.quantity || 1,
-      unitAmount: item.price?.unit_amount ?? item.amount_subtotal ?? 0,
-      totalAmount: item.amount ?? item.amount_excluding_tax ?? 0,
-    })),
-    subtotal: invoice?.amount_subtotal ?? invoice?.amount_due ?? 0,
-    taxAmount: invoice?.tax ?? invoice?.amount_tax ?? 0,
+    lineItems: lines.map((item: any) => {
+      const planNickname =
+        typeof item?.plan?.nickname === "string" ? item.plan.nickname : undefined
+      const amountSubtotal = typeof item?.amount_subtotal === "number" ? item.amount_subtotal : null
+      const amountExTax = typeof item?.amount_excluding_tax === "number" ? item.amount_excluding_tax : null
+      const unitAmount = typeof item?.price?.unit_amount === "number" ? item.price.unit_amount : undefined
+      return {
+        description: item.description || planNickname || "Subscription",
+        quantity: item.quantity || 1,
+        unitAmount: unitAmount ?? amountSubtotal ?? 0,
+        totalAmount: item.amount ?? amountExTax ?? 0,
+      }
+    }),
+    subtotal: typeof (invoice as any)?.amount_subtotal === "number" ? (invoice as any).amount_subtotal : invoice?.amount_due ?? 0,
+    taxAmount: typeof (invoice as any)?.amount_tax === "number" ? (invoice as any).amount_tax : 0,
     total: invoice?.amount_paid ?? invoice?.amount_due ?? 0,
     paymentStatus: invoice?.status ?? subscription.status ?? null,
     customerId:
@@ -142,7 +156,7 @@ export async function GET(request: NextRequest) {
       console.warn("[VectoBeat] Could not embed invoice logo:", error)
     }
 
-    const palette = {
+    const palette: Record<string, Color> = {
       background: rgb(0.97, 0.97, 0.99),
       header: rgb(0.06, 0.08, 0.13),
       accent: rgb(0.95, 0.52, 0.2),
@@ -159,7 +173,7 @@ export async function GET(request: NextRequest) {
       text: string,
       x: number,
       y: number,
-      opts: { size?: number; color?: { r: number; g: number; b: number }; font?: "regular" | "bold" } = {},
+      opts: { size?: number; color?: Color; font?: "regular" | "bold" } = {},
     ) => {
       const { size = 11, color = palette.text, font = "regular" } = opts
       page.drawText(text, {
@@ -459,7 +473,7 @@ export async function GET(request: NextRequest) {
       .replace(/[^A-Za-z0-9-]/g, "")
       .toLowerCase()
     const pdfBytes = await doc.save()
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="vectobeat-invoice-${fileSuffix || "details"}.pdf"`,

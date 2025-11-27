@@ -1,7 +1,6 @@
 # Queue Telemetry Webhook
 
-VectoBeat can emit real-time queue lifecycle events (play, skip, finish) to an
-external webhook so dashboards or bots can reflect the current playback state.
+VectoBeat can emit real-time queue lifecycle events (play, skip, finish) to an external webhook so dashboards or bots can reflect the current playback state.
 
 ## Configuration
 ```
@@ -12,9 +11,7 @@ queue_telemetry:
   include_guild_metadata: true
 ```
 
-Environment variables such as `QUEUE_TELEMETRY_ENDPOINT` override YAML values.
-When `include_guild_metadata` is `true`, `guild_id` and `shard_id` will be set on
-each payload; disable this if you want to anonymise guild identifiers.
+Environment variables (`QUEUE_TELEMETRY_ENABLED`, `QUEUE_TELEMETRY_ENDPOINT`, `QUEUE_TELEMETRY_API_KEY`, `QUEUE_TELEMETRY_INCLUDE_GUILD`) override YAML values. When `include_guild_metadata` is `true`, `guild_id` and `shard_id` will be set on each payload; disable this if you want to anonymise guild identifiers.
 
 ## Payloads
 Every request is a JSON document with this envelope:
@@ -34,15 +31,19 @@ Every request is a JSON document with this envelope:
       "duration": 210000,
       "requester": 555555555555555555
     },
-    "actor_id": 222222222222222222
+    "actor_id": 222222222222222222,
+    "queue_length": 6,
+    "queue_duration_ms": 534000
   }
 }
 ```
 
 `event` values you can expect:
 - `play` — dispatched when a track starts playing.
-- `skip` — dispatched after a manual `/skip` call, including the actor id.
+- `skip` — dispatched after `/skip`, including the actor id.
 - `queue_finished` — emitted when the queue is exhausted (no autoplay).
 
-The webhook is called sequentially; return 2xx responses to keep the pipeline
-healthy. Non-2xx responses are logged for operators to review.
+## Analytics modes & filters
+- The analytics mode comes from the control panel server settings (`analyticsMode`): `basic` redacts most fields, `advanced` sends full payloads, and `predictive` adds hints (remaining tracks, projected idle seconds).
+- Webhook preferences (enabled + allowed events) are fetched from the control panel and cached for 5 minutes per guild.
+- All payloads are sent sequentially; return 2xx responses to keep the pipeline healthy. Non-2xx responses are logged for operators to review.

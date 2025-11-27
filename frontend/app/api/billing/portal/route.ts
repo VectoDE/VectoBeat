@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     const contact = await getUserContact(discordId)
-    if (!contact?.stripeCustomerId) {
+    if (!contact || !("stripeCustomerId" in contact) || !contact.stripeCustomerId) {
       return NextResponse.json({ error: "No Stripe customer is linked to this account yet." }, { status: 404 })
     }
 

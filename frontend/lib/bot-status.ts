@@ -74,6 +74,14 @@ const parseGuildIds = (payload: unknown): string[] => {
 }
 
 export const getBotStatus = async () => {
+  const skipBotStatus =
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.SKIP_REMOTE_METRICS === "1" ||
+    process.env.SKIP_BOT_STATUS === "1"
+  if (skipBotStatus) {
+    return null
+  }
+
   const now = Date.now()
   if (cachedBotStatus.data && cachedBotStatus.expires > now) {
     return cachedBotStatus.data

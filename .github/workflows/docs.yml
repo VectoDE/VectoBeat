@@ -25,13 +25,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
 
       - name: Install Mermaid CLI
         run: npm install -g @mermaid-js/mermaid-cli@10.9.0
 
       - name: Regenerate architecture diagram
-        run: mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -t dark -p docs/puppeteer-config.json
+        run: mmdc -i docs/system_architecture.mmd -o assets/images/architecture.png -w 3840 -H 2160 -b transparent -p docs/puppeteer-config.json
 
       - name: Ensure diagram is committed
         run: git diff --exit-code assets/images/architecture.png

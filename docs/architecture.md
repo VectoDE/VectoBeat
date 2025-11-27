@@ -46,7 +46,7 @@ flowchart LR
 2. **Bot Runtime**
    - The bot connects to Discord’s Gateway using AutoShardedBot for automatic scaling.
    - Playback requests are proxied to the Lavalink cluster. Regional preferences are enforced via the Regional Routing Service which consults persisted settings and falls back gracefully when nodes fail.
-   - Automation/audit signals are written to MySQL through the `/api/bot/*` endpoints and mirrored in the control panel UI.
+   - Automation/audit signals are written to MySQL through the `/api/bot/*` endpoints and mirrored in the control panel UI. Queue snapshots are pushed to `/api/bot/queue-sync` for dashboards and durable state.
 
 3. **Observability**
    - Status API exposes ready-checked metrics (guild/queue counts, node health, assigned regions). Frontend widgets and routing reconciliations rely on this feed.

@@ -12,7 +12,7 @@ const maskValue = (value: string | null) => {
   return `${hidden}${tail}`
 }
 
-const pickEnv = (keys: string[]) => {
+const pickEnv = (keys: string[] | readonly string[]) => {
   for (const key of keys) {
     const value = process.env[key]
     if (typeof value === "string" && value.trim()) {

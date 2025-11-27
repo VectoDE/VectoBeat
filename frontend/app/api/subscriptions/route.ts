@@ -14,7 +14,7 @@ const centsToMonthly = (unitAmount?: number | null, interval?: string | null) =>
 
 const resolveStripeCustomerId = async (discordId: string) => {
   const contact = await getUserContact(discordId)
-  if (contact?.stripeCustomerId) {
+  if (contact && "stripeCustomerId" in contact && contact.stripeCustomerId) {
     return { contact, stripeCustomerId: contact.stripeCustomerId }
   }
 
@@ -52,7 +52,7 @@ const syncSubscriptionsFromStripe = async (discordId: string) => {
   })
 
   await Promise.all(
-    subscriptions.data.map((subscription) => {
+    subscriptions.data.map((subscription: any) => {
       const item = subscription.items.data[0]
       const price = item?.price
       const metadata = subscription.metadata || {}
@@ -60,6 +60,9 @@ const syncSubscriptionsFromStripe = async (discordId: string) => {
       const tierId = metadata.tierId || metadata.tier || price?.nickname || price?.id || "starter"
       const guildId = metadata.guildId || metadata.guild_id || discordId
       const guildName = metadata.guildName || metadata.guild_name || price?.nickname || null
+
+      const currentPeriodStartTs = (subscription as any)?.current_period_start
+      const currentPeriodEndTs = (subscription as any)?.current_period_end
 
       return upsertSubscription({
         id: subscription.id,
@@ -71,12 +74,12 @@ const syncSubscriptionsFromStripe = async (discordId: string) => {
         status: subscription.status,
         monthlyPrice,
         currentPeriodStart:
-          typeof subscription.current_period_start === "number"
-            ? new Date(subscription.current_period_start * 1000)
+          typeof currentPeriodStartTs === "number"
+            ? new Date(currentPeriodStartTs * 1000)
             : new Date(),
         currentPeriodEnd:
-          typeof subscription.current_period_end === "number"
-            ? new Date(subscription.current_period_end * 1000)
+          typeof currentPeriodEndTs === "number"
+            ? new Date(currentPeriodEndTs * 1000)
             : new Date(),
       })
     }),

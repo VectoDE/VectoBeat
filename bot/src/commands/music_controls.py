@@ -116,6 +116,9 @@ class MusicControls(commands.Cog):
         if service:
             await service.record_event(guild_id, event, payload)
 
+    def _profile_manager(self):
+        return getattr(self.bot, "profile_manager", None)
+
     async def _record_compliance(self, guild_id: int, event: str, details: Dict[str, Any]) -> None:
         service = self._alert_service()
         if service:
@@ -883,6 +886,52 @@ class MusicControls(commands.Cog):
         embed = factory.primary("🔊 Volume Updated", f"Set to **{level}%**")
         await inter.response.send_message(embed=embed, ephemeral=True)
         self._log_dj_action(inter, "volume", details=f"{level}%")
+
+    @app_commands.command(name="volume-info", description="Show the current and default volume settings.")
+    async def volume_info(self, inter: discord.Interaction):
+        """Display current volume plus the defaults that will be applied."""
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if not inter.guild:
+            return await inter.response.send_message(
+                embed=factory.warning("This command can only be used inside a server."),
+                ephemeral=True,
+            )
+
+        player = self.bot.lavalink.player_manager.get(inter.guild.id)
+        current_volume = getattr(player, "volume", None)
+
+        profile_manager = self._profile_manager()
+        profile = profile_manager.get(inter.guild.id) if profile_manager else None
+
+        settings_service = self._settings_service()
+        global_default = settings_service.global_default_volume() if settings_service else None
+        guild_default = getattr(profile, "default_volume", None)
+        applied_default = global_default or guild_default
+
+        embed = factory.primary("🔊 Volume Info")
+        embed.add_field(
+            name="Current Volume",
+            value=f"`{current_volume}%`" if isinstance(current_volume, (int, float)) else "Not connected",
+            inline=True,
+        )
+        embed.add_field(
+            name="Applied Default",
+            value=f"`{applied_default}%`" if applied_default is not None else "Not configured",
+            inline=True,
+        )
+        embed.add_field(
+            name="Guild Profile Default",
+            value=f"`{guild_default}%`" if guild_default is not None else "Not set",
+            inline=True,
+        )
+        embed.add_field(
+            name="Global Default (Control Panel)",
+            value=f"`{global_default}%`" if global_default is not None else "Not set",
+            inline=True,
+        )
+        embed.set_footer(text="Defaults apply automatically when the bot joins voice.")
+
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="loop", description="Set loop mode for playback.")
     @app_commands.choices(

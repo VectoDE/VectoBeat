@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+import aiohttp
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -44,6 +45,28 @@ class ProfileCommands(commands.Cog):
             return "You require the `Manage Server` permission to modify playback profiles."
         return None
 
+    async def _push_bot_defaults(self, user_id: int, defaults: dict[str, int | bool | str]) -> None:
+        """Synchronise bot defaults back to the control panel."""
+        settings_service = getattr(self.bot, "server_settings", None)
+        if not settings_service or not getattr(settings_service, "config", None):
+            return
+        base_url = getattr(settings_service.config, "base_url", None)
+        api_key = getattr(settings_service.config, "api_key", None)
+        if not base_url or not api_key:
+            return
+        url = f"{base_url.rstrip('/')}/api/account/bot-settings"
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        payload = {"discordId": str(user_id), **defaults}
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+                async with session.put(url, json=payload, headers=headers) as resp:
+                    if resp.status >= 400 and hasattr(self.bot, "logger"):
+                        body = (await resp.text())[:200]
+                        self.bot.logger.warning("Bot defaults sync failed (%s): %s", resp.status, body)
+        except Exception as exc:  # pragma: no cover - defensive best-effort
+            if hasattr(self.bot, "logger"):
+                self.bot.logger.debug("Bot defaults sync error: %s", exc)
+
     @staticmethod
     def _profile_embed(inter: discord.Interaction, profile) -> discord.Embed:
         """Build a concise embed representing the guild profile."""
@@ -72,6 +95,9 @@ class ProfileCommands(commands.Cog):
         player = self.bot.lavalink.player_manager.get(inter.guild.id)  # type: ignore[union-attr]
         if player:
             await player.set_volume(profile.default_volume)
+
+        # Push the new default back to the control panel so UI stays in sync.
+        await self._push_bot_defaults(inter.user.id, {"defaultVolume": profile.default_volume})
 
         await inter.response.send_message(
             embed=self._profile_embed(inter, profile),

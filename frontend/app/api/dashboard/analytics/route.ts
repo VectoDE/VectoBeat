@@ -99,6 +99,7 @@ const buildGuildAnalytics = (guildId: string, snapshot: QueueSnapshot | null): A
 
   return {
     __guildId: guildId,
+    activeVoiceConnections: [],
     summaryCards,
     userGrowthData: [],
     streamsData: [

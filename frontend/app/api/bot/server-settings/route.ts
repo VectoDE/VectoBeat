@@ -112,18 +112,19 @@ export const sanitizeSettingsForTier = (
 ): ServerFeatureSettings => {
   const plan = getPlanCapabilities(tier)
   const safe: ServerFeatureSettings = { ...defaultServerFeatureSettings }
+  const target = safe as Record<string, any>
 
   for (const [key, option] of optionMap.entries()) {
     if (!option) continue
     if (!hasTierAccess(tier, option.minTier)) {
-      safe[key] = defaultServerFeatureSettings[key]
+      target[key] = defaultServerFeatureSettings[key]
       continue
     }
 
     const value = incoming[key]
     switch (option.type) {
       case "boolean": {
-        safe[key] = applyPlanBooleanOverride(key, plan, value) as ServerFeatureSettings[typeof key]
+        target[key] = applyPlanBooleanOverride(key, plan, value)
         break
       }
       case "select": {
@@ -140,9 +141,9 @@ export const sanitizeSettingsForTier = (
           typeof value === "string" && choices.some((choice) => choice.value === value)
             ? value
             : isKnownChoice
-              ? highestChoice?.value ?? defaultServerFeatureSettings[key]
-              : (defaultChoice ?? highestChoice)?.value ?? defaultServerFeatureSettings[key]
-        safe[key] = selected as ServerFeatureSettings[typeof key]
+              ? highestChoice?.value ?? (defaultServerFeatureSettings[key] as string)
+              : (defaultChoice ?? highestChoice)?.value ?? (defaultServerFeatureSettings[key] as string)
+        target[key] = selected
         break
       }
       case "range": {
@@ -156,7 +157,7 @@ export const sanitizeSettingsForTier = (
         if (option.key === "queueLimit") {
           next = clampQueueLimit(next, tier)
         }
-        safe[key] = next as ServerFeatureSettings[typeof key]
+        target[key] = next
         break
       }
       case "multiselect": {
@@ -166,7 +167,7 @@ export const sanitizeSettingsForTier = (
               .map((entry) => (typeof entry === "string" ? entry : null))
               .filter((entry): entry is string => Boolean(entry && allowed.has(entry)))
           : []
-        safe[key] = values as ServerFeatureSettings[typeof key]
+        target[key] = values
         break
       }
       case "text": {
@@ -174,17 +175,17 @@ export const sanitizeSettingsForTier = (
         const fallback = (defaultServerFeatureSettings[key] as string) || option.placeholder || ""
         const normalized =
           typeof value === "string" ? value.trim().slice(0, maxLength) : fallback.slice(0, maxLength)
-        safe[key] = (normalized || fallback) as ServerFeatureSettings[typeof key]
+        target[key] = normalized || fallback
         break
       }
       case "color": {
         const fallback = (defaultServerFeatureSettings[key] as string) || "#FF4D6D"
         const normalized = typeof value === "string" && HEX_COLOR.test(value) ? value.toUpperCase() : fallback
-        safe[key] = normalized as ServerFeatureSettings[typeof key]
+        target[key] = normalized
         break
       }
       default:
-        safe[key] = defaultServerFeatureSettings[key]
+        target[key] = defaultServerFeatureSettings[key]
     }
   }
 
@@ -228,20 +229,24 @@ export const sanitizeSettingsForTier = (
           typeof token.lastFour === "string" &&
           typeof token.createdAt === "string",
       )
-      .map((token) => ({
-        id: token.id,
-        label: token.label,
-        hash: token.hash,
-        lastFour: token.lastFour,
-        createdAt: token.createdAt,
-        rotatedAt: typeof token.rotatedAt === "string" ? token.rotatedAt : null,
-        lastUsedAt: typeof token.lastUsedAt === "string" ? token.lastUsedAt : null,
-        scopes:
-          Array.isArray(token.scopes) && token.scopes.length
-            ? token.scopes.map((scope: any) => (typeof scope === "string" ? scope : "")).filter(Boolean)
-            : ["queue.read"],
-        createdBy: typeof token.createdBy === "string" ? token.createdBy : null,
-      }))
+      .map((token) => {
+        const status: "disabled" | "active" = token.status === "disabled" ? "disabled" : "active"
+        return {
+          id: token.id,
+          label: token.label,
+          hash: token.hash,
+          lastFour: token.lastFour,
+          createdAt: token.createdAt,
+          rotatedAt: typeof token.rotatedAt === "string" ? token.rotatedAt : null,
+          lastUsedAt: typeof token.lastUsedAt === "string" ? token.lastUsedAt : null,
+          scopes:
+            Array.isArray(token.scopes) && token.scopes.length
+              ? token.scopes.map((scope: any) => (typeof scope === "string" ? scope : "")).filter(Boolean)
+              : ["queue.read"],
+          createdBy: typeof token.createdBy === "string" ? token.createdBy : null,
+          status,
+        }
+      })
   }
   safe.apiTokens = normalizeTokenRecords()
   const domain = sanitizeDomain((incoming as any)?.customDomain)

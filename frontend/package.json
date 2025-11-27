@@ -1,6 +1,6 @@
 {
-  "name": "vectobeat",
-  "version": "0.1.0",
+  "name": "vectobeat-frontend",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "next build",

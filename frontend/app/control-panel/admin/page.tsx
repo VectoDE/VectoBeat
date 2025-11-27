@@ -2136,20 +2136,63 @@ export default function AdminControlPanelPage() {
                 liveStatus: conn.status,
               }))
             : [
-                { label: "Database", key: "DATABASE_URL", ...formatConn("DATABASE_URL"), liveStatus: "unknown" },
+                {
+                  label: "Database",
+                  key: "DATABASE_URL",
+                  ...formatConn("DATABASE_URL"),
+                  status: formatConn("DATABASE_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
                 {
                   label: "Redis",
                   key: "REDIS_URL",
                   configured: Boolean(redisPrimary),
                   display: formatConn(redisPrimary ? "REDIS_URL" : "UPSTASH_REDIS_REST_URL").display,
+                  status: Boolean(redisPrimary) ? "configured" : "missing",
                   liveStatus: "unknown",
                 },
-                { label: "Cache", key: "CACHE_URL", ...formatConn("CACHE_URL"), liveStatus: "unknown" },
-                { label: "Upstash REST", key: "UPSTASH_REDIS_REST_URL", ...formatConn("UPSTASH_REDIS_REST_URL"), liveStatus: "unknown" },
-                { label: "Upstash WS", key: "UPSTASH_REDIS_WS_URL", ...formatConn("UPSTASH_REDIS_WS_URL"), liveStatus: "unknown" },
-                { label: "Status API", key: "BOT_STATUS_API_URL", ...formatConn("BOT_STATUS_API_URL"), liveStatus: "unknown" },
-                { label: "Server settings", key: "SERVER_SETTINGS_API_URL", ...formatConn("SERVER_SETTINGS_API_URL"), liveStatus: "unknown" },
-                { label: "Queue sync", key: "QUEUE_SYNC_ENDPOINT", ...formatConn("QUEUE_SYNC_ENDPOINT"), liveStatus: "unknown" },
+                {
+                  label: "Cache",
+                  key: "CACHE_URL",
+                  ...formatConn("CACHE_URL"),
+                  status: formatConn("CACHE_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
+                {
+                  label: "Upstash REST",
+                  key: "UPSTASH_REDIS_REST_URL",
+                  ...formatConn("UPSTASH_REDIS_REST_URL"),
+                  status: formatConn("UPSTASH_REDIS_REST_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
+                {
+                  label: "Upstash WS",
+                  key: "UPSTASH_REDIS_WS_URL",
+                  ...formatConn("UPSTASH_REDIS_WS_URL"),
+                  status: formatConn("UPSTASH_REDIS_WS_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
+                {
+                  label: "Status API",
+                  key: "BOT_STATUS_API_URL",
+                  ...formatConn("BOT_STATUS_API_URL"),
+                  status: formatConn("BOT_STATUS_API_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
+                {
+                  label: "Server settings",
+                  key: "SERVER_SETTINGS_API_URL",
+                  ...formatConn("SERVER_SETTINGS_API_URL"),
+                  status: formatConn("SERVER_SETTINGS_API_URL").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
+                {
+                  label: "Queue sync",
+                  key: "QUEUE_SYNC_ENDPOINT",
+                  ...formatConn("QUEUE_SYNC_ENDPOINT"),
+                  status: formatConn("QUEUE_SYNC_ENDPOINT").configured ? "configured" : "missing",
+                  liveStatus: "unknown",
+                },
               ]
         const latestHealthTimestamp =
           systemHealth?.history && systemHealth.history.length
@@ -2590,7 +2633,11 @@ export default function AdminControlPanelPage() {
                     Refresh
                   </button>
                   <a
-                    href={discordId ? `/api/admin/logs?discordId=${discordId}&download=1` : "#"}
+                    href={
+                      discordId
+                        ? `/api/admin/logs?discordId=${encodeURIComponent(discordId)}&download=1`
+                        : undefined
+                    }
                     className="px-3 py-2 border border-border/60 rounded-lg text-xs font-semibold hover:bg-card/40 transition-colors"
                     aria-disabled={!discordId}
                   >
@@ -3326,17 +3373,17 @@ export default function AdminControlPanelPage() {
           {
             label: "Guild feature controls",
             description: "Jump directly to server-level bot automation settings.",
-            href: "/control-panel",
+            href: { pathname: "/control-panel" },
           },
           {
             label: "Live telemetry",
             description: "Inspect uptime, listeners, and real-time bot metrics.",
-            href: "/stats",
+            href: { pathname: "/stats" },
           },
           {
             label: "Pricing & entitlements",
             description: "Audit plan unlocks before enabling premium toggles.",
-            href: "/pricing",
+            href: { pathname: "/pricing" },
           },
         ]
 
