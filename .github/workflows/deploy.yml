@@ -22,7 +22,7 @@ jobs:
       bot-tag: ${{ steps.bot-tag.outputs.tag }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Extract frontend metadata (tags, labels)
         id: meta-frontend
