@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "VectoBeat",
     images: [
       {
-        url: "/og/vectobeat-og.png",
+        url: "/favicon.ico",
         width: 1200,
         height: 630,
         alt: "VectoBeat - Premium Discord Music Bot",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "VectoBeat - Premium Discord Music Bot",
     description: "Professional-grade music streaming for Discord servers",
-    images: ["/og/vectobeat-og.png"],
+    images: ["/favicon.ico"],
     creator: "@vectobeat",
   },
   alternates: {
@@ -57,19 +57,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/favicon.ico" },
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/logo.png", sizes: "512x512" },
     ],
+    shortcut: ["/favicon.ico"],
     apple: "/apple-icon.png",
   },
 }
