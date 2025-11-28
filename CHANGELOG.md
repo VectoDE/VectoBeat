@@ -3,6 +3,36 @@
 All notable changes to **VectoBeat** are tracked in this document.  
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.0.0-beta] - 2025-11-28
+
+### Highlights
+- Two-Factor Authentication shipped end-to-end (setup, challenge, backup) with a dedicated `/two-factor` flow and guarded session verification.
+- SEO and marketing polish: canonical metadata for all marketing pages, sitemap/robots, refreshed contact experience, and blog/share enhancements.
+- Control panel, admin, and billing APIs tightened with new auth helpers, Stripe customer utilities, and hardened status/queue-sync surfaces.
+- CI/workflow refinements plus React 19-compatible dependency bumps (vaul 1.1.2) keep builds green; GitHub issue templates now capture structured reports.
+
+### Added
+- TOTP-based 2FA endpoints (`/api/account/security/*`), challenge handler, backup code support, and a guided setup UI with QR/secret display.
+- SEO utility (`lib/seo`) powering per-page metadata, `robots.ts`/`sitemap.ts`, and richer OpenGraph/Twitter cards across about, pricing, features, roadmap, blog, and profile pages.
+- New contact client flow with validated form handling, plus refreshed support-desk metadata and changelog/blog sharing widgets.
+- Stripe customer helper and admin subscription/log endpoints expanded to improve invoice/portal handling and audit coverage.
+- Documentation additions for queue sync and updated architecture/operations guidance.
+
+### Changed
+- Control-panel, concierge, automation, analytics, and bot routes now reuse stricter auth/actor helpers and more consistent error payloads; server settings/status APIs gained robustness.
+- Marketing surface tightened: navigation/footer/hero content tuned, contact page rebuilt as a client flow, and page-level metadata normalized.
+- Issue templates converted to structured Markdown prompts for bugs/features/custom requests.
+- Workflows (build, deploy, security, test) adjusted for the multi-service layout and stronger cache/keying; Docker builds pull the correct contexts.
+
+### Fixed
+- Account export, billing (invoice/portal), and bot metric/event handlers now return consistent responses and validation failures instead of silent fallbacks.
+- Resolved React 19 peer conflict by upgrading `vaul` to 1.1.2 so `npm ci --include=dev` succeeds in CI and container builds.
+
+### Maintenance
+- Dependency refreshes (vaul 1.1.2 and related lockfile updates), plus minor UI kit tidy-ups.
+- README/command reference and queue-sync docs updated to reflect the post-alpha architecture and operational paths.
+- Scripts and workflows realigned to the new repo structure; TODO/CONTRIBUTING/CODEOWNERS refreshed.
+
 ## [2.0.0-alpha] - 2025-11-22
 
 ### Highlights
