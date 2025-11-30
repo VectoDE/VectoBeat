@@ -3,7 +3,14 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const planCapabilitiesAbsolute = path.resolve(__dirname, "../plan-capabilities.json")
+const planCapabilitiesAbsolute =
+  [path.resolve(__dirname, "../plan-capabilities.json"), path.resolve(__dirname, "./plan-capabilities.json")].find(
+    (candidate) => fs.existsSync(candidate)
+  ) ??
+  (() => {
+    throw new Error("plan-capabilities.json is missing. Add it to the repository or Docker image.")
+  })()
+
 const planCapabilitiesData = JSON.parse(fs.readFileSync(planCapabilitiesAbsolute, "utf-8"))
 
 /** @type {import('next').NextConfig} */
