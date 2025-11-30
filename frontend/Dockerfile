@@ -3,6 +3,7 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl && corepack enable
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY frontend/package.json frontend/package-lock.json ./
+RUN npm install
 RUN npm ci --include=dev
 
 FROM deps AS builder
