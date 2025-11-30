@@ -8,8 +8,10 @@ RUN npm ci --include=dev
 
 FROM deps AS builder
 WORKDIR /app
+ARG STRIPE_SECRET_KEY=dummy_stripe_key
 # Prisma needs a DATABASE_URL at build time even though it does not connect.
-ENV DATABASE_URL="mysql://user:password@mysql:3306/vectobeat"
+ENV DATABASE_URL="mysql://user:password@mysql:3306/vectobeat" \
+    STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
 RUN npx prisma generate && npm run build

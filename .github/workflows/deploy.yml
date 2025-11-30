@@ -59,6 +59,8 @@ jobs:
         with:
           context: .
           file: frontend/Dockerfile
+          build-args: |
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY || 'dummy_stripe_key' }}
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
