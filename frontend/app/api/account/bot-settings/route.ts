@@ -17,6 +17,7 @@ const INTERNAL_SECRETS = expandSecrets(
   process.env.STATUS_API_KEY,
   process.env.BOT_STATUS_API_KEY,
 )
+const hasInternalSecrets = INTERNAL_SECRETS.length > 0
 
 export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
   const verifyUser = deps.verifyUser ?? verifyRequestForUser
@@ -29,7 +30,7 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
       return NextResponse.json({ error: "discordId is required" }, { status: 400 })
     }
 
-    const isInternal = authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
+    const isInternal = hasInternalSecrets && authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
     if (!isInternal) {
       const auth = await verifyUser(request, discordId)
       if (!auth.valid) {
@@ -48,7 +49,7 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
         return NextResponse.json({ error: "discordId is required" }, { status: 400 })
       }
 
-      const isInternal = authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
+      const isInternal = hasInternalSecrets && authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
       if (!isInternal) {
         const auth = await verifyUser(request, discordId)
         if (!auth.valid) {

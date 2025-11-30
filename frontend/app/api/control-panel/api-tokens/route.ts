@@ -16,7 +16,10 @@ const AUTH_TOKENS = expandSecrets(
   process.env.BOT_STATUS_API_KEY,
 )
 
+const hasAuthTokens = AUTH_TOKENS.length > 0
+
 const isAuthorizedByToken = (request: NextRequest) =>
+  hasAuthTokens &&
   authorizeRequest(request, AUTH_TOKENS, {
     allowLocalhost: true,
     headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
