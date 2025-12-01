@@ -5,6 +5,7 @@
 
 # Root env files are allowed; block service-specific copies
 .env.local
+.env.development
 .env.production
 **/.env
 bot/.env*
