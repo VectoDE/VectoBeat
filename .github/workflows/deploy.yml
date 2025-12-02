@@ -122,13 +122,30 @@ jobs:
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
         uses: actions/checkout@v4
 
+      - name: Prepare SSH key
+        if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
+        id: prep-ssh
+        env:
+          DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "DEPLOY_SSH_KEY is empty. Make sure the repository secret is set."
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          key_file=~/.ssh/deploy_key
+          # Support secrets stored with literal \n sequences or real newlines
+          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' > "$key_file"
+          chmod 600 "$key_file"
+          echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
+
       - name: Sync container to server
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ env.DEPLOY_SSH_HOST }}
           username: ${{ env.DEPLOY_SSH_USER }}
-          key: ${{ env.DEPLOY_SSH_KEY }}
+          key_path: ${{ steps.prep-ssh.outputs.key_path }}
           source: docker-compose.yml
           target: ${{ env.DEPLOY_TARGET_PATH }}
 
@@ -146,7 +163,7 @@ jobs:
         with:
           host: ${{ env.DEPLOY_SSH_HOST }}
           username: ${{ env.DEPLOY_SSH_USER }}
-          key: ${{ env.DEPLOY_SSH_KEY }}
+          key_path: ${{ steps.prep-ssh.outputs.key_path }}
           envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
