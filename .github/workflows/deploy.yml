@@ -84,7 +84,7 @@ jobs:
 
   deploy:
     needs: publish-image
-    if: ${{ github.repository_owner == 'VectoDE' }}
+    if: ${{ github.repository_owner == 'VectoDE' && secrets.DEPLOY_SSH_HOST != '' && secrets.DEPLOY_SSH_USER != '' && secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_TARGET_PATH != '' }}
     runs-on: ubuntu-latest
     env:
       DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
