@@ -11,18 +11,18 @@ on:
       - opened
       - reopened
       - synchronize
-      - edited
-      - closed
   workflow_dispatch:
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   update-draft:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Release Drafter
         uses: release-drafter/release-drafter@v6
         with:
