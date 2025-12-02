@@ -126,7 +126,7 @@ jobs:
 
       - name: Trigger remote deployment
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
-        uses: appleboy/ssh-action@v1.2.3
+        uses: appleboy/ssh-action@v1.2.4
         env:
           REGISTRY: ${{ env.REGISTRY }}
           FRONTEND_IMAGE: ${{ needs.publish-image.outputs.frontend-tag }}
