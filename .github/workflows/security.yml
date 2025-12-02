@@ -4,12 +4,19 @@ on:
   schedule:
     - cron: "0 3 * * 1" # Every Monday at 03:00 UTC
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - developement
   push:
     paths:
       - bot/requirements.txt
       - frontend/package-lock.json
       - frontend/package.json
       - ".github/workflows/security.yml"
+    branches:
+      - main
+      - developement
 
 jobs:
   npm-audit:
