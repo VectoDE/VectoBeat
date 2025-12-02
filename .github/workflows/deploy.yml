@@ -57,8 +57,6 @@ jobs:
         with:
           context: .
           file: frontend/Dockerfile
-          build-args: |
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY || 'dummy_stripe_key' }}
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
@@ -139,7 +137,7 @@ jobs:
           chmod 600 "$key_file"
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
           {
-            echo "key<<'EOF'"
+            echo "key<<EOF"
             cat "$key_file"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
