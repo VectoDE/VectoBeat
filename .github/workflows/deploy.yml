@@ -118,6 +118,10 @@ jobs:
           echo "skip=true" >> "$GITHUB_OUTPUT"
           echo "Missing deploy secrets: ${missing[*]}"
 
+      - name: Checkout repository
+        if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
+        uses: actions/checkout@v4
+
       - name: Sync container to server
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
         uses: appleboy/scp-action@v1.0.0
