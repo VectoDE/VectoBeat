@@ -23,9 +23,6 @@
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/deploy.yml">
       <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Release & Publish" />
     </a>
-    <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/docs.yml">
-      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/docs.yml/badge.svg?branch=main" alt="Documentation Guard" />
-    </a>
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/security.yml">
       <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/security.yml/badge.svg?branch=main" alt="Security Audit" />
     </a>
