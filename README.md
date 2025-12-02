@@ -9,8 +9,16 @@
     <a href="https://discord.com/api/oauth2/authorize?client_id=1435859299028172901&permissions=36768832&scope=bot%20applications.commands%20identify"><img src="https://img.shields.io/badge/Bot%20Invite-Add%20VectoBeat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite the VectoBeat bot"></a>
     <a href="https://discordbotlist.com/bots/vectobeat"><img src="https://img.shields.io/badge/DiscordBotList-View%20Listing-ff3366?style=for-the-badge&logo=discord&logoColor=white" alt="DiscordBotList listing"></a>
     <a href="https://discord.gg/DtHPAEHxZk"><img src="https://img.shields.io/badge/Discord-Join%20Support-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Support"></a>
+    <a href="https://github.com/VectoDE/VectoBeat/releases"><img src="https://img.shields.io/github/v/release/VectoDE/VectoBeat?style=for-the-badge&display_name=tag&color=0A84FF" alt="Latest Release"></a>
     <a href="https://github.com/VectoDE/VectoBeat/stargazers"><img src="https://img.shields.io/github/stars/VectoDE/VectoBeat?style=for-the-badge&logo=github&color=yellow" alt="GitHub Stars"></a>
+    <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-13+-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js"></a>
+    <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"></a>
+    <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"></a>
     <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python"></a>
+    <a href="https://discordpy.readthedocs.io/"><img src="https://img.shields.io/badge/discord.py-2.x-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="discord.py"></a>
+    <a href="https://github.com/lavalink-devs/Lavalink"><img src="https://img.shields.io/badge/Lavalink-v4-ff8f00?style=for-the-badge&logo=sonicwall&logoColor=white" alt="Lavalink"></a>
+    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Containers-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"></a>
+    <a href="https://www.mysql.com/"><img src="https://img.shields.io/badge/MySQL-Database-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL"></a>
     <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-0A0A0A?style=for-the-badge" alt="License"></a>
   </p>
   <p>

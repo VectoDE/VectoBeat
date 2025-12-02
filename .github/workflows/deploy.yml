@@ -133,8 +133,10 @@ jobs:
           mkdir -p ~/.ssh
           key_file=~/.ssh/deploy_key
           # Support secrets stored with literal \n sequences or real newlines
-          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' > "$key_file"
+          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
+          # Validate key before proceeding
+          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
           {
             echo "key<<EOF"
@@ -149,6 +151,7 @@ jobs:
           host: ${{ env.DEPLOY_SSH_HOST }}
           username: ${{ env.DEPLOY_SSH_USER }}
           key: ${{ steps.prep-ssh.outputs.key }}
+          key_path: ${{ steps.prep-ssh.outputs.key_path }}
           source: docker-compose.yml
           target: ${{ env.DEPLOY_TARGET_PATH }}
 
@@ -167,6 +170,7 @@ jobs:
           host: ${{ env.DEPLOY_SSH_HOST }}
           username: ${{ env.DEPLOY_SSH_USER }}
           key: ${{ steps.prep-ssh.outputs.key }}
+          key_path: ${{ steps.prep-ssh.outputs.key_path }}
           envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
