@@ -11,9 +11,12 @@ WORKDIR /app
 ARG DATABASE_URL="mysql://placeholder:placeholder@localhost:3306/vectobeat"
 # Prisma needs a DATABASE_URL at build time even though it does not connect.
 ENV DATABASE_URL="mysql://placeholder:placeholder@localhost:3306/vectobeat"
+# Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
+ARG BUILD_STRIPE_KEY="dummy_stripe_key"
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
-RUN npx prisma generate && npm run build
+RUN STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npx prisma generate && \
+    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
