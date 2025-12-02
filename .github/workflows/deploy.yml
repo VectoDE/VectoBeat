@@ -142,7 +142,7 @@ jobs:
           FRONTEND_IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
           BOT_IMAGE_NAME: ${{ env.BOT_IMAGE_NAME }}
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           host: ${{ env.DEPLOY_SSH_HOST }}
           username: ${{ env.DEPLOY_SSH_USER }}
