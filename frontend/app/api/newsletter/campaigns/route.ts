@@ -5,6 +5,7 @@ import {
   getUserRole,
   listNewsletterSubscribers,
   getUserContact,
+  recordBotActivityEvent,
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 import { sendNewsletterEmail } from "@/lib/email-notifications"
@@ -91,6 +92,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       campaign,
       stats: {
+        targeted: subscribers.length,
+        delivered,
+        samples: sampleResults,
+      },
+    })
+    await recordBotActivityEvent({
+      type: "campaign.send",
+      name: subject,
+      guildId: null,
+      success: true,
+      metadata: {
+        discordId,
         targeted: subscribers.length,
         delivered,
         samples: sampleResults,

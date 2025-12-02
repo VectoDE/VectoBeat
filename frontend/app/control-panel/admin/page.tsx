@@ -117,15 +117,15 @@ const BOT_ACTIONS = [
 
 const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }> = [
   { key: "overview", label: "Overview", description: "Operational health, quick links, and priority signals" },
-  { key: "blog", label: "Blog", description: "Publish news and manage posts" },
-  { key: "newsletter", label: "Newsletter", description: "Send announcements to subscribers" },
-  { key: "ticket", label: "Ticket", description: "Respond to support tickets and attachments" },
+  { key: "blog", label: "Blogs", description: "Publish news and manage posts" },
+  { key: "newsletter", label: "Newsletters", description: "Send announcements to subscribers" },
+  { key: "ticket", label: "Tickets", description: "Respond to support tickets and attachments" },
   { key: "contacts", label: "Contacts", description: "Inbound contact form submissions and replies" },
   { key: "subscriptions", label: "Subscriptions", description: "Oversee guild plans and entitlements" },
-  { key: "billing", label: "Billing", description: "Track invoices and manual billing workflows" },
+  { key: "billing", label: "Billings", description: "Track invoices and manual billing workflows" },
   { key: "users", label: "Users", description: "Manage member accounts and access levels" },
   { key: "apiKeys", label: "API Keys", description: "Monitor system credentials and rotate secrets safely" },
-  { key: "botControl", label: "Bot Control", description: "Manage bot lifecycle actions and deploys" },
+  { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
 ]
@@ -262,6 +262,7 @@ export default function AdminControlPanelPage() {
   const [newsletterFilter, setNewsletterFilter] = useState("all")
   const [ticketSearch, setTicketSearch] = useState("")
   const [ticketStatusFilter, setTicketStatusFilter] = useState("all")
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState("all")
   const [isBlogModalOpen, setIsBlogModalOpen] = useState(false)
   const [isNewsletterModalOpen, setIsNewsletterModalOpen] = useState(false)
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false)
@@ -894,11 +895,15 @@ export default function AdminControlPanelPage() {
     const query = ticketSearch.trim().toLowerCase()
     return supportTickets.filter((msg) => {
       const matchesStatus = ticketStatusFilter === "all" || msg.status === ticketStatusFilter
-      const bucket = [msg.name, msg.email, msg.subject, msg.message].filter(Boolean).join(" ").toLowerCase()
+      const matchesPriority = ticketPriorityFilter === "all" || msg.priority === ticketPriorityFilter
+      const bucket = [msg.name, msg.email, msg.subject, msg.message, msg.priority, msg.status]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
       const matchesSearch = !query || bucket.includes(query)
-      return matchesStatus && matchesSearch
+      return matchesStatus && matchesPriority && matchesSearch
     })
-  }, [supportTickets, ticketSearch, ticketStatusFilter])
+  }, [supportTickets, ticketSearch, ticketStatusFilter, ticketPriorityFilter])
 
   const filteredContacts = useMemo(() => {
     const query = contactSearch.trim().toLowerCase()
@@ -1147,7 +1152,9 @@ export default function AdminControlPanelPage() {
         : typeof value === "number"
           ? new Date(typeof value === "number" && value < 10_000_000_000 ? value * 1000 : value)
           : new Date(value)
-    return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString()
+    return Number.isNaN(date.getTime())
+      ? "—"
+      : date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" })
   }
 
   const packageEntries = useMemo(() => {
@@ -1410,17 +1417,30 @@ export default function AdminControlPanelPage() {
                     onChange={(e) => setTicketSearch(e.target.value)}
                     className="flex-1 min-w-[200px] px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
                   />
-                  <select
-                    value={ticketStatusFilter}
-                    onChange={(e) => setTicketStatusFilter(e.target.value)}
-                    className="px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none text-sm"
-                  >
-                    <option value="all">All statuses</option>
-                    <option value="open">Open</option>
-                    <option value="resolved">Resolved</option>
-                    <option value="closed">Closed</option>
-                    <option value="archived">Archived</option>
-                  </select>
+                  <div className="flex gap-2 flex-wrap">
+                    <select
+                      value={ticketStatusFilter}
+                      onChange={(e) => setTicketStatusFilter(e.target.value)}
+                      className="px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none text-sm"
+                    >
+                      <option value="all">All statuses</option>
+                      <option value="open">Open</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                      <option value="archived">Archived</option>
+                    </select>
+                    <select
+                      value={ticketPriorityFilter}
+                      onChange={(e) => setTicketPriorityFilter(e.target.value)}
+                      className="px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none text-sm"
+                    >
+                      <option value="all">All priorities</option>
+                      <option value="urgent">Urgent</option>
+                      <option value="high">High</option>
+                      <option value="normal">Normal</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -1459,17 +1479,34 @@ export default function AdminControlPanelPage() {
                         >
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold truncate">{ticket.subject || "Support Ticket"}</p>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                                ticket.status === "open"
-                                  ? "bg-yellow-500/20 text-yellow-500"
-                                  : ticket.status === "resolved"
-                                    ? "bg-green-500/20 text-green-500"
-                                    : "bg-foreground/10 text-foreground/60"
-                              }`}
-                            >
-                              {ticket.status}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
+                                  ticket.status === "open"
+                                    ? "bg-yellow-500/20 text-yellow-500"
+                                    : ticket.status === "resolved"
+                                      ? "bg-green-500/20 text-green-500"
+                                      : ticket.status === "closed"
+                                        ? "bg-foreground/10 text-foreground/60"
+                                        : "bg-indigo-500/15 text-indigo-600"
+                                }`}
+                              >
+                                {ticket.status}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
+                                  ticket.priority === "urgent"
+                                    ? "bg-destructive/20 text-destructive"
+                                    : ticket.priority === "high"
+                                      ? "bg-amber-100 text-amber-900"
+                                      : ticket.priority === "low"
+                                        ? "bg-foreground/10 text-foreground/60"
+                                        : "bg-primary/10 text-primary"
+                                }`}
+                              >
+                                {ticket.priority || "normal"}
+                              </span>
+                            </div>
                           </div>
                           <p className="text-xs text-foreground/60">{ticket.email}</p>
                           <p className="mt-2 line-clamp-2 text-sm text-foreground/70">{ticket.message}</p>
@@ -1522,6 +1559,12 @@ export default function AdminControlPanelPage() {
                         </div>
                         <p className="text-sm text-foreground/60">
                           {ticketThread.name} • {ticketThread.email}
+                          {ticketThread.subscription?.tier && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                              {ticketThread.subscription.tier} plan
+                              {ticketThread.subscription.serverName ? ` • ${ticketThread.subscription.serverName}` : ""}
+                            </span>
+                          )}
                         </p>
                         <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
                           <span>Created {new Date(ticketThread.createdAt).toLocaleString()}</span>
@@ -1791,6 +1834,12 @@ export default function AdminControlPanelPage() {
                             : msg.priority === "low"
                               ? "bg-foreground/10 text-foreground/60"
                               : "bg-primary/10 text-primary"
+                      const statusBadge =
+                        msg.status === "resolved" || msg.status === "closed"
+                          ? "bg-emerald-500/15 text-emerald-600"
+                          : msg.status === "archived"
+                            ? "bg-foreground/10 text-foreground/60"
+                            : "bg-indigo-500/15 text-indigo-600"
                       return (
                         <button
                           key={msg.id}
@@ -1803,17 +1852,25 @@ export default function AdminControlPanelPage() {
                         >
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold truncate">{msg.subject || "Contact message"}</p>
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${priorityBadge}`}
-                            >
-                              {msg.priority || "normal"}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${statusBadge}`}
+                              >
+                                {msg.status || "open"}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${priorityBadge}`}
+                              >
+                                {msg.priority || "normal"}
+                              </span>
+                            </div>
                           </div>
                           <p className="text-xs text-foreground/60">{msg.email}</p>
                           <p className="mt-2 line-clamp-2 text-sm text-foreground/70">{msg.message}</p>
-                          <p className="mt-2 text-[11px] text-foreground/50">
-                            Updated {new Date(msg.updatedAt || msg.createdAt).toLocaleString()}
-                          </p>
+                          <div className="mt-2 text-[11px] text-foreground/50 flex items-center justify-between">
+                            <span>{msg.company || msg.topic || "Contact"}</span>
+                            <span>{formatDateTime(msg.updatedAt || msg.createdAt)}</span>
+                          </div>
                         </button>
                       )
                     })}
@@ -2034,8 +2091,11 @@ export default function AdminControlPanelPage() {
         const endpoints = [
           { label: "Frontend URL", value: typeof window !== "undefined" ? window.location.origin : "" },
           { label: "API base", value: "/api" },
-          { label: "Bot status endpoint", value: process.env.BOT_STATUS_API_URL || "" },
-          { label: "Server settings endpoint", value: process.env.SERVER_SETTINGS_API_URL || "" },
+          { label: "Bot status endpoint", value: systemEndpoints.statusApi || process.env.BOT_STATUS_API_URL || "" },
+          {
+            label: "Server settings endpoint",
+            value: systemEndpoints.serverSettings || process.env.SERVER_SETTINGS_API_URL || "",
+          },
         ]
         const filteredEndpoints = endpoints.filter((item) => {
           if (!systemEndpointSearch.trim()) return true
@@ -2090,13 +2150,16 @@ export default function AdminControlPanelPage() {
         const configChecks = [
           { label: "Database URL", key: "DATABASE_URL" },
           { label: "Bot status API", key: "BOT_STATUS_API_URL" },
-          { label: "Server settings API", key: "SERVER_SETTINGS_API_URL" },
-          { label: "Queue sync secret", key: "QUEUE_SYNC_SECRET" },
+          { label: "Server settings API", key: "SERVER_SETTINGS_API_URL", alt: systemEndpoints.serverSettings },
+          { label: "Queue sync secret", key: "QUEUE_SYNC_API_KEY", alt: process.env.QUEUE_SYNC_SECRET },
           { label: "Log ingest token", key: "LOG_INGEST_TOKEN" },
-        ].map((item) => ({
-          ...item,
-          configured: Boolean(envMap[item.key] || process.env[item.key]),
-        }))
+        ].map((item) => {
+          const value = envMap[item.key] || item.alt || process.env[item.key]
+          return {
+            ...item,
+            configured: Boolean(value),
+          }
+        })
         const resourceOverview = [
           { label: "Env entries", value: envEntries.length },
           { label: "Tracked API keys", value: systemKeys.length },
@@ -2104,7 +2167,10 @@ export default function AdminControlPanelPage() {
           { label: "Endpoints", value: filteredEndpoints.length },
         ]
         const formatConn = (key: string) => {
-          const val = envMap[key] || process.env[key]
+          const val =
+            envMap[key] ||
+            (key === "SERVER_SETTINGS_API_URL" ? systemEndpoints.serverSettings : null) ||
+            process.env[key]
           if (!val) return { configured: false, display: "Not configured" }
           try {
             const url = new URL(val)
@@ -2381,7 +2447,7 @@ export default function AdminControlPanelPage() {
                           .replace(/([a-z])([A-Z])/g, "$1 $2")
                           .replace(/_/g, " ")
                           .replace(/\b\w/g, (c) => c.toUpperCase())
-                        const isTimestampKey = /time|date|at$/i.test(key)
+                        const isTimestampKey = /time|date|at$|since$/i.test(key)
                         const value =
                           typeof val === "number"
                             ? val.toLocaleString()
@@ -2940,7 +3006,7 @@ export default function AdminControlPanelPage() {
         const upcoming = billingItems.filter((item) => !item.overdue && item.status === "active").length
         const monthlyRecurring = subscriptionMRR
         const nextRenewal = billingItems
-          .filter((item) => item.status === "active")
+          .filter((item) => item.status === "active" && new Date(item.currentPeriodEnd).getTime() > Date.now())
           .map((item) => new Date(item.currentPeriodEnd))
           .sort((a, b) => a.getTime() - b.getTime())[0]
         return (
@@ -2952,7 +3018,7 @@ export default function AdminControlPanelPage() {
                 { label: "MRR (€)", value: monthlyRecurring, detail: "Active revenue" },
                 {
                   label: "Next renewal",
-                  value: nextRenewal ? nextRenewal.toLocaleDateString() : "—",
+                  value: nextRenewal ? formatDateTime(nextRenewal) : "—",
                   detail: "Closest billing date",
                 },
               ].map((card) => (
@@ -3456,6 +3522,28 @@ export default function AdminControlPanelPage() {
 
             <section className="rounded-xl border border-border/50 bg-card/30 p-6">
               <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">Priority Tickets</h2>
+                <span className="text-xs text-foreground/60">
+                  {openTickets} open • {ticketClosedCount} closed
+                </span>
+              </div>
+              {recentOpenTickets.length ? (
+                <div className="space-y-3">
+                  {recentOpenTickets.map((ticket) => (
+                    <div key={ticket.id} className="border border-border/40 rounded-lg p-4">
+                      <p className="font-semibold">{ticket.subject || ticket.name}</p>
+                      <p className="text-sm text-foreground/60 mb-2">{ticket.email}</p>
+                      <p className="text-sm text-foreground/80 line-clamp-3">{ticket.message}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-foreground/60">No open tickets right now. Great job!</p>
+              )}
+            </section>
+
+            <section className="rounded-xl border border-border/50 bg-card/30 p-6">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">Recent Activity</h2>
                 <span className="text-xs text-foreground/60">{activityFeed.length ? "Live stream" : "No activity yet"}</span>
               </div>
@@ -3478,28 +3566,6 @@ export default function AdminControlPanelPage() {
                 </div>
               ) : (
                 <p className="text-sm text-foreground/60">No activity has been tracked yet.</p>
-              )}
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/30 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold">Priority Tickets</h2>
-                <span className="text-xs text-foreground/60">
-                  {openTickets} open • {ticketClosedCount} closed
-                </span>
-              </div>
-              {recentOpenTickets.length ? (
-                <div className="space-y-3">
-                  {recentOpenTickets.map((ticket) => (
-                    <div key={ticket.id} className="border border-border/40 rounded-lg p-4">
-                      <p className="font-semibold">{ticket.subject || ticket.name}</p>
-                      <p className="text-sm text-foreground/60 mb-2">{ticket.email}</p>
-                      <p className="text-sm text-foreground/80 line-clamp-3">{ticket.message}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-foreground/60">No open tickets right now. Great job!</p>
               )}
             </section>
           </>
@@ -3808,8 +3874,21 @@ export default function AdminControlPanelPage() {
           messageId,
         }
         const isSelected = selectedContactId === messageId
+        const responseValue =
+          overrides?.response !== undefined
+            ? overrides.response
+            : isSelected
+              ? contactResponse
+              : undefined
         if (overrides?.status !== undefined) {
           payload.status = overrides.status
+        } else if (responseValue) {
+          const createdAt = selectedContact?.createdAt ? new Date(selectedContact.createdAt).getTime() : null
+          const ageMs = createdAt ? Date.now() - createdAt : 0
+          const ageDays = ageMs / (1000 * 60 * 60 * 24)
+          const autoStatus = ageDays >= 30 ? "closed" : "resolved"
+          payload.status = autoStatus
+          setContactStatus(autoStatus)
         } else if (isSelected && contactStatus) {
           payload.status = contactStatus
         }
@@ -3818,10 +3897,8 @@ export default function AdminControlPanelPage() {
         } else if (isSelected && contactPriority) {
           payload.priority = contactPriority
         }
-        if (overrides?.response !== undefined) {
-          payload.response = overrides.response
-        } else if (isSelected && contactResponse) {
-          payload.response = contactResponse
+        if (responseValue) {
+          payload.response = responseValue
         }
         const response = await fetch("/api/contact/messages", {
           method: "PUT",
@@ -3836,13 +3913,25 @@ export default function AdminControlPanelPage() {
         setContactActionMessage("Message updated.")
         setContactResponse("")
         setContactPriority("")
+        if (payload.status) {
+          setContactStatus(payload.status)
+        }
         await loadContactMessages()
       } catch (error) {
         console.error("Failed to update contact message:", error)
         setContactError(error instanceof Error ? error.message : "Unable to update contact message")
       }
     },
-    [authToken, contactPriority, contactResponse, contactStatus, discordId, loadContactMessages, selectedContactId],
+    [
+      authToken,
+      contactPriority,
+      contactResponse,
+      contactStatus,
+      discordId,
+      loadContactMessages,
+      selectedContact,
+      selectedContactId,
+    ],
   )
 
   const persistEnvEntries = useCallback(

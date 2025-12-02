@@ -52,7 +52,23 @@ if not _loaded:
 
 def _load_yaml(path: str) -> Dict:
     """Load a YAML config file, returning an empty dict if the file is blank."""
-    with open(path, "r", encoding="utf-8") as handle:
+    raw_path = Path(path)
+    candidates = [raw_path]
+
+    if not raw_path.is_absolute():
+        candidates.append(_base_dir / raw_path)
+        # Common misconfig: CONFIG_PATH=./bot/config.yml while running from bot/
+        if raw_path.parts and raw_path.parts[0] == "bot":
+            candidates.append(_base_dir / Path(*raw_path.parts[1:]))
+
+    for candidate in candidates:
+        if candidate.exists():
+            resolved = candidate
+            break
+    else:
+        raise FileNotFoundError(f"Config file not found; tried: {[str(c) for c in candidates]}")
+
+    with resolved.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
         return data or {}
 
@@ -127,7 +143,7 @@ if crossfade_enabled or crossfade_duration or crossfade_steps or crossfade_floor
         ),
         duration_ms=int(crossfade_duration) if crossfade_duration else CONFIG.crossfade.duration_ms,
         fade_steps=int(crossfade_steps) if crossfade_steps else CONFIG.crossfade.fade_steps,
-        floor_volume=int(crossfade_floor) if crossfade_floor else CONFIG.crossfade.floor_volume,
+        floor_volume=float(crossfade_floor) if crossfade_floor else CONFIG.crossfade.floor_volume,
     )
 
 metrics_enabled = os.getenv("METRICS_ENABLED")
@@ -157,6 +173,11 @@ status_event_token = (
     or status_key
     or os.getenv("BOT_STATUS_API_KEY")
 )
+status_control_start_cmd = os.getenv("STATUS_CONTROL_START_CMD")
+status_control_stop_cmd = os.getenv("STATUS_CONTROL_STOP_CMD")
+status_control_reload_cmd = os.getenv("STATUS_CONTROL_RELOAD_CMD")
+status_control_reload_commands_cmd = os.getenv("STATUS_CONTROL_RELOAD_COMMANDS_CMD")
+status_control_restart_frontend_cmd = os.getenv("STATUS_CONTROL_RESTART_FRONTEND_CMD")
 if (
     status_enabled
     or status_host
@@ -168,6 +189,11 @@ if (
     or status_push_interval
     or status_event
     or status_event_token
+    or status_control_start_cmd
+    or status_control_stop_cmd
+    or status_control_reload_cmd
+    or status_control_reload_commands_cmd
+    or status_control_restart_frontend_cmd
 ):
     CONFIG.status_api = StatusAPIConfig(
         enabled=(status_enabled.lower() == "true") if isinstance(status_enabled, str) else CONFIG.status_api.enabled,
@@ -180,6 +206,13 @@ if (
         push_interval_seconds=int(status_push_interval) if status_push_interval else CONFIG.status_api.push_interval_seconds,
         event_endpoint=status_event or CONFIG.status_api.event_endpoint,
         event_token=status_event_token or status_push_token or status_key or CONFIG.status_api.event_token,
+        control_start_cmd=status_control_start_cmd or CONFIG.status_api.control_start_cmd,
+        control_stop_cmd=status_control_stop_cmd or CONFIG.status_api.control_stop_cmd,
+        control_reload_cmd=status_control_reload_cmd or CONFIG.status_api.control_reload_cmd,
+        control_reload_commands_cmd=status_control_reload_commands_cmd
+        or CONFIG.status_api.control_reload_commands_cmd,
+        control_restart_frontend_cmd=status_control_restart_frontend_cmd
+        or CONFIG.status_api.control_restart_frontend_cmd,
     )
 
 chaos_enabled = os.getenv("CHAOS_ENABLED")

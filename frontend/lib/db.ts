@@ -1057,6 +1057,25 @@ interface LoginEventParams {
   notified?: boolean
 }
 
+export const hasSeenLoginIp = async (discordId: string, ipAddress?: string | null) => {
+  if (!ipAddress) return true
+  try {
+    const db = getPool()
+    if (!db) return true
+
+    const count = await db.userLoginEvent.count({
+      where: {
+        discordId,
+        ipAddress,
+      },
+    })
+    return count > 0
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to check known login IP:", error)
+    return true
+  }
+}
+
 export const recordLoginEvent = async (params: LoginEventParams) => {
   try {
     const db = getPool()
@@ -1805,14 +1824,17 @@ export const getPublicProfileBySlug = async (slug: string) => {
   const guilds = Array.isArray(decrypted?.guilds) ? decrypted.guilds : []
   const adminFull = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild?.isAdmin && guild?.id && guild?.name))
   const memberOnly = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild && !guild.isAdmin && guild.id && guild.name))
-  const activeBotGuilds = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild?.hasBot && guild?.id && guild?.name))
+  const activeBotGuilds = guilds.filter(
+    (guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } =>
+      Boolean(guild?.id && guild?.name && guild?.hasBot !== false),
+  )
   const membershipCount = guilds.length || base.guildCount || 0
   const botGuildCount = activeBotGuilds.length
   const totalGuildCount = membershipCount
   const formatGuild = (guild: { id: string; name: string; hasBot?: boolean; isAdmin?: boolean }) => ({
     id: guild.id,
     name: guild.name,
-    hasBot: Boolean(guild.hasBot),
+    hasBot: guild.hasBot === false ? false : true,
     isAdmin: Boolean(guild.isAdmin),
   })
   const linkedAccounts = await getLinkedAccounts(targetDiscordId)

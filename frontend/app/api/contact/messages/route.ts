@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getUserRole, listContactMessages, updateContactMessage } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
-import { sendTicketEventEmail } from "@/lib/email-notifications"
+import { sendContactReplyEmail } from "@/lib/email-notifications"
 
 export async function GET(request: NextRequest) {
   const discordId = request.nextUrl.searchParams.get("discordId")
@@ -47,29 +47,13 @@ export async function PUT(request: NextRequest) {
     if (!updated) {
       return NextResponse.json({ error: "Message not found" }, { status: 404 })
     }
-    if (updated.email) {
-      if (response) {
-        void sendTicketEventEmail({
-          to: updated.email,
-          customerName: updated.name,
-          ticketId: updated.id,
-          subject: updated.subject,
-          status: updated.status,
-          event: "response",
-          responder: "VectoBeat Support",
-          messagePreview: response,
-        })
-      }
-      if (status) {
-        void sendTicketEventEmail({
-          to: updated.email,
-          customerName: updated.name,
-          ticketId: updated.id,
-          subject: updated.subject,
-          status: updated.status,
-          event: "status",
-        })
-      }
+    if (updated.email && response) {
+      void sendContactReplyEmail({
+        to: updated.email,
+        name: updated.name,
+        subject: updated.subject,
+        message: response,
+      })
     }
     return NextResponse.json({ message: updated })
   } catch (error) {

@@ -10,7 +10,7 @@ FROM deps AS builder
 WORKDIR /app
 ARG STRIPE_SECRET_KEY=dummy_stripe_key
 # Prisma needs a DATABASE_URL at build time even though it does not connect.
-ENV DATABASE_URL="mysql://user:password@mysql:3306/vectobeat" \
+ENV DATABASE_URL=${DATABASE_URL_STRING} \
     STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json

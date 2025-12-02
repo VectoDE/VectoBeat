@@ -39,9 +39,9 @@ export default function ImprintPage() {
               <ul className="space-y-1">
                 <li>Tim Hauke – handelnd unter „VectoDE / VectoBeat“</li>
                 <li>c/o UplyTech, Breitenburger Straße 15, 25524 Itzehoe, Deutschland</li>
-                <li>Telefon: +49 (0)40 1234 5678</li>
-                <li>Email (Allgemein): timhauke@uplytech.de</li>
-                <li>Email (Support): support@vectobeat.com</li>
+                <li>Telefon: +49 (172) 6166860</li>
+                <li>Email (Allgemein): contact@uplytech.de</li>
+                <li>Email (Support): support@uplytech.de</li>
                 <li>Email (Rechtlich / DSA): legal@uplytech.de</li>
               </ul>
               <p>Verantwortlicher gem. § 18 Abs. 2 MStV: Tim Hauke, Anschrift wie oben.</p>
@@ -93,24 +93,6 @@ export default function ImprintPage() {
                 are marked accordingly. Public source code is available on GitHub under the respective open-source licences.
               </p>
               <p>“VectoBeat” is a business designation of VectoDE. Discord® and related logos are trademarks of Discord Inc.</p>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Online dispute resolution</h2>
-            <div className="space-y-4 text-foreground/70">
-              <p>
-                Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS-Plattform) bereit:{" "}
-                <a
-                  href="https://ec.europa.eu/consumers/odr"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary font-semibold hover:underline"
-                >
-                  https://ec.europa.eu/consumers/odr
-                </a>
-              </p>
-              <p>Wir sind weder verpflichtet noch bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>
             </div>
           </div>
 

@@ -368,7 +368,8 @@ export async function GET(request: NextRequest) {
 
   const guildId = request.nextUrl.searchParams.get("guildId")
   if (!guildId) {
-    return NextResponse.json({ error: "guildId is required" }, { status: 400 })
+    // Gracefully serve defaults for health checks or mis-routed requests instead of 400 spam.
+    return NextResponse.json(buildResponse("unknown", "free", defaultServerFeatureSettings))
   }
 
   try {

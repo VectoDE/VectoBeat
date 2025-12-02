@@ -92,7 +92,7 @@ const sections = [
   {
     title: "11. Contact",
     body:
-      "Support: support@vectobeat.com • Legal & DSA contact: legal@uplytech.de • Abuse reports: abuse@vectobeat.com • Phone (Priority Care): +49 172 6166860.",
+      "Support: support@uplytech.de • Legal & DSA contact: legal@uplytech.de • Abuse reports: abuse@uplytech.de • Phone (Priority Care): +49 (172) 6166860.",
   },
 ]
 
@@ -138,7 +138,7 @@ export default function TermsPage() {
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-foreground/70 mb-6">
             By inviting the bot or creating an account you agree to these Terms. Questions?{" "}
-            <Link href="/contact" className="text-primary font-semibold hover:underline">
+            <Link href="/support-desk" className="text-primary font-semibold hover:underline">
               Contact us
             </Link>
             .

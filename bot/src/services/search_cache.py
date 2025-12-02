@@ -61,3 +61,7 @@ class SearchCacheService:
             oldest_key = min(self._store, key=lambda k: self._store[k][0])
             self._store.pop(oldest_key, None)
         self._store[key] = (time.monotonic(), getattr(result, "load_type", "SEARCH_RESULT"), tracks)
+
+    def clear(self) -> None:
+        """Drop all cached search results."""
+        self._store.clear()

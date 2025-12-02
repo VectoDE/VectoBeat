@@ -17,8 +17,8 @@ const sections = [
     title: "1. Controller (Art. 4 No. 7 GDPR)",
     content: [
       "Tim Hauke – VectoDE / VectoBeat, Breitenburger Straße 15, 25524 Itzehoe, Germany",
-      "Tel.: +49 (0)40 1234 5678 • Email: timhauke@uplytech.de",
-      "Data Protection Contact / DPO: legal@uplytech.de (responses ≤48h)",
+      "Tel.: +49 (172) 6166860 • Email: timhauke@uplytech.de",
+      "Data Protection Contact / DPO: legal@uplytech.de (responses ≤72h)",
     ],
   },
   {
@@ -153,8 +153,8 @@ export default function PrivacyPage() {
           <div className="rounded-2xl border border-border/60 bg-card/30 p-6 text-sm text-foreground/70 space-y-3">
             <p>
               Questions about this policy? Email{" "}
-              <a href="mailto:privacy@vectobeat.com" className="text-primary hover:underline">
-                privacy@vectobeat.com
+              <a href="mailto:privacy@uplytech.de" className="text-primary hover:underline">
+                privacy@uplytech.de
               </a>{" "}
               or contact legal@uplytech.de with your Discord ID so we can verify your identity.
             </p>
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-foreground/70 mb-6">
             Need help exercising your privacy rights?{" "}
-            <Link href="/contact" className="text-primary font-semibold hover:underline">
+            <Link href="/support-desk" className="text-primary font-semibold hover:underline">
               Contact our support team
             </Link>
             .

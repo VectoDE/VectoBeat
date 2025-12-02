@@ -25,20 +25,34 @@ const BOT_ENV_KEYS = new Set([
   "CACHE_URL",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_WS_URL",
+  "QUEUE_SYNC_API_KEY",
   "QUEUE_SYNC_ENDPOINT",
 ])
 
-const getEnvPath = (target: "frontend" | "bot") =>
-  target === "bot" ? path.resolve(process.cwd(), "../bot/.env") : path.resolve(process.cwd(), ".env")
+const getEnvCandidates = (target: "frontend" | "bot") =>
+  target === "bot"
+    ? [
+        path.resolve(process.cwd(), "../bot/.env"),
+        path.resolve(process.cwd(), "../bot/.env.development"),
+        path.resolve(process.cwd(), "../bot/.env.local"),
+      ]
+    : [
+        path.resolve(process.cwd(), ".env"),
+        path.resolve(process.cwd(), ".env.development"),
+        path.resolve(process.cwd(), ".env.local"),
+      ]
 
 const readEnvFile = async (target: "frontend" | "bot") => {
-  const envPath = getEnvPath(target)
-  try {
-    const raw = await fs.readFile(envPath, "utf8")
-    return dotenv.parse(raw)
-  } catch {
-    return {}
+  const candidates = getEnvCandidates(target)
+  for (const envPath of candidates) {
+    try {
+      const raw = await fs.readFile(envPath, "utf8")
+      return dotenv.parse(raw)
+    } catch {
+      continue
+    }
   }
+  return {}
 }
 
 const fetchWithTimeout = async (url: string) => {

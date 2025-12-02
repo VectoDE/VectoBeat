@@ -88,8 +88,8 @@ status_api:
 
 control_panel_api:
   enabled: true
-  base_url: "http://127.0.0.1:3050"
-  api_key: "vectobeat-settings-secret"
+  base_url: "http://localhost:3050"
+  api_key: "dev_control_panel_api_key"
   timeout_seconds: 8
   cache_ttl_seconds: 120
 

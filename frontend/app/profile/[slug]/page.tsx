@@ -191,6 +191,9 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     { label: "Admin Servers", value: adminServers },
   ]
   const linkedAccounts: LinkedAccount[] = Array.isArray(profile.linkedAccounts) ? profile.linkedAccounts : []
+  const linkedWithUrls = linkedAccounts
+    .map((account) => ({ account, href: resolveAccountUrl(account) }))
+    .filter((item) => Boolean(item.href)) as Array<{ account: LinkedAccount; href: string }>
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -244,7 +247,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   href="/support-desk"
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
-                  Contact
+                  Contact Support
                 </Link>
               </div>
             </div>
@@ -261,16 +264,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          <div className="rounded-3xl border border-border/50 bg-card/20 backdrop-blur-xl p-8 space-y-6">
-            {linkedAccounts.length ? (
+          {linkedWithUrls.length ? (
+            <div className="rounded-3xl border border-border/50 bg-card/20 backdrop-blur-xl p-8 space-y-6">
               <div className="border-border/40 space-y-4">
                 <h3 className="text-lg font-semibold text-foreground">Linked Profiles</h3>
                 <div className="flex flex-wrap gap-3">
-                  {linkedAccounts.map((account) => {
-                    const href = resolveAccountUrl(account)
-                    if (!href) {
-                      return null
-                    }
+                  {linkedWithUrls.map(({ account, href }) => {
                     const providerMeta = providerMap[account.provider]
                     const Icon = providerMeta?.icon ?? LinkIcon
                     const label = providerMeta?.label ?? account.provider
@@ -290,8 +289,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   })}
                 </div>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
 
           <div className="rounded-3xl border border-border/50 bg-card/20 backdrop-blur-xl p-8 space-y-6">
             <div>

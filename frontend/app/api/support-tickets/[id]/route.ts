@@ -5,9 +5,12 @@ import {
   getUserRole,
   updateContactMessage,
   getContactMessageById,
+  recordBotActivityEvent,
+  getUserSubscriptions,
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 import { sendTicketEventEmail } from "@/lib/email-notifications"
+import { normalizeTierId } from "@/lib/memberships"
 
 export async function GET(
   request: NextRequest,
@@ -30,12 +33,38 @@ export async function GET(
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
 
+  let subscription: { tier: string; serverName: string | null } | null = null
+  const memberMessage = ticket.messages?.find((msg) => msg.role === "member" && msg.authorId)
+  const requesterId = memberMessage?.authorId || null
+  if (requesterId) {
+    try {
+      const subs = await getUserSubscriptions(requesterId)
+      const activeStatuses = new Set(["active", "trialing", "pending"])
+      const tierOrder = ["free", "starter", "pro", "growth", "scale", "enterprise"]
+      let best = "free"
+      let bestServer: string | null = null
+      for (const sub of subs) {
+        if (!activeStatuses.has((sub.status || "").toLowerCase())) continue
+        const tier = normalizeTierId(sub.tier)
+        const currentIdx = tierOrder.indexOf(best)
+        const nextIdx = tierOrder.indexOf(tier)
+        if (nextIdx > currentIdx) {
+          best = tier
+          bestServer = sub.name || sub.discordServerId || null
+        }
+      }
+      subscription = { tier: best, serverName: bestServer }
+    } catch (error) {
+      console.error("[VectoBeat] Failed to resolve ticket subscription:", error)
+    }
+  }
+
   if (role === "member" && ticket.email && auth.valid && discordId) {
     // basic verification happens in getContactMessageThread, but double check
     // to avoid leaking other tickets
   }
 
-  return NextResponse.json(ticket)
+  return NextResponse.json({ ...ticket, subscription })
 }
 
 export async function POST(
@@ -125,6 +154,21 @@ export async function POST(
       })
     }
   }
+
+  // Track ticket activity for admin logs.
+  await recordBotActivityEvent({
+    type: "ticket.update",
+    name: ticket.subject ?? "support_ticket",
+    guildId: null,
+    success: true,
+    metadata: {
+      ticketId,
+      status: statusUpdate ?? ticket.status,
+      authorId: discordId ?? null,
+      hasMessage: Boolean(normalizedMessage),
+      attachments: attachments.map((a) => ({ name: a.name, type: a.type, size: a.size })),
+    },
+  })
 
   return NextResponse.json(
     entry ?? { ticketId, status: statusUpdate ?? ticket.status },

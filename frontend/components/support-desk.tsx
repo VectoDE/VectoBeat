@@ -129,6 +129,18 @@ const performAttachmentScan = async (file: File): Promise<ScanResult> => {
   return payload
 }
 
+type SubscriptionSummary = {
+  tier: string
+  status?: string
+}
+
+type TicketConversationEntry = TicketMessage & {
+  subscription?: string | null
+  subscriptionTier?: string | null
+  tier?: string | null
+  plan?: string | null
+}
+
 export function SupportDeskPanel() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -164,6 +176,7 @@ export function SupportDeskPanel() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loginUrl, setLoginUrl] = useState<string | null>(null)
   const [sessionInfo, setSessionInfo] = useState<{ name: string; email: string | null; discordId: string } | null>(null)
+  const [highestSubscription, setHighestSubscription] = useState("free")
 
   const selectedTicket = useMemo(
     () => (selectedTicketId ? tickets.find((ticket) => ticket.id === selectedTicketId) ?? null : null),
@@ -323,6 +336,56 @@ export function SupportDeskPanel() {
       void loadTickets({ silent: true })
     }
   }, [loadTickets, sessionInfo, ticketEmail])
+
+  useEffect(() => {
+    if (!sessionInfo) return
+    let cancelled = false
+    const tierOrder = ["free", "starter", "pro", "growth", "scale", "enterprise"]
+    const activeStatuses = new Set(["active", "trialing", "pending"])
+    const resolveHighestTier = (subscriptions: SubscriptionSummary[]) => {
+      let best = "free"
+      for (const sub of subscriptions) {
+        const normalizedTier = typeof sub.tier === "string" ? sub.tier.trim().toLowerCase() : "free"
+        const statusOk = !sub.status || activeStatuses.has((sub.status || "").trim().toLowerCase())
+        if (!statusOk) continue
+        const currentIdx = tierOrder.indexOf(best)
+        const nextIdx = tierOrder.indexOf(normalizedTier)
+        if (nextIdx !== -1 && nextIdx > currentIdx) {
+          best = normalizedTier
+        }
+      }
+      return best || "free"
+    }
+
+    const fetchSubscriptions = async () => {
+      try {
+        const headers: Record<string, string> = {}
+        const token = getAuthToken()
+        if (token) {
+          headers.Authorization = `Bearer ${token}`
+        }
+        const response = await fetch(`/api/subscriptions?userId=${sessionInfo.discordId}`, {
+          cache: "no-store",
+          credentials: "include",
+          headers,
+        })
+        if (!response.ok) return
+        const payload = await response.json().catch(() => null)
+        const subs: SubscriptionSummary[] = Array.isArray(payload?.subscriptions) ? payload.subscriptions : []
+        const best = resolveHighestTier(subs)
+        if (!cancelled) {
+          setHighestSubscription(best)
+        }
+      } catch (err) {
+        console.error("[VectoBeat] Failed to resolve subscriptions for support desk:", err)
+      }
+    }
+
+    void fetchSubscriptions()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionInfo])
 
   useEffect(() => {
     if (!tickets.length) {
@@ -522,9 +585,18 @@ export function SupportDeskPanel() {
     }
   }
 
-  const conversation = useMemo(() => {
+  const formatRoleLabel = (role?: string | null) => {
+    if (!role) return "Support"
+    const normalized = role.trim().toLowerCase()
+    if (normalized === "admin") return "Admin"
+    if (normalized === "operator") return "Operator"
+    if (normalized === "member" || normalized === "user") return "Customer"
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1)
+  }
+
+  const conversation: TicketConversationEntry[] = useMemo(() => {
     if (!thread) return []
-    const initial = {
+    const initial: TicketConversationEntry = {
       id: `${thread.id}-origin`,
       ticketId: thread.id,
       authorId: null,
@@ -533,9 +605,10 @@ export function SupportDeskPanel() {
       body: thread.message,
       attachments: [],
       createdAt: thread.createdAt,
+      subscriptionTier: highestSubscription,
     }
-    return [initial, ...(thread.messages ?? [])]
-  }, [thread])
+    return [initial, ...(thread.messages ?? []).map((msg) => ({ ...msg, subscriptionTier: msg.role === "member" ? highestSubscription : msg.subscriptionTier }))]
+  }, [highestSubscription, thread])
 
   if (!hydrated || !sessionChecked) {
     return (
@@ -827,6 +900,8 @@ export function SupportDeskPanel() {
                       : []
                     const alignmentClass = isMember ? "justify-end pr-2" : "justify-start pl-2"
                     const bubbleOffset = isMember ? "ml-16" : "mr-16"
+                    const tierLabel =
+                      (entry.subscriptionTier || entry.subscription || entry.plan || entry.tier || "").trim() || "free"
                     return (
                       <div
                         key={entry.id}
@@ -840,13 +915,25 @@ export function SupportDeskPanel() {
                           }`}
                         >
                           <div
-                            className={`flex items-center justify-between text-xs text-foreground/60 ${
-                              isMember ? "pl-4" : "pr-4"
-                            }`}
-                          >
-                            <span className="font-semibold text-foreground">{label}</span>
-                            <span>{formatDate(entry.createdAt)}</span>
-                          </div>
+                        className={`flex items-center justify-between text-xs text-foreground/60 ${
+                          isMember ? "pl-4" : "pr-4"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">{label}</span>
+                          {!isMember && (
+                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                              {formatRoleLabel(entry.role)}
+                            </span>
+                          )}
+                          {isMember && (
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 capitalize">
+                              {tierLabel || "free"} plan
+                            </span>
+                          )}
+                        </div>
+                        <span>{formatDate(entry.createdAt)}</span>
+                      </div>
                           <p
                             className={`text-sm text-foreground/80 whitespace-pre-line ${
                               isMember ? "pl-4" : "pr-4"

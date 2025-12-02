@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { addBlogComment, getBlogComments } from "@/lib/db"
+import { addBlogComment, getBlogComments, recordBotActivityEvent } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 
 type ParamsInput = Promise<{ id: string }> | { id: string }
@@ -38,6 +38,14 @@ export async function POST(request: NextRequest, ctx: { params: ParamsInput }) {
     if (!comment) {
       return NextResponse.json({ error: "Unable to save comment" }, { status: 400 })
     }
+
+    await recordBotActivityEvent({
+      type: "blog.comment",
+      name: id,
+      guildId: null,
+      success: true,
+      metadata: { author, discordId },
+    })
 
     return NextResponse.json({ comment })
   } catch (_error) {

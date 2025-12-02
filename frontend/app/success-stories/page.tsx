@@ -6,36 +6,46 @@ import Link from "next/link"
 
 const stories = [
   {
-    title: "Nova Esports",
-    industry: "Gaming & Tournaments",
+    title: "UplyTech",
+    industry: "Infrastructure & Operations",
     summary:
-      "Needed a resilient audio layer for international tournaments with thousands of concurrent listeners and strict latency requirements.",
-    impact: ["45% lower moderation workload via queue automation", "Median command latency held under 90ms", "Zero dropped streams across 12 finals"],
-  },
-  {
-    title: "CampusFM Collective",
-    industry: "Education",
-    summary:
-      "Student-run radio-style Discord network wanted analytics to understand peak study sessions and automate playlists for different faculties.",
+      "Runs VectoBeat on-prem with strict availability targets. Needed realtime observability and automated incident response for the audio edge.",
     impact: [
-      "Automated playlist rotation across 18 guilds",
-      "Study sessions grew by 32% after telemetry-driven scheduling",
-      "Support tickets resolved within 4 hours via the priority desk",
+      "Kept shard failover under 2 seconds during maintenance windows",
+      "Cut manual incident escalations by 40% with automation rules",
+      "Maintained 99.97% audio uptime across Germany and the Netherlands",
     ],
   },
   {
-    title: "CreatorWorks Studio",
-    industry: "Content Creator Community",
+    title: "MitFits Gaming",
+    industry: "Gaming & Community Events",
     summary:
-      "Central hub for streamers needed multi-source redundancy and data exports for brand partners while staying compliant with GDPR.",
-    impact: ["Generated weekly stream-ready reports for brand meetings", "Onboarded 5 regional moderators with permission templates", "Achieved 99.96% uptime over 90 days"],
+      "Hosts weekly tournaments and cross-server watch parties. Required stable multiserver playback plus moderator tooling that keeps latency low.",
+    impact: [
+      "Held sub-100ms command latency during 10k+ concurrent listeners",
+      "Automated queue curation reduced moderator workload by 50%",
+      "Zero dropped finals streams after enabling dual-node routing",
+    ],
+  },
+  {
+    title: "VectoDE Community",
+    industry: "Creator & Builder Hub",
+    summary:
+      "Core community for sharing releases, dev diaries, and livestreams. Needed analytics exports for partners and safeguarded attachments.",
+    impact: [
+      "Weekly partner-ready engagement reports generated automatically",
+      "Role-based access for moderators with scoped audit logging",
+      "4-hour SLA for support tickets via the priority desk",
+    ],
   },
 ]
 
 export default async function SuccessStoriesPage() {
   const metrics = await fetchHomeMetrics()
   const serverCountDisplay = formatCountWithPlus(metrics?.totals.serverCount)
-  const streamsDisplay = formatCountWithPlus(metrics?.totals.totalStreams)
+  const totalStreamsValue =
+    typeof metrics?.totals.totalStreams === "string" ? Number(metrics.totals.totalStreams) : metrics?.totals.totalStreams
+  const streamsDisplay = formatCountWithPlus(Number.isFinite(totalStreamsValue) ? Number(totalStreamsValue) : 0)
   const totalViewsDisplay = formatCountWithPlus(metrics?.totals.totalViews)
 
   return (

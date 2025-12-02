@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getBlogReactions, recordBlogReaction, getBlogReactionForUser, type BlogReactionType } from "@/lib/db"
+import { getBlogReactions, recordBlogReaction, getBlogReactionForUser, type BlogReactionType, recordBotActivityEvent } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 
 type ParamsInput = Promise<{ id: string }> | { id: string }
@@ -46,6 +46,13 @@ export async function POST(request: NextRequest, ctx: { params: ParamsInput }) {
     }
 
     const result = await recordBlogReaction(id, discordId, reaction)
+    await recordBotActivityEvent({
+      type: "blog.reaction",
+      name: id,
+      guildId: null,
+      success: true,
+      metadata: { discordId, reaction, alreadyReacted: result.alreadyReacted },
+    })
     return NextResponse.json({
       reactions: result.summary,
       alreadyReacted: result.alreadyReacted,

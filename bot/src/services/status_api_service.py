@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import asyncio.subprocess
 import logging
 from collections import deque
 from datetime import datetime, timezone
@@ -69,6 +70,7 @@ class StatusAPIService:
         self._app.router.add_post("/reconcile-routing", self._handle_reconcile)
         self._app.router.add_post("/reconcile-settings", self._handle_reconcile_settings)
         self._app.router.add_post("/reconcile-defaults", self._handle_reconcile_defaults)
+        self._app.router.add_post("/control/{action}", self._handle_control_action)
 
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
@@ -148,6 +150,11 @@ class StatusAPIService:
             if self._cache["payload"] and self._cache["expires"] > current:
                 return self._cache["payload"]
             payload = self._build_payload()
+            # Persist uptime frequently so offline gaps are reflected in uptimePercent after restarts.
+            try:
+                HealthState.persist()
+            except Exception:
+                pass
             ttl = max(1, int(self.config.cache_ttl_seconds or 5))
             self._cache = {
                 "payload": payload,
@@ -180,7 +187,7 @@ class StatusAPIService:
         shards, shards_online, shards_total = self._build_shard_snapshot()
         commands, categories = self._command_reference()
         uptime_seconds = round(HealthState.uptime(), 2)
-        uptime_percent = 100 if uptime_seconds > 0 else 0
+        uptime_percent = round(HealthState.uptime_percent(), 2)
         listener_map = {int(detail["guildId"]): detail["listeners"] for detail in listener_detail}
         player_states = self._player_states(players, listener_map)
         commands_24h = len(self._command_events)
@@ -591,6 +598,104 @@ class StatusAPIService:
             except Exception as exc:  # pragma: no cover - best effort
                 self.logger.warning("Failed to apply global defaults: %s", exc)
         return web.json_response({"ok": True})
+
+    async def _handle_control_action(self, request: web.Request) -> web.Response:
+        if self.config.api_key:
+            auth_header = request.headers.get("Authorization")
+            if auth_header != f"Bearer {self.config.api_key}":
+                return web.json_response({"error": "unauthorized"}, status=401)
+
+        action = (request.match_info.get("action") or "").lower().strip()
+        if not action:
+            return web.json_response({"error": "action_required"}, status=400)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+
+        # Map common aliases to our internal operations or configured commands.
+        # reload-commands must always run the in-process Discord sync, never a shell command.
+        if action in {"reload-commands", "reload_commands"}:
+            await self._reload_commands()
+        elif action in {"reload", "reload-config", "reload_config"}:
+            await self._run_or_fallback(self.config.control_reload_cmd, self._reload_configuration)
+        elif action in {"restart-frontend", "restart_frontend"}:
+            await self._run_or_fallback(self.config.control_restart_frontend_cmd, self._noop)
+        elif action in {"start", "start-bot", "start_bot"}:
+            await self._run_or_fallback(self.config.control_start_cmd, self._noop)
+        elif action in {"stop", "stop-bot", "stop_bot"}:
+            await self._run_or_fallback(self.config.control_stop_cmd, self._noop)
+        else:
+            return web.json_response({"error": "unknown_action"}, status=400)
+
+        return web.json_response({"ok": True, "action": action, "payload": payload})
+
+    async def _reload_configuration(self) -> None:
+        """Invalidate caches/config and reconcile routing without full restart."""
+        settings_service = getattr(self.bot, "server_settings", None)
+        if settings_service:
+            settings_service.invalidate_all()
+        routing_service = getattr(self.bot, "regional_routing", None)
+        if routing_service:
+            try:
+                await routing_service.reconcile_all()
+            except Exception as exc:  # pragma: no cover - best-effort logging
+                self.logger.warning("Routing reconcile during reload failed: %s", exc)
+        search_cache = getattr(self.bot, "search_cache", None)
+        if search_cache and hasattr(search_cache, "clear"):
+            try:
+                search_cache.clear()
+            except Exception:
+                pass
+        # Drop status payload cache so next poll refreshes metrics
+        self._cache = {"payload": None, "expires": 0.0}
+
+    async def _reload_commands(self) -> None:
+        """Reload bot extensions and resync slash commands to Discord."""
+        bot = getattr(self, "bot", None)
+        if not bot:
+            return
+        # Reload all loaded extensions to pick up code/config changes.
+        try:
+            extensions = list(getattr(bot, "extensions", {}).keys())
+            for ext in extensions:
+                try:
+                    await bot.reload_extension(ext)
+                except Exception as exc:
+                    self.logger.warning("Failed to reload extension %s: %s", ext, exc)
+        except Exception as exc:
+            self.logger.warning("Extension reload sweep failed: %s", exc)
+        # Resync application commands to Discord.
+        sync_fn = getattr(bot, "_sync_application_commands", None)
+        if callable(sync_fn):
+            try:
+                await sync_fn()
+                self.logger.info("Slash commands re-synced after control action.")
+            except Exception as exc:
+                self.logger.warning("Slash command resync failed: %s", exc)
+        else:
+            self.logger.warning("Bot does not expose _sync_application_commands; skipping resync.")
+
+    async def _run_or_fallback(self, command: Optional[str], fallback):
+        """Run a shell command when provided, otherwise use a Python fallback."""
+        if command:
+            await self._run_shell(command)
+        else:
+            await fallback()
+
+    async def _run_shell(self, command: str) -> None:
+        """Execute a shell command; log errors but do not raise to the caller."""
+        try:
+            proc = await asyncio.subprocess.create_subprocess_shell(command)
+            await proc.communicate()
+            if proc.returncode != 0:
+                self.logger.warning("Control command failed (%s) exit=%s", command, proc.returncode)
+        except Exception as exc:
+            self.logger.warning("Control command error for '%s': %s", command, exc)
+
+    async def _noop(self) -> None:
+        return None
 
     @staticmethod
     def _track_payload(track: Optional[lavalink.AudioTrack]) -> Optional[Dict[str, Any]]:

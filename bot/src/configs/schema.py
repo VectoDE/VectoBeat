@@ -87,7 +87,7 @@ class CrossfadeConfig(BaseModel):
     enabled: bool = False
     duration_ms: int = 2000
     fade_steps: int = 10
-    floor_volume: int = 15
+    floor_volume: float = 15.0
 
 
 class RedisConfig(BaseModel):
@@ -121,6 +121,11 @@ class StatusAPIConfig(BaseModel):
     push_interval_seconds: int = 30
     event_endpoint: Optional[str] = None
     event_token: Optional[str] = None
+    control_start_cmd: Optional[str] = None
+    control_stop_cmd: Optional[str] = None
+    control_reload_cmd: Optional[str] = None
+    control_reload_commands_cmd: Optional[str] = None
+    control_restart_frontend_cmd: Optional[str] = None
 
 
 class ControlPanelAPIConfig(BaseModel):

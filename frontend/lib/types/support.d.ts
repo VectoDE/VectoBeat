@@ -6,6 +6,10 @@ export interface TicketMessage {
   role: string
   body: string
   attachments?: Array<{ name: string; type: string; size: number; content: string }>
+  subscription?: string | null
+  subscriptionTier?: string | null
+  tier?: string | null
+  plan?: string | null
   createdAt: string
 }
 

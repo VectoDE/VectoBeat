@@ -1,5 +1,6 @@
 import { sendNotificationEmail } from "@/lib/mailer"
 import { renderMarkdownEmail } from "@/lib/email-templates"
+import { listNewsletterSubscribers } from "@/lib/db"
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
@@ -185,4 +186,80 @@ export const sendNewsletterEmail = async ({
     preview,
     html,
   })
+}
+
+export const sendContactReplyEmail = async ({
+  to,
+  name,
+  subject,
+  message,
+}: {
+  to: string
+  name: string
+  subject?: string | null
+  message: string
+}) => {
+  const normalizedSubject = subject?.trim() || "Your VectoBeat message"
+  const markdown = `
+Hi ${name || "there"},
+
+You contacted VectoBeat and we’ve replied below:
+
+---
+${message}
+---
+
+You can reply directly to this email if you have more details to share.
+`
+
+  const html = renderMarkdownEmail({
+    title: normalizedSubject,
+    intro: "Our team has responded to your message.",
+    markdown,
+  })
+
+  return sendNotificationEmail({
+    to,
+    subject: `[VectoBeat] ${normalizedSubject}`,
+    preview: message.slice(0, 140),
+    html,
+  })
+}
+
+export const sendBlogPostAnnouncement = async ({
+  postTitle,
+  slug,
+  excerpt,
+}: {
+  postTitle: string
+  slug: string
+  excerpt?: string | null
+}) => {
+  const subscribers = await listNewsletterSubscribers()
+  if (!subscribers.length) return { delivered: 0, targeted: 0 }
+
+  const postUrl = `${normalizedAppUrl}/blog/${slug}`
+  const subject = `New on VectoBeat: ${postTitle}`
+  const markdown = `
+**${postTitle}**
+
+${excerpt || "We just published a fresh update on our blog."}
+
+Read the full post:
+${postUrl}
+`
+
+  let delivered = 0
+  for (const subscriber of subscribers) {
+    const result = await sendNewsletterEmail({
+      to: subscriber.email,
+      subject,
+      markdown,
+    })
+    if (result.delivered) {
+      delivered++
+    }
+  }
+
+  return { delivered, targeted: subscribers.length }
 }

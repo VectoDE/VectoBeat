@@ -22,7 +22,9 @@ export default async function AboutPage() {
   const metrics = await fetchHomeMetrics()
   const serverCountDisplay = formatCountWithPlus(metrics?.totals.serverCount)
   const userCountDisplay = formatCountWithPlus(metrics?.totals.activeUsers)
-  const totalViewsDisplay = formatCountWithPlus(metrics?.totals.totalViews)
+  const blogReachDisplay =
+    metrics?.stats.find((stat) => stat.label === "Blog Views")?.value ??
+    formatCountWithPlus(metrics?.totals.totalViews)
   const streamsDisplay = formatCountWithPlus(metrics?.totals.totalStreams)
   const uptimeValue = metrics?.totals.uptimeLabel ?? "0%"
   const responseTimeValue = metrics?.totals.responseTimeMs
@@ -290,7 +292,7 @@ export default async function AboutPage() {
             {[
               { title: "Active Servers", subtitle: serverCountDisplay, detail: "Live telemetry reported by the bot" },
               { title: "Daily Listeners", subtitle: userCountDisplay, detail: "Current audience reach" },
-              { title: "Blog Reach", subtitle: totalViewsDisplay, detail: "All-time article views" },
+              { title: "Blog Reach", subtitle: blogReachDisplay, detail: "All-time article views" },
               { title: "Streams Processed", subtitle: streamsDisplay, detail: "Playback events captured" },
             ].map((award, i) => (
               <div key={i} className="p-6 rounded-lg border border-primary/30 bg-primary/5 text-center">

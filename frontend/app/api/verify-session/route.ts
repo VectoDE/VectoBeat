@@ -11,6 +11,7 @@ import {
   hasWelcomeEmailBeenSent,
   markWelcomeEmailSent,
   getUserApiKey,
+  hasSeenLoginIp,
 } from "@/lib/db"
 import { ensureStripeCustomerForUser } from "@/lib/stripe-customers"
 import { getBotGuildPresence } from "@/lib/bot-status"
@@ -186,13 +187,28 @@ export async function GET(request: NextRequest) {
       throw new Error("Invalid user data from Discord")
     }
 
-    const guildsResult = await discordFetch("/users/@me/guilds", token)
+    const fetchGuilds = async () => {
+      const first = await discordFetch("/users/@me/guilds", token)
+      if (first.ok || first.unauthorized || first.status !== 429) {
+        return first
+      }
+      const retryAfterMs = Math.max(0, Math.floor((first.body?.retry_after ?? 0) * 1000))
+      if (retryAfterMs > 0 && retryAfterMs < 2_000) {
+        await new Promise((resolve) => setTimeout(resolve, retryAfterMs))
+        return discordFetch("/users/@me/guilds", token)
+      }
+      return first
+    }
+
+    const guildsResult = await fetchGuilds()
     let guilds: any[] = []
 
     if (guildsResult.ok && Array.isArray(guildsResult.body)) {
       guilds = guildsResult.body
     } else if (!guildsResult.ok && !guildsResult.unauthorized) {
-      console.error("[VectoBeat] Discord guild fetch failed:", guildsResult.status, guildsResult.body)
+      if (guildsResult.status !== 429) {
+        console.error("[VectoBeat] Discord guild fetch failed:", guildsResult.status, guildsResult.body)
+      }
     }
 
     const botGuildIds = await getBotGuildPresence()
@@ -270,6 +286,7 @@ export async function GET(request: NextRequest) {
       ipAddress,
       location,
     })
+    const isFirstTimeFromIp = ipAddress ? !(await hasSeenLoginIp(userData.id, ipAddress)) : false
 
     if (!sessionInfo.allowed) {
       sessionCache.delete(token)
@@ -283,10 +300,10 @@ export async function GET(request: NextRequest) {
         ipAddress,
         userAgent,
         location,
-        notified: security.loginAlerts,
+        notified: security.loginAlerts && isFirstTimeFromIp,
       })
 
-      if (security.loginAlerts) {
+      if (security.loginAlerts && isFirstTimeFromIp) {
         await sendSecurityAlert({
           discordId: userData.id,
           message: "New login detected",

@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  frontend:
+  vectobeat-frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -37,7 +37,7 @@ services:
           cpus: "0.25"
           memory: 512M
 
-  bot:
+  vectobeat-bot:
     build:
       context: .
       dockerfile: bot/Dockerfile
@@ -58,8 +58,8 @@ services:
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
-      - ./bot/config.yml:/src/config.yml:ro
-      - ./bot/data:/src/data
+      - ./vectobeat-bot/config.yml:/src/config.yml:ro
+      - ./vectobeat-bot/data:/src/data
     depends_on:
       - lavalink
       - redis

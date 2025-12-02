@@ -478,6 +478,9 @@ class ServerSettingsService:
         """Call the control-panel API for fresh settings."""
         if not self._session:
             return self._default_state()
+        if not guild_id:
+            # No guild to fetch for (e.g., bad event payload); avoid hitting the API with an empty guildId.
+            return self._default_state()
         base = self.config.base_url.rstrip("/")
         url = f"{base}{self._endpoint}?guildId={guild_id}"
         headers = self._headers()

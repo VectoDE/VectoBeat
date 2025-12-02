@@ -369,7 +369,7 @@ model BlogPost {
   slug        String   @unique
   title       String
   excerpt     String?
-  content     String
+  content     String   @db.LongText
   author      String
   category    String?
   readTime    String?  @map("read_time")

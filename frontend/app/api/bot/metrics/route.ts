@@ -47,8 +47,28 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   const history = await getBotMetricHistory(1)
   const latest = history.at(-1) ?? null
+
+  // Prefer a live status pull so uptimePercent reflects downtime between pushes.
+  let liveSnapshot: any = null
+  try {
+    const res = await fetch(process.env.BOT_STATUS_API_URL || "http://localhost:3051/status", {
+      headers:
+        process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
+          ? { Authorization: `Bearer ${process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY || ""}` }
+          : undefined,
+      cache: "no-store",
+    })
+    if (res.ok) {
+      liveSnapshot = await res.json()
+    }
+  } catch (error) {
+    console.error("[VectoBeat] Failed to fetch live bot status for metrics:", error)
+  }
+
+  const snapshot = liveSnapshot || latest
+
   return NextResponse.json({
-    snapshot: latest,
+    snapshot,
     history,
   })
 }

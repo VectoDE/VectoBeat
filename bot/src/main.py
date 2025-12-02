@@ -17,6 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from src.configs.settings import CONFIG, DISCORD_TOKEN
+from src.services.health_service import HealthState
 from src.services.autoplay_service import AutoplayService
 from src.services.dj_permission_service import DJPermissionManager
 from src.services.chaos_service import ChaosService
@@ -95,6 +96,8 @@ class VectoBeat(commands.AutoShardedBot):
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
         self._entrypoint_payloads: List[dict] = []
         self._panel_parity_task: Optional[asyncio.Task] = None
+        # Persist uptime on shutdown
+        self.add_cleanup_task(HealthState.persist_async)
 
     async def _command_prefix_resolver(self, bot: commands.Bot, message: discord.Message):
         """Resolve guild-specific command prefixes."""

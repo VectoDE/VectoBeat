@@ -60,8 +60,39 @@ const sanitizeSlug = (value: string | number | null | undefined) => {
   return /^[A-Za-z0-9-_]+$/.test(raw) ? raw : encodeURIComponent(raw)
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const slug = sanitizeSlug(params.id)
+type BlogPageParams = { params: Promise<{ id: string }> | { id: string } }
+
+const resolveParams = async (params: BlogPageParams["params"]) => {
+  return "then" in params ? params : Promise.resolve(params)
+}
+
+const formatContentForRender = (value: string) => {
+  if (!value) return ""
+  const normalized = value.replace(/\r\n/g, "\n").replace(/\\n/g, "\n").replace(/\\t/g, "  ")
+  const lines = normalized.split("\n")
+  const indentLengths = lines
+    .filter((line) => line.trim().length > 0)
+    .map((line) => (line.match(/^[ \t]*/)?.[0].length ?? 0))
+  const minIndent = indentLengths.length ? Math.min(...indentLengths) : 0
+  const stripped =
+    minIndent > 0
+      ? lines
+          .map((line) => (line.length >= minIndent ? line.slice(minIndent) : line.trimStart()))
+          .join("\n")
+      : normalized
+  const trimmed = stripped.trim()
+
+  // Ensure heading markers without a space still render as headings (e.g., "#Title" -> "# Title").
+  const normalizedHeadings = trimmed.replace(/^(#{1,6})([^\s#])/gm, (_match, hashes: string, title: string) => {
+    return `${hashes} ${title}`
+  })
+
+  return normalizedHeadings
+}
+
+export async function generateMetadata({ params }: BlogPageParams) {
+  const { id } = await resolveParams(params)
+  const slug = sanitizeSlug(id)
   try {
     const post = await getBlogPostByIdentifier(slug)
     if (!post) {
@@ -77,8 +108,6 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     return defaultBlogPostMetadata(slug)
   }
 }
-
-type BlogPageParams = { params: Promise<{ id: string }> | { id: string } }
 
 type BlogApiPayload = {
   post: BlogPost
@@ -108,8 +137,9 @@ const fetchBlogPayload = async (identifier: string, runtimeOrigin?: string | nul
 }
 
 export default async function BlogPostPage({ params }: BlogPageParams) {
-  const { id } = await params
-  const post = await getBlogPostByIdentifier(id)
+  const { id } = await resolveParams(params)
+  const safeId = sanitizeSlug(id)
+  const post = await getBlogPostByIdentifier(safeId)
 
   if (!post) {
     return (
@@ -129,7 +159,7 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
     )
   }
 
-  const postIdentifier = post.slug ?? post.id
+  const postIdentifier = sanitizeSlug(post.slug ?? post.id)
 
   await incrementBlogViews(postIdentifier)
 
@@ -163,6 +193,8 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
   const cookieStore = await cookies()
   const bootstrapToken = cookieStore.get("discord_token")?.value ?? null
   const bootstrapDiscordId = cookieStore.get("discord_user_id")?.value ?? null
+  const markdownContent =
+    typeof hydratedPost.content === "string" ? formatContentForRender(hydratedPost.content) : ""
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,7 +251,7 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
           </div>
 
           <div className="space-y-8">
-            <MarkdownContent content={hydratedPost.content} />
+            <MarkdownContent content={markdownContent} />
             <BlogReactions postIdentifier={postIdentifier} initialReactions={reactions} />
             <BlogComments postIdentifier={postIdentifier} initialComments={comments} />
           </div>

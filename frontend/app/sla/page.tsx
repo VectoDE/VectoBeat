@@ -86,7 +86,7 @@ const sections = [
     items: [
       "Primary support: timhauke@uplytech.de or Support Desk portal.",
       "Abuse & illegal content: legal@uplytech.de (response ≤48h).",
-      "24/7 Incident Bridge (Priority Care): +49 172 6166860.",
+      "24/7 Incident Bridge (Priority Care): +49 (172) 6166860.",
     ],
   },
 ]
@@ -160,7 +160,7 @@ export default function SLAPage() {
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <p className="text-foreground/70">
             Need bespoke terms or a signed Data Processing Agreement?{" "}
-            <Link href="/contact" className="text-primary font-semibold hover:underline">
+            <Link href="/support-desk" className="text-primary font-semibold hover:underline">
               Contact our team
             </Link>{" "}
             or email legal@uplytech.de for Enterprise negotiations.

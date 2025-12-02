@@ -61,7 +61,15 @@ export const createAnalyticsExportHandlers = (deps: ExportDeps = {}) => {
       return response
     } catch (error: any) {
       if (error && error.code === "ENOENT") {
-        return NextResponse.json({ error: "export_not_found" }, { status: 404 })
+        // Gracefully return an empty payload when no export exists yet instead of 404.
+        return new NextResponse("", {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${safeFile}-analytics.jsonl"`,
+            "Cache-Control": "no-store",
+          },
+        })
       }
       console.error("[VectoBeat] Failed to load analytics export:", error)
       return NextResponse.json({ error: "export_unavailable" }, { status: 500 })

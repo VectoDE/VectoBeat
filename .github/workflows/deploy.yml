@@ -84,16 +84,27 @@ jobs:
 
   deploy:
     needs: publish-image
+    if: ${{ github.repository_owner == 'VectoDE' }}
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+      DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
     steps:
       - name: Check deploy secrets
         id: deploy-guard
+        env:
+          DEPLOY_SSH_HOST: ${{ env.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ env.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
+          DEPLOY_TARGET_PATH: ${{ env.DEPLOY_TARGET_PATH }}
         run: |
           missing=()
-          [ -z "${{ secrets.DEPLOY_SSH_HOST }}" ] && missing+=('DEPLOY_SSH_HOST')
-          [ -z "${{ secrets.DEPLOY_SSH_USER }}" ] && missing+=('DEPLOY_SSH_USER')
-          [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ] && missing+=('DEPLOY_SSH_KEY')
-          [ -z "${{ secrets.DEPLOY_TARGET_PATH }}" ] && missing+=('DEPLOY_TARGET_PATH')
+          [ -z "$DEPLOY_SSH_HOST" ] && missing+=('DEPLOY_SSH_HOST')
+          [ -z "$DEPLOY_SSH_USER" ] && missing+=('DEPLOY_SSH_USER')
+          [ -z "$DEPLOY_SSH_KEY" ] && missing+=('DEPLOY_SSH_KEY')
+          [ -z "$DEPLOY_TARGET_PATH" ] && missing+=('DEPLOY_TARGET_PATH')
 
           if [ ${#missing[@]} -eq 0 ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -107,11 +118,11 @@ jobs:
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
         uses: appleboy/scp-action@v1.0.0
         with:
-          host: ${{ secrets.DEPLOY_SSH_HOST }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ env.DEPLOY_SSH_HOST }}
+          username: ${{ env.DEPLOY_SSH_USER }}
+          key: ${{ env.DEPLOY_SSH_KEY }}
           source: docker-compose.yml
-          target: ${{ secrets.DEPLOY_TARGET_PATH }}
+          target: ${{ env.DEPLOY_TARGET_PATH }}
 
       - name: Trigger remote deployment
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
@@ -125,13 +136,13 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          host: ${{ secrets.DEPLOY_SSH_HOST }}
-          username: ${{ secrets.DEPLOY_SSH_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ env.DEPLOY_SSH_HOST }}
+          username: ${{ env.DEPLOY_SSH_USER }}
+          key: ${{ env.DEPLOY_SSH_KEY }}
           envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
-            cd ${{ secrets.DEPLOY_TARGET_PATH }}
+            cd "$DEPLOY_TARGET_PATH"
             FRONTEND_TAG="${FRONTEND_IMAGE:-${REGISTRY}/${FRONTEND_IMAGE_NAME}:latest}"
             BOT_TAG="${BOT_IMAGE:-${REGISTRY}/${BOT_IMAGE_NAME}:latest}"
             cat > compose.deploy.yml <<EOF
