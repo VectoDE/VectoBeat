@@ -26,9 +26,12 @@ categories:
 change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
 no-changes-template: "No changes in this release."
 template: |
-  ## What's Changed
+  ## What's Changed (since $PREVIOUS_TAG)
 
   $CHANGES
+
+  ## Full Changelog
+  - $PREVIOUS_TAG...$CURRENT_TAG
 
   ## Contributors
 
