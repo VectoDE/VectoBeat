@@ -133,4 +133,3 @@ services:
 
 volumes:
   redis_data:
-  mysql_data:
