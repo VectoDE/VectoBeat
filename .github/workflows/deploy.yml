@@ -33,10 +33,18 @@ jobs:
             exit 1
           fi
 
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ env.DEPLOY_SSH_KEY }}
+      - name: Set up SSH key and agent
+        id: ssh-setup
+        run: |
+          mkdir -p ~/.ssh
+          key_file=~/.ssh/deploy_key
+          # Support secrets stored with literal \n sequences or real newlines
+          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
+          chmod 600 "$key_file"
+          eval "$(ssh-agent -s)"
+          ssh-add "$key_file"
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
 
       - name: Run deploy.sh on server
         run: |
