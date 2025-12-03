@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "next dev -p 3050",
     "lint": "eslint .",
-    "start": "next start -p 3050",
+    "start": "next start -p 3060",
     "test:server-settings": "node --test -r ./tests/register-ts.js ./tests/server-settings-smoke.test.ts ./tests/membership-tier-normalize.test.ts ./tests/plan-gate-free.test.ts ./tests/provision-defaults.test.ts ./tests/external-queue-access.test.ts ./tests/plan-upgrade-regressions.test.ts ./tests/entitlement-drift.test.ts ./tests/control-panel-auth.test.ts ./tests/control-panel-server-settings-auth.test.ts ./tests/account-settings-auth.test.ts ./tests/dashboard-subscriptions-auth.test.ts ./tests/concierge-auth.test.ts ./tests/bot-concierge-api.test.ts ./tests/queue-sync-store.test.ts ./tests/dashboard-analytics-queue.test.ts ./tests/queue-sync-concurrency.test.ts ./tests/verify-request-for-user.test.ts ./tests/api-tokens-actor.test.ts ./tests/high-risk-api-integration.test.ts ./tests/bot-contracts.test.ts ./tests/load-failover-simulations.test.ts ./tests/ci-safety.test.ts"
   },
   "dependencies": {
