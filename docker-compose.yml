@@ -10,11 +10,11 @@ services:
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      PORT: "3050"
+      PORT: "3060"
       DATABASE_URL: "mysql://${DB_USER:-vectobeat}:${DB_PASSWORD:-vectorpass}@mysql:3306/${DB_NAME:-vectobeat}"
-      BOT_STATUS_API_URL: http://bot:3051/status
+      BOT_STATUS_API_URL: http://127.0.0.1:3061/status
     ports:
-      - "3050:3050"
+      - "3060:3060"
     depends_on:
       - mysql
     restart: unless-stopped
@@ -22,7 +22,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "node -e \"fetch('http://127.0.0.1:3050/').then(()=>process.exit(0)).catch(()=>process.exit(1))\"",
+          "node -e \"fetch('http://127.0.0.1:3060/').then(()=>process.exit(0)).catch(()=>process.exit(1))\"",
         ]
       interval: 30s
       timeout: 10s
@@ -47,14 +47,14 @@ services:
       CONFIG_PATH: /src/config.yml
       METRICS_ENABLED: "${METRICS_ENABLED:-true}"
       METRICS_HOST: 0.0.0.0
-      METRICS_PORT: "${METRICS_PORT:-3052}"
+      METRICS_PORT: "${METRICS_PORT:-3062}"
       METRICS_INTERVAL: "${METRICS_INTERVAL:-15}"
       LAVALINK_HOST: lavalink
-      LAVALINK_PORT: "2333"
+      LAVALINK_PORT: "2334"
       LAVALINK_HTTPS: "false"
       LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
       REDIS_HOST: redis
-      REDIS_PORT: "6379"
+      REDIS_PORT: "32768"
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
@@ -64,14 +64,14 @@ services:
       - lavalink
       - redis
     ports:
-      - "3052:3052"
-      - "3051:3051"
+      - "3062:3062"
+      - "3061:3061"
     restart: unless-stopped
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "python -c \"import urllib.request,sys;sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:3051/status',timeout=5).status < 500 else sys.exit(1)\"",
+          "python -c \"import urllib.request,sys;sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:3061/status',timeout=5).status < 500 else sys.exit(1)\"",
         ]
       interval: 30s
       timeout: 10s
@@ -132,33 +132,6 @@ services:
         reservations:
           cpus: "0.1"
           memory: 128M
-
-  mysql:
-    image: mysql:8.4
-    environment:
-      MYSQL_DATABASE: "${DB_NAME:-vectobeat}"
-      MYSQL_USER: "${DB_USER:-vectobeat}"
-      MYSQL_PASSWORD: "${DB_PASSWORD:-vectorpass}"
-      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-vectorpass_root}"
-    ports:
-      - "3307:3307"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 2G
-        reservations:
-          cpus: "0.3"
-          memory: 1G
 
 volumes:
   redis_data:
