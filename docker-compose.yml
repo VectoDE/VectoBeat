@@ -11,7 +11,7 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "3060"
-      DATABASE_URL: "mysql://${DB_USER:-vectobeat}:${DB_PASSWORD:-vectorpass}@mysql:3306/${DB_NAME:-vectobeat}"
+      DATABASE_URL: "mysql://${DB_USER:-vectobeat}:${DB_PASSWORD:-vectorpass}@45.84.196.19:3306/${DB_NAME:-vectobeat}"
       BOT_STATUS_API_URL: http://127.0.0.1:3061/status
     ports:
       - "3060:3060"
