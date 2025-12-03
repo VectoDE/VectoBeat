@@ -15,8 +15,6 @@ services:
       BOT_STATUS_API_URL: http://127.0.0.1:3061/status
     ports:
       - "3060:3060"
-    depends_on:
-      - mysql
     restart: unless-stopped
     healthcheck:
       test:
