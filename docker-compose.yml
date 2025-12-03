@@ -90,15 +90,15 @@ services:
     image: ghcr.io/lavalink-devs/lavalink:4
     container_name: vectobeat-lavalink
     environment:
-      SERVER_PORT: "2333"
+      SERVER_PORT: "2334"
       LAVALINK_SERVER_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
     volumes:
       - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
     ports:
-      - "2333:2333"
+      - "2334:2334"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:2333/version || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:2334/version || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -115,7 +115,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6380"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -141,7 +141,7 @@ services:
       MYSQL_PASSWORD: "${DB_PASSWORD:-vectorpass}"
       MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-vectorpass_root}"
     ports:
-      - "3306:3306"
+      - "3307:3307"
     volumes:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
