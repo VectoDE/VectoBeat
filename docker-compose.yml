@@ -52,7 +52,7 @@ services:
       LAVALINK_HTTPS: "false"
       LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
       REDIS_HOST: redis
-      REDIS_PORT: "32768"
+      REDIS_PORT: "6380"
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
