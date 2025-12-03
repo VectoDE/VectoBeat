@@ -42,7 +42,7 @@ services:
     env_file:
       - ./.env
     environment:
-      CONFIG_PATH: /src/config.yml
+      CONFIG_PATH: /app/config.yml
       METRICS_ENABLED: "${METRICS_ENABLED:-true}"
       METRICS_HOST: 0.0.0.0
       METRICS_PORT: "${METRICS_PORT:-3062}"
@@ -56,8 +56,8 @@ services:
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
-      - ./vectobeat-bot/config.yml:/src/config.yml:ro
-      - ./vectobeat-bot/data:/src/data
+      - ./bot/config.yml:/app/config.yml:ro
+      - ./bot/data:/app/data
     depends_on:
       - lavalink
       - redis

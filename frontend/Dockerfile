@@ -23,12 +23,12 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3050
+    PORT=3060
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
-EXPOSE 3000
-CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "3050"]
+EXPOSE 3060
+CMD ["npm", "run", "start", "--", "-p", "3060"]
