@@ -37,7 +37,7 @@ jobs:
         id: ssh-setup
         run: |
           mkdir -p ~/.ssh
-          key_file=~/.ssh/vectobeat
+          key_file=~/.ssh/deploy_key
           # Support secrets stored with literal \n sequences or real newlines
           printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
@@ -47,6 +47,13 @@ jobs:
           ssh-add "$key_file"
           echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
+
+      - name: Sync repository to server
+        run: |
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" "mkdir -p '${DEPLOY_TARGET_PATH}'"
+          rsync -az --delete --exclude '.git' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
 
       - name: Run deploy.sh on server
         run: |
