@@ -37,7 +37,7 @@ jobs:
         id: ssh-setup
         run: |
           mkdir -p ~/.ssh
-          key_file=~/.ssh/deploy_key
+          key_file=~/.ssh/vectobeat
           # Support secrets stored with literal \n sequences or real newlines
           printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
