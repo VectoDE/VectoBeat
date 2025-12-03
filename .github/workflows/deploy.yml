@@ -1,92 +1,20 @@
-name: 🚀 Release & Publish
+name: 🚀 Deploy
 
 on:
   release:
     types: [published]
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  FRONTEND_IMAGE_NAME: ${{ github.repository }}-frontend
-  BOT_IMAGE_NAME: ${{ github.repository }}-bot
-
 permissions:
   contents: read
-  packages: write
 
 jobs:
-  publish-image:
-    runs-on: ubuntu-latest
-    outputs:
-      frontend-tag: ${{ steps.frontend-tag.outputs.tag }}
-      bot-tag: ${{ steps.bot-tag.outputs.tag }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Extract frontend metadata (tags, labels)
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
-          tags: |
-            type=ref,event=tag
-            type=raw,value=latest
-
-      - name: Extract bot metadata (tags, labels)
-        id: meta-bot
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.BOT_IMAGE_NAME }}
-          tags: |
-            type=ref,event=tag
-            type=raw,value=latest
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
-
-      - name: Build and push bot image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: bot/Dockerfile
-          push: true
-          tags: ${{ steps.meta-bot.outputs.tags }}
-          labels: ${{ steps.meta-bot.outputs.labels }}
-
-      - name: Capture primary frontend tag
-        id: frontend-tag
-        run: echo "tag=$(echo "${{ steps.meta-frontend.outputs.tags }}" | head -n 1)" >> "$GITHUB_OUTPUT"
-
-      - name: Capture primary bot tag
-        id: bot-tag
-        run: echo "tag=$(echo "${{ steps.meta-bot.outputs.tags }}" | head -n 1)" >> "$GITHUB_OUTPUT"
-
   deploy:
-    needs: publish-image
     runs-on: ubuntu-latest
     env:
       DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
       DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      DEPLOY_SSH_KEY_BASE64: ${{ secrets.DEPLOY_SSH_KEY_BASE64 }}
-      DEPLOY_SSH_PASSPHRASE: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
       DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
     steps:
       - name: Check deploy secrets
@@ -96,8 +24,6 @@ jobs:
           DEPLOY_SSH_HOST: ${{ env.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ env.DEPLOY_SSH_USER }}
           DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
-          DEPLOY_SSH_KEY_BASE64: ${{ env.DEPLOY_SSH_KEY_BASE64 }}
-          DEPLOY_SSH_PASSPHRASE: ${{ env.DEPLOY_SSH_PASSPHRASE }}
           DEPLOY_TARGET_PATH: ${{ env.DEPLOY_TARGET_PATH }}
         run: |
           if [ "$REPO_OWNER" != "VectoDE" ]; then
@@ -109,7 +35,7 @@ jobs:
           missing=()
           [ -z "$DEPLOY_SSH_HOST" ] && missing+=('DEPLOY_SSH_HOST')
           [ -z "$DEPLOY_SSH_USER" ] && missing+=('DEPLOY_SSH_USER')
-          [ -z "$DEPLOY_SSH_KEY$DEPLOY_SSH_KEY_BASE64" ] && missing+=('DEPLOY_SSH_KEY or DEPLOY_SSH_KEY_BASE64')
+          [ -z "$DEPLOY_SSH_KEY" ] && missing+=('DEPLOY_SSH_KEY')
           [ -z "$DEPLOY_TARGET_PATH" ] && missing+=('DEPLOY_TARGET_PATH')
 
           if [ ${#missing[@]} -eq 0 ]; then
@@ -129,25 +55,18 @@ jobs:
         id: prep-ssh
         env:
           DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
-          DEPLOY_SSH_KEY_BASE64: ${{ env.DEPLOY_SSH_KEY_BASE64 }}
-          DEPLOY_SSH_PASSPHRASE: ${{ env.DEPLOY_SSH_PASSPHRASE }}
         run: |
-          if [ -z "$DEPLOY_SSH_KEY$DEPLOY_SSH_KEY_BASE64" ]; then
-            echo "DEPLOY_SSH_KEY / DEPLOY_SSH_KEY_BASE64 is empty. Make sure a repository secret is set."
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "DEPLOY_SSH_KEY is empty. Make sure the repository secret is set."
             exit 1
           fi
           mkdir -p ~/.ssh
           key_file=~/.ssh/deploy_key
-          if [ -n "$DEPLOY_SSH_KEY_BASE64" ]; then
-            echo "$DEPLOY_SSH_KEY_BASE64" | tr -d '\r' | base64 -d > "$key_file" || { echo "Failed to decode DEPLOY_SSH_KEY_BASE64"; exit 1; }
-          else
-            # Support secrets stored with literal \n sequences or real newlines
-            printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
-          fi
+          # Support secrets stored with literal \n sequences or real newlines
+          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
           # Validate key before proceeding
-          ssh-keygen -y -P "${DEPLOY_SSH_PASSPHRASE:-}" -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY/DEPLOY_SSH_KEY_BASE64 (or missing passphrase)"; exit 1; }
-          ssh-keygen -lf "$key_file" -P "${DEPLOY_SSH_PASSPHRASE:-}"
+          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
           {
             echo "key<<EOF"
@@ -155,47 +74,27 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Sync container to server
+      - name: Sync repository to server
         if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ env.DEPLOY_SSH_HOST }}
-          username: ${{ env.DEPLOY_SSH_USER }}
-          key: ${{ steps.prep-ssh.outputs.key }}
-          key_path: ${{ steps.prep-ssh.outputs.key_path }}
-          passphrase: ${{ env.DEPLOY_SSH_PASSPHRASE }}
-          source: docker-compose.yml
-          target: ${{ env.DEPLOY_TARGET_PATH }}
-
-      - name: Trigger remote deployment
-        if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
-        uses: appleboy/ssh-action@v1.2.3
         env:
-          REGISTRY: ${{ env.REGISTRY }}
-          FRONTEND_IMAGE: ${{ needs.publish-image.outputs.frontend-tag }}
-          BOT_IMAGE: ${{ needs.publish-image.outputs.bot-tag }}
-          FRONTEND_IMAGE_NAME: ${{ env.FRONTEND_IMAGE_NAME }}
-          BOT_IMAGE_NAME: ${{ env.BOT_IMAGE_NAME }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          host: ${{ env.DEPLOY_SSH_HOST }}
-          username: ${{ env.DEPLOY_SSH_USER }}
-          key: ${{ steps.prep-ssh.outputs.key }}
-          key_path: ${{ steps.prep-ssh.outputs.key_path }}
-          passphrase: ${{ env.DEPLOY_SSH_PASSPHRASE }}
-          envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
-          script: |
-            docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
-            cd "$DEPLOY_TARGET_PATH"
-            FRONTEND_TAG="${FRONTEND_IMAGE:-${REGISTRY}/${FRONTEND_IMAGE_NAME}:latest}"
-            BOT_TAG="${BOT_IMAGE:-${REGISTRY}/${BOT_IMAGE_NAME}:latest}"
-            cat > compose.deploy.yml <<EOF
-            services:
-              frontend:
-                image: $FRONTEND_TAG
-              bot:
-                image: $BOT_TAG
-            EOF
-            docker compose -f docker-compose.yml -f compose.deploy.yml pull
-            docker compose -f docker-compose.yml -f compose.deploy.yml up -d --remove-orphans
+          KEY_PATH: ${{ steps.prep-ssh.outputs.key_path }}
+          DEPLOY_SSH_HOST: ${{ env.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ env.DEPLOY_SSH_USER }}
+          DEPLOY_TARGET_PATH: ${{ env.DEPLOY_TARGET_PATH }}
+        run: |
+          rsync -az --delete \
+            --exclude '.git' \
+            -e "ssh -i ${KEY_PATH} -o StrictHostKeyChecking=no" \
+            ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
+
+      - name: Run deploy.sh on server
+        if: ${{ steps.deploy-guard.outputs.skip != 'true' }}
+        env:
+          KEY_PATH: ${{ steps.prep-ssh.outputs.key_path }}
+          DEPLOY_SSH_HOST: ${{ env.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ env.DEPLOY_SSH_USER }}
+          DEPLOY_TARGET_PATH: ${{ env.DEPLOY_TARGET_PATH }}
+        run: |
+          ssh -i "${KEY_PATH}" -o StrictHostKeyChecking=no \
+            "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+            "cd '${DEPLOY_TARGET_PATH}' && chmod +x deploy.sh && ./deploy.sh"
