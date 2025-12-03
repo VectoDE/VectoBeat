@@ -41,6 +41,8 @@ jobs:
           # Support secrets stored with literal \n sequences or real newlines
           printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
+          # Validate key before adding to agent
+          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
           eval "$(ssh-agent -s)"
           ssh-add "$key_file"
           echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
