@@ -85,6 +85,8 @@ jobs:
       DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
       DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_SSH_KEY_BASE64: ${{ secrets.DEPLOY_SSH_KEY_BASE64 }}
+      DEPLOY_SSH_PASSPHRASE: ${{ secrets.DEPLOY_SSH_PASSPHRASE }}
       DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
     steps:
       - name: Check deploy secrets
@@ -94,6 +96,8 @@ jobs:
           DEPLOY_SSH_HOST: ${{ env.DEPLOY_SSH_HOST }}
           DEPLOY_SSH_USER: ${{ env.DEPLOY_SSH_USER }}
           DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KEY_BASE64: ${{ env.DEPLOY_SSH_KEY_BASE64 }}
+          DEPLOY_SSH_PASSPHRASE: ${{ env.DEPLOY_SSH_PASSPHRASE }}
           DEPLOY_TARGET_PATH: ${{ env.DEPLOY_TARGET_PATH }}
         run: |
           if [ "$REPO_OWNER" != "VectoDE" ]; then
@@ -105,7 +109,7 @@ jobs:
           missing=()
           [ -z "$DEPLOY_SSH_HOST" ] && missing+=('DEPLOY_SSH_HOST')
           [ -z "$DEPLOY_SSH_USER" ] && missing+=('DEPLOY_SSH_USER')
-          [ -z "$DEPLOY_SSH_KEY" ] && missing+=('DEPLOY_SSH_KEY')
+          [ -z "$DEPLOY_SSH_KEY$DEPLOY_SSH_KEY_BASE64" ] && missing+=('DEPLOY_SSH_KEY or DEPLOY_SSH_KEY_BASE64')
           [ -z "$DEPLOY_TARGET_PATH" ] && missing+=('DEPLOY_TARGET_PATH')
 
           if [ ${#missing[@]} -eq 0 ]; then
@@ -125,18 +129,25 @@ jobs:
         id: prep-ssh
         env:
           DEPLOY_SSH_KEY: ${{ env.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KEY_BASE64: ${{ env.DEPLOY_SSH_KEY_BASE64 }}
+          DEPLOY_SSH_PASSPHRASE: ${{ env.DEPLOY_SSH_PASSPHRASE }}
         run: |
-          if [ -z "$DEPLOY_SSH_KEY" ]; then
-            echo "DEPLOY_SSH_KEY is empty. Make sure the repository secret is set."
+          if [ -z "$DEPLOY_SSH_KEY$DEPLOY_SSH_KEY_BASE64" ]; then
+            echo "DEPLOY_SSH_KEY / DEPLOY_SSH_KEY_BASE64 is empty. Make sure a repository secret is set."
             exit 1
           fi
           mkdir -p ~/.ssh
           key_file=~/.ssh/deploy_key
-          # Support secrets stored with literal \n sequences or real newlines
-          printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
+          if [ -n "$DEPLOY_SSH_KEY_BASE64" ]; then
+            echo "$DEPLOY_SSH_KEY_BASE64" | tr -d '\r' | base64 -d > "$key_file" || { echo "Failed to decode DEPLOY_SSH_KEY_BASE64"; exit 1; }
+          else
+            # Support secrets stored with literal \n sequences or real newlines
+            printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
+          fi
           chmod 600 "$key_file"
           # Validate key before proceeding
-          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
+          ssh-keygen -y -P "${DEPLOY_SSH_PASSPHRASE:-}" -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY/DEPLOY_SSH_KEY_BASE64 (or missing passphrase)"; exit 1; }
+          ssh-keygen -lf "$key_file" -P "${DEPLOY_SSH_PASSPHRASE:-}"
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
           {
             echo "key<<EOF"
@@ -152,6 +163,7 @@ jobs:
           username: ${{ env.DEPLOY_SSH_USER }}
           key: ${{ steps.prep-ssh.outputs.key }}
           key_path: ${{ steps.prep-ssh.outputs.key_path }}
+          passphrase: ${{ env.DEPLOY_SSH_PASSPHRASE }}
           source: docker-compose.yml
           target: ${{ env.DEPLOY_TARGET_PATH }}
 
@@ -171,6 +183,7 @@ jobs:
           username: ${{ env.DEPLOY_SSH_USER }}
           key: ${{ steps.prep-ssh.outputs.key }}
           key_path: ${{ steps.prep-ssh.outputs.key_path }}
+          passphrase: ${{ env.DEPLOY_SSH_PASSPHRASE }}
           envs: REGISTRY,FRONTEND_IMAGE,BOT_IMAGE,FRONTEND_IMAGE_NAME,BOT_IMAGE_NAME,GITHUB_ACTOR,GITHUB_TOKEN
           script: |
             docker login $REGISTRY -u "$GITHUB_ACTOR" -p "$GITHUB_TOKEN"
