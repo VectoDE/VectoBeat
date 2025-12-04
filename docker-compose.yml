@@ -52,7 +52,7 @@ services:
       LAVALINK_HTTPS: "false"
       LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
       REDIS_HOST: 45.84.196.19
-      REDIS_PORT: "32768"
+      REDIS_PORT: "6379"
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
@@ -60,6 +60,7 @@ services:
       - ./bot/data:/app/data
     depends_on:
       - lavalink
+      - Redis
     ports:
       - "3062:3062"
       - "3061:3061"
