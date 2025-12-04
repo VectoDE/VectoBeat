@@ -16,12 +16,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # Prefer secret value, fall back to repo/environment variable or runner env for local debugging.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BUILD_STRIPE_KEY: ${{ secrets.BUILD_STRIPE_KEY || 'dummy_stripe_key' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Check required env
+        if: ${{ env.DATABASE_URL == '' }}
+        run: |
+          echo "DATABASE_URL is required to build the frontend image. Set secrets.DATABASE_URL or provide DATABASE_URL in the workflow environment."
+          exit 1
 
       - name: Build frontend image
         uses: docker/build-push-action@v6
@@ -31,6 +41,9 @@ jobs:
           push: false
           load: true
           tags: vectobeat-frontend:ci
+          build-args: |
+            DATABASE_URL=${{ env.DATABASE_URL }}
+            BUILD_STRIPE_KEY=${{ env.BUILD_STRIPE_KEY }}
 
       - name: Smoke test frontend container
         run: docker run --rm vectobeat-frontend:ci node -v
