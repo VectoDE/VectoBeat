@@ -43,23 +43,9 @@ services:
       - ./.env
     environment:
       CONFIG_PATH: /app/config.yml
-      METRICS_ENABLED: "${METRICS_ENABLED:-true}"
-      METRICS_HOST: 0.0.0.0
-      METRICS_PORT: "${METRICS_PORT:-3062}"
-      METRICS_INTERVAL: "${METRICS_INTERVAL:-15}"
-      LAVALINK_HOST: lavalink
-      LAVALINK_PORT: "2334"
-      LAVALINK_HTTPS: "false"
-      LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
-      REDIS_HOST: 45.84.196.19
-      REDIS_PORT: "6379"
-      REDIS_DB: "${REDIS_DB:-0}"
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     volumes:
       - ./bot/config.yml:/app/config.yml:ro
       - ./bot/data:/app/data
-    depends_on:
-      - lavalink
     ports:
       - "3062:3062"
       - "3061:3061"
@@ -82,29 +68,3 @@ services:
         reservations:
           cpus: "0.35"
           memory: 768M
-
-  lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:4
-    container_name: vectobeat-lavalink
-    environment:
-      SERVER_PORT: "2334"
-      LAVALINK_SERVER_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
-    volumes:
-      - ./lavalink/application.yml:/opt/Lavalink/application.yml:ro
-    ports:
-      - "2334:2334"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:2334/version || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 768M
-        reservations:
-          cpus: "0.2"
-          memory: 256M
