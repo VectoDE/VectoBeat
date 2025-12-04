@@ -33,6 +33,8 @@ copy_env() {
 copy_env "$PROJECT_ROOT/frontend/.env"
 copy_env "$PROJECT_ROOT/bot/.env"
 copy_env "$PROJECT_ROOT/.env"
+copy_env "$PROJECT_ROOT/.env.build"
+copy_env "$PROJECT_ROOT/.env"
 
 "${COMPOSE[@]}" build --pull
 "${COMPOSE[@]}" up -d --remove-orphans

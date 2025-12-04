@@ -11,7 +11,7 @@ WORKDIR /app
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
 # Ensure build uses real env (DATABASE_URL) for Prisma.
-COPY .env ./.env
+COPY .env.build ./.env
 RUN set -a; . ./.env; set +a; \
     npx prisma generate && \
     npx prisma db push
