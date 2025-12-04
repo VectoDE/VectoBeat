@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     const billingInterval: "month" | "year" = billingCycle === "monthly" ? "month" : "year"
 
     const currency = (process.env.STRIPE_DEFAULT_CURRENCY || "eur").toLowerCase()
-    const locale = (typeof requestLocale === "string" && requestLocale.trim()) || process.env.STRIPE_LOCALE || "en"
+    const locale = (typeof requestLocale === "string" && requestLocale.trim().toLowerCase()) || "de"
 
     const lineItem: Stripe.Checkout.SessionCreateParams.LineItem =
       priceId && priceId.startsWith("price_")
