@@ -11,8 +11,7 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "3060"
-      DATABASE_URL: "mysql://${DB_USER:-vectobeat}:${DB_PASSWORD:-vectorpass}@45.84.196.19:3306/${DB_NAME:-vectobeat}"
-      BOT_STATUS_API_URL: http://127.0.0.1:3061/status
+      BOT_STATUS_API_URL: https://bot.vectobeat.uplytech.de/status
     ports:
       - "3060:3060"
     restart: unless-stopped
@@ -51,7 +50,7 @@ services:
       LAVALINK_PORT: "2334"
       LAVALINK_HTTPS: "false"
       LAVALINK_PASSWORD: "${LAVALINK_PASSWORD:-localpass}"
-      REDIS_HOST: redis
+      REDIS_HOST: 45.84.196.19
       REDIS_PORT: "6380"
       REDIS_DB: "${REDIS_DB:-0}"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
