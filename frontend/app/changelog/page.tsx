@@ -89,10 +89,6 @@ export default async function ChangelogPage() {
       <Navigation />
 
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 right-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl opacity-40 animate-pulse" />
-        </div>
-
         <div className="relative max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">Version History</h1>
           <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
