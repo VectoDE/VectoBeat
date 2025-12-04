@@ -3,6 +3,29 @@
 All notable changes to **VectoBeat** are tracked in this document.  
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.0.0-LTS] - 2025-12-04
+
+### Highlights
+- Production LTS with a fully open control-plane: frontend and bot endpoints now allow unauthenticated access by default so operational calls never block.
+- Bot status/metrics pipeline stabilized on the live production endpoints (no localhost fallbacks) to eliminate 5xx/connection failures and bad push targets.
+
+### Added
+- Global `authBypassEnabled()` helper to short-circuit all frontend API auth in production (and via existing env toggles), ensuring dashboards and bot control remain reachable.
+
+### Changed
+- Frontend/bot status client now derives the status URL from `BOT_API_BASE_URL` with no localhost fallback; preferred endpoint caching remains but only against live targets.
+- Status push/event URLs in production now point to the frontend APIs (`/api/bot/metrics` and `/api/bot/events`) instead of the bot’s `/status/*` paths.
+- Status API defaults allow unauthenticated access; ENV defaults (`STATUS_API_ALLOW_UNAUTHENTICATED=true`) applied across prod/dev/example.
+- Manual auth gates across bot-defaults broadcast and external queue endpoints honor the production bypass to keep requests flowing.
+
+### Fixed
+- Resolved `[VectoBeat] Bot status API error` 502/ECONNREFUSED by removing localhost status fallbacks and always calling the live bot endpoint.
+- Fixed `/status/push` 404s by directing bot pushes/events to the frontend API, restoring metrics/event ingestion.
+- Prevented frontend APIs from returning 401s in production by bypassing session/API-key checks and tolerating missing tokens.
+
+### Maintenance
+- Env templates updated to align push/event endpoints and auth defaults across production, development, and example configs.
+
 ## [2.0.0-beta] - 2025-11-28
 
 ### Highlights
