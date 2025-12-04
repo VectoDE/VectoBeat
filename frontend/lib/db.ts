@@ -3787,6 +3787,14 @@ interface BlogPostInput {
   featured?: boolean
 }
 
+const normalizeExcerpt = (excerpt?: string | null): string | null => {
+  if (!excerpt) return null
+  const trimmed = excerpt.trim()
+  const MAX_LENGTH = 190
+  if (trimmed.length <= MAX_LENGTH) return trimmed
+  return `${trimmed.slice(0, MAX_LENGTH - 3).trimEnd()}...`
+}
+
 export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | null> => {
   try {
     const db = getPool()
@@ -3795,7 +3803,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
     const computedReadTime = calculateReadTime(input.content)
     const baseData = {
       title: input.title,
-      excerpt: input.excerpt || null,
+      excerpt: normalizeExcerpt(input.excerpt),
       content: input.content,
       author: input.author,
       category: input.category || null,
