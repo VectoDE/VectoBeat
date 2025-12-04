@@ -31,4 +31,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
 EXPOSE 3060
-CMD ["npm", "run", "start", "--", "-p", "3060"]
+COPY frontend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+ENTRYPOINT ["./entrypoint.sh"]
