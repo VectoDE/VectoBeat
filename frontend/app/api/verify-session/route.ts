@@ -86,7 +86,7 @@ const discordFetch = async (path: string, token: string, attempt = 1): Promise<D
   const response = await fetch(`https://discord.com/api/v10${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      "User-Agent": "VectoBeat/2.0.1",
+      "User-Agent": "VectoBeat/2.0.2",
     },
   })
 

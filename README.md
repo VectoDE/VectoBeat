@@ -6,6 +6,7 @@
     <strong>Python</strong>, <strong>discord.py</strong>, <strong>Lavalink v4</strong>, and a <strong>Next.js</strong> control panel.
   </p>
   <p>
+    <a href="https://vectobeat.uplytech.de"><img src="https://img.shields.io/badge/VectoBeat-Visit%20Website-0A84FF?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Visit VectoBeat website"></a>
     <a href="https://discord.com/api/oauth2/authorize?client_id=1435859299028172901&permissions=36768832&scope=bot%20applications.commands%20identify"><img src="https://img.shields.io/badge/Bot%20Invite-Add%20VectoBeat-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Invite the VectoBeat bot"></a>
     <a href="https://discordbotlist.com/bots/vectobeat"><img src="https://img.shields.io/badge/DiscordBotList-View%20Listing-ff3366?style=for-the-badge&logo=discord&logoColor=white" alt="DiscordBotList listing"></a>
     <a href="https://discord.gg/DtHPAEHxZk"><img src="https://img.shields.io/badge/Discord-Join%20Support-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Support"></a>
@@ -23,16 +24,25 @@
   </p>
   <p>
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/test.yml">
-      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/test.yml/badge.svg?branch=main" alt="Quality Gate Status" />
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/test.yml/badge.svg?branch=main" alt="Quality Gate" />
     </a>
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/build.yml">
-      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/build.yml/badge.svg?branch=main" alt="Build Status" />
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/build.yml/badge.svg?branch=main" alt="Build Container" />
+    </a>
+    <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/release-drafter.yml">
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/release-drafter.yml/badge.svg?branch=main" alt="Release Drafter" />
     </a>
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/deploy.yml">
-      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Release & Publish" />
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy VectoBeat" />
     </a>
     <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/security.yml">
-      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/security.yml/badge.svg?branch=main" alt="Security Audit" />
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/security.yml/badge.svg?branch=main" alt="Dependency Audit" />
+    </a>
+    <a href="https://github.com/VectoDE/VectoBeat/actions/workflows/codeql.yml">
+      <img src="https://github.com/VectoDE/VectoBeat/actions/workflows/codeql.yml/badge.svg?branch=main" alt="CodeQL Advanced" />
+    </a>
+    <a href="https://github.com/VectoDE/VectoBeat/security/dependabot">
+      <img src="https://img.shields.io/badge/Dependabot-Updates-blue?logo=dependabot" alt="Dependabot Updates" />
     </a>
   </p>
 </div>

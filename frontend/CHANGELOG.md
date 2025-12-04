@@ -3,6 +3,21 @@
 All notable changes to **VectoBeat** are tracked in this document.  
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.0.2] - 2025-12-06
+
+### Highlights
+- CI visibility expanded with workflow badges for every automation lane and a direct link to the live VectoBeat site.
+- Frontend container builds now accept `DATABASE_URL` via secrets/vars and fail fast when it is missing to keep Prisma generation reliable.
+
+### Added
+- README hero now includes a website badge plus status badges for Quality Gate, Build Container, Release Drafter, Deploy VectoBeat, Dependency Audit, CodeQL Advanced, and Dependabot Updates.
+
+### Changed
+- Build workflow exports `DATABASE_URL`/`BUILD_STRIPE_KEY` to Docker build args and enforces a pre-build check so Prisma steps succeed consistently in CI.
+
+### Maintenance
+- Badge labels and links refreshed to match the current workflow names and coverage.
+
 ## [2.0.1] - 2025-12-05
 
 ### Highlights
