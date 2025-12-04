@@ -1,10 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { emitBotControl } from "@/lib/bot-control"
+import { authBypassEnabled } from "@/lib/auth"
 
 const AUTH_TOKEN =
   process.env.SERVER_SETTINGS_API_KEY || process.env.STATUS_API_PUSH_SECRET || process.env.STATUS_API_KEY || ""
 
 const isAuthorized = (request: NextRequest) => {
+  if (authBypassEnabled()) return true
   if (!AUTH_TOKEN) return true
   const header = request.headers.get("authorization")
   return header === `Bearer ${AUTH_TOKEN}`

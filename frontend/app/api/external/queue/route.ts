@@ -5,6 +5,7 @@ import { getQueueSnapshot } from "@/lib/queue-sync-store"
 import type { MembershipTier } from "@/lib/memberships"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import { resolveClientIp, resolveClientLocation } from "@/lib/request-metadata"
+import { authBypassEnabled } from "@/lib/auth"
 
 const normalizeToken = (header: string | null) => {
   if (!header) return null
@@ -18,6 +19,12 @@ export const hasPlanAccess = (tier: string) =>
 export async function GET(request: NextRequest) {
   const guildId = request.nextUrl.searchParams.get("guildId")
   const token = normalizeToken(request.headers.get("authorization"))
+  if (authBypassEnabled() && guildId) {
+    const snapshot = await getQueueSnapshot(guildId)
+    return NextResponse.json(
+      snapshot ?? { guildId, queue: [], nowPlaying: null, paused: false, volume: null, updatedAt: null },
+    )
+  }
   if (!guildId || !token) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }

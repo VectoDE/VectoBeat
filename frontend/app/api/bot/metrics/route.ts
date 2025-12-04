@@ -49,9 +49,13 @@ export async function GET() {
   const latest = history.at(-1) ?? null
 
   // Prefer a live status pull so uptimePercent reflects downtime between pushes.
+  const defaultStatusUrl =
+    process.env.BOT_STATUS_API_URL ||
+    (process.env.BOT_API_BASE_URL ? `${process.env.BOT_API_BASE_URL.replace(/\/+$/, "")}/status` : null) ||
+    "http://localhost:3051/status"
   let liveSnapshot: any = null
   try {
-    const res = await fetch(process.env.BOT_STATUS_API_URL || "http://localhost:3051/status", {
+    const res = await fetch(defaultStatusUrl, {
       headers:
         process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
           ? { Authorization: `Bearer ${process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY || ""}` }

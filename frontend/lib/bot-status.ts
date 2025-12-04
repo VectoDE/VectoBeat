@@ -1,4 +1,7 @@
-const BOT_STATUS_API_URL = process.env.BOT_STATUS_API_URL
+const BOT_API_BASE_URL = process.env.BOT_API_BASE_URL || ""
+const BOT_STATUS_API_URL =
+  process.env.BOT_STATUS_API_URL ||
+  (BOT_API_BASE_URL ? `${BOT_API_BASE_URL.replace(/\/+$/, "")}/status` : "")
 // Fallback to STATUS_API_KEY so local/prod configs that only set one variable still authenticate.
 const BOT_STATUS_API_KEY = process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
 const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
