@@ -5,6 +5,8 @@ import Link from "next/link"
 import type React from "react"
 import { fetchChangelog, summarizeReleases } from "@/lib/changelog"
 
+export const dynamic = "force-dynamic"
+
 const getTypeBadgeColor = (type: string) => {
   switch (type) {
     case "major":
@@ -85,7 +87,20 @@ export default async function ChangelogPage() {
   const summaryCards = summarizeReleases(releases)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background changelog-root">
+      <style>{`
+        .changelog-root * {
+          animation: none !important;
+          transition: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        .changelog-root [data-animate-on-scroll],
+        .changelog-root [data-animate-on-scroll].is-visible {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      `}</style>
       <Navigation />
 
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden">
@@ -98,7 +113,7 @@ export default async function ChangelogPage() {
       </section>
 
         <section className="w-full py-12 px-4 border-b border-border">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto changelog-summary">
           {summaryCards.length ? (
             <div className="grid md:grid-cols-4 gap-6">
               {summaryCards.map((item, i) => (
@@ -143,7 +158,7 @@ export default async function ChangelogPage() {
 
       <section className="w-full py-20 px-4 md:px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="space-y-8">
+          <div className="space-y-8 changelog-entries">
             {releases.length === 0 && (
               <div className="text-center text-foreground/60 py-12">
                 No releases are available yet. As soon as the repository publishes one, it will appear here automatically.

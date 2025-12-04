@@ -1,4 +1,4 @@
-import fs from "fs/promises"
+import fs from "fs"
 import path from "path"
 
 const GITHUB_REPO = process.env.GITHUB_CHANGELOG_REPO || "VectoDE/VectoBeat"
@@ -166,46 +166,41 @@ export const summarizeReleases = (releases: ChangelogEntry[]) => {
   ]
 }
 
-const readLocalChangelog = async (): Promise<ChangelogEntry[]> => {
-  try {
-    const filePath = path.join(process.cwd(), "CHANGELOG.md")
-    const content = await fs.readFile(filePath, "utf8")
-    const headerRegex = /^## \[(.+?)\] - ([^\n]+)$/gm
-    const entries: ChangelogEntry[] = []
-    let match: RegExpExecArray | null
-    const positions: Array<{ version: string; date: string; start: number; end: number }> = []
+const readLocalChangelog = (): ChangelogEntry[] => {
+  const filePath = path.join(process.cwd(), "CHANGELOG.md")
+  const content = fs.readFileSync(filePath, "utf8")
+  const headerRegex = /^## \[(.+?)\] - ([^\n]+)$/gm
+  const entries: ChangelogEntry[] = []
+  let match: RegExpExecArray | null
+  const positions: Array<{ version: string; date: string; start: number; end: number }> = []
 
-    while ((match = headerRegex.exec(content)) !== null) {
-      const version = match[1]
-      const date = match[2]
-      const start = headerRegex.lastIndex
-      positions.push({ version, date, start, end: content.length })
-      if (positions.length > 1) {
-        positions[positions.length - 2].end = match.index
-      }
+  while ((match = headerRegex.exec(content)) !== null) {
+    const version = match[1]
+    const date = match[2]
+    const start = headerRegex.lastIndex
+    positions.push({ version, date, start, end: content.length })
+    if (positions.length > 1) {
+      positions[positions.length - 2].end = match.index
     }
-
-    positions.forEach((pos, index) => {
-      const body = content.slice(pos.start, pos.end).trim()
-      const { highlights, changes } = parseReleaseBody(body)
-      const sanitizedVersion = pos.version.trim()
-      const publishedAt = new Date(pos.date).toString() === "Invalid Date" ? null : pos.date
-      entries.push({
-        id: index + 1,
-        version: sanitizedVersion,
-        title: sanitizedVersion,
-        publishedAt,
-        type: classifyReleaseType(sanitizedVersion),
-        url: `https://github.com/${GITHUB_REPO}/releases/tag/${sanitizedVersion}`,
-        body,
-        highlights,
-        changes,
-      })
-    })
-
-    return entries
-  } catch (error) {
-    console.error("[VectoBeat] Failed to read local changelog:", error)
-    return []
   }
+
+  positions.forEach((pos, index) => {
+    const body = content.slice(pos.start, pos.end).trim()
+    const { highlights, changes } = parseReleaseBody(body)
+    const sanitizedVersion = pos.version.trim()
+    const publishedAt = new Date(pos.date).toString() === "Invalid Date" ? null : pos.date
+    entries.push({
+      id: index + 1,
+      version: sanitizedVersion,
+      title: sanitizedVersion,
+      publishedAt,
+      type: classifyReleaseType(sanitizedVersion),
+      url: `https://github.com/${GITHUB_REPO}/releases/tag/${sanitizedVersion}`,
+      body,
+      highlights,
+      changes,
+    })
+  })
+
+  return entries
 }
