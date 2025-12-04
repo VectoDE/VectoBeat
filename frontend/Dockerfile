@@ -8,13 +8,16 @@ RUN npm ci --include=dev
 
 FROM deps AS builder
 WORKDIR /app
-ARG DATABASE_URL="mysql://placeholder:placeholder@localhost:3306/vectobeat"
-# Prisma needs a DATABASE_URL at build time even though it does not connect.
-ENV DATABASE_URL="mysql://placeholder:placeholder@localhost:3306/vectobeat"
-# Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
-ARG BUILD_STRIPE_KEY="dummy_stripe_key"
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
+# Ensure build uses real env (DATABASE_URL) for Prisma.
+COPY .env ./.env
+RUN set -a; . ./.env; set +a; \
+    npx prisma generate && \
+    npx prisma db push
+
+# Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
+ARG BUILD_STRIPE_KEY="dummy_stripe_key"
 RUN STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npx prisma generate && \
     STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npm run build
 
@@ -31,6 +34,4 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
 EXPOSE 3060
-COPY frontend/entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+CMD ["npm", "run", "start", "--", "-p", "3060"]
