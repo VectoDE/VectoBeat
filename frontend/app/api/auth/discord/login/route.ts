@@ -33,15 +33,28 @@ const encodeState = (payload: Record<string, string>) => {
   return base64UrlEncode(Buffer.from(json, "utf-8"))
 }
 
+const resolvePreferredOrigin = (request: NextRequest) => {
+  const envOrigin = process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+  const candidates = [envOrigin, request.nextUrl.origin, DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, "")]
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    try {
+      const normalized = new URL(candidate.replace(/\/$/, ""))
+      return normalized.origin
+    } catch {
+      continue
+    }
+  }
+  return request.nextUrl.origin
+}
+
 export async function GET(request: NextRequest) {
   if (!DISCORD_CLIENT_ID) {
     return NextResponse.redirect("https://discord.com/developers/applications")
   }
 
   const searchParams = request.nextUrl.searchParams
-  const fallbackOrigin =
-    request.nextUrl.origin ||
-    DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, "")
+  const fallbackOrigin = resolvePreferredOrigin(request)
   const fallbackRedirect = `${fallbackOrigin.replace(/\/$/, "")}/api/auth/discord/callback`
   const redirectOverride = searchParams.get("redirect_uri")
   const stateParam = searchParams.get("state")

@@ -24,7 +24,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://discord.com https://api.stripe.com https://checkout.stripe.com https://m.stripe.network ws://localhost:* ws://127.0.0.1:*",
+      "connect-src 'self' https://discord.com https://api.stripe.com https://checkout.stripe.com https://m.stripe.network https://vectobeat.uplytech.de https://bot.vectobeat.uplytech.de https://45.84.196.19 http://45.84.196.19 https://45.84.196.19:3060 http://45.84.196.19:3060 wss://vectobeat.uplytech.de wss://bot.vectobeat.uplytech.de wss://45.84.196.19 wss://45.84.196.19:3060 ws://45.84.196.19 ws://45.84.196.19:3060 ws://localhost:* ws://127.0.0.1:*",
       "frame-src 'self' https://js.stripe.com https://checkout.stripe.com",
       "worker-src 'self' blob:",
     ].join("; "),

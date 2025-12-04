@@ -50,11 +50,32 @@ const decodeStatePayload = (value: string | null): EncodedStatePayload | null =>
   return null
 }
 
+const resolvePreferredOrigin = (request: NextRequest) => {
+  const envOrigin =
+    process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
+  const candidates = [
+    envOrigin,
+    request.nextUrl.origin,
+    DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, ""),
+  ]
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    try {
+      const normalized = new URL(candidate.replace(/\/$/, ""))
+      return normalized.origin
+    } catch {
+      continue
+    }
+  }
+  return request.nextUrl.origin
+}
+
 const resolveStateRedirect = (
   request: NextRequest,
   override?: string | null,
   allowFallback: boolean = true,
 ): URL | null => {
+
   let stateValue: string | null
   if (override !== undefined) {
     stateValue = override
@@ -68,21 +89,44 @@ const resolveStateRedirect = (
   }
 
   if (stateValue.startsWith("/")) {
-    return new URL(stateValue, request.nextUrl.origin)
+    return new URL(stateValue, resolvePreferredOrigin(request))
   }
 
   try {
     const parsed = new URL(stateValue)
     const allowedOrigins = new Set<string>()
-    allowedOrigins.add(request.nextUrl.origin)
-    const publicUrl = (process.env.NEXT_PUBLIC_URL || "").replace(/\/$/, "")
-    if (publicUrl) {
-      allowedOrigins.add(publicUrl)
+    const registerOrigin = (value: string | null | undefined) => {
+      if (!value) return
+      try {
+        const normalized = new URL(value.replace(/\/$/, ""))
+        allowedOrigins.add(normalized.origin)
+      } catch {
+        // Ignore invalid entries; helps keep the allowlist robust in prod.
+      }
     }
-    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null
-    if (vercelUrl) {
-      allowedOrigins.add(vercelUrl.replace(/\/$/, ""))
+
+    registerOrigin(request.nextUrl.origin)
+    registerOrigin(resolvePreferredOrigin(request))
+    registerOrigin(process.env.NEXT_PUBLIC_URL || "")
+    registerOrigin(process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
+
+    const additionalOrigins =
+      process.env.ALLOWED_REDIRECT_ORIGINS || process.env.NEXT_PUBLIC_ALLOWED_REDIRECT_ORIGINS
+    if (additionalOrigins) {
+      additionalOrigins
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .forEach((entry) => {
+          registerOrigin(/^https?:\/\//i.test(entry) ? entry : `https://${entry}`)
+        })
     }
+
+    // Always allow the public production domains and the direct IP for cross-site handshakes.
+    ;["https://vectobeat.uplytech.de", "https://bot.vectobeat.uplytech.de", "https://45.84.196.19", "http://45.84.196.19"].forEach(
+      (origin) => registerOrigin(origin),
+    )
+
     if (allowedOrigins.has(parsed.origin)) {
       return parsed
     }
@@ -118,9 +162,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const fallbackOrigin =
-      request.nextUrl.origin ||
-      DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, "")
+    const fallbackOrigin = resolvePreferredOrigin(request)
     const fallbackRedirect = `${fallbackOrigin.replace(/\/$/, "")}/api/auth/discord/callback`
     const redirectCookie = request.cookies.get(REDIRECT_COOKIE)?.value
     const redirectTarget = sanitizeRedirect(decodedState?.r || redirectCookie, fallbackRedirect)
@@ -186,7 +228,7 @@ export async function GET(request: NextRequest) {
     const stateRedirect = !security.twoFactorEnabled
       ? resolveStateRedirect(request, stateOverride, decodedState ? false : true)
       : null
-    const redirectUrl = stateRedirect ?? new URL(redirectPath, request.nextUrl.origin)
+    const redirectUrl = stateRedirect ?? new URL(redirectPath, resolvePreferredOrigin(request))
     redirectUrl.searchParams.set("token", tokenData.access_token)
     redirectUrl.searchParams.set("user_id", userData.id)
     redirectUrl.searchParams.set("username", userData.username)
