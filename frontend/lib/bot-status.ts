@@ -9,6 +9,18 @@ const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
 const DEFAULT_FALLBACKS = ["http://127.0.0.1:3051/status", "http://localhost:3051/status"]
 const ENDPOINT_COOLDOWN_MS = 30_000
 const FETCH_TIMEOUT_MS = 8_000
+const ALLOW_LOCAL_FALLBACKS =
+  process.env.ALLOW_LOCAL_STATUS_FALLBACKS === "1" || process.env.NODE_ENV !== "production"
+const AUTH_TOKENS = [
+  BOT_STATUS_API_KEY,
+  process.env.STATUS_API_KEY,
+  process.env.STATUS_API_EVENT_SECRET,
+  process.env.STATUS_API_PUSH_SECRET,
+  process.env.CONTROL_PANEL_API_KEY,
+  process.env.SERVER_SETTINGS_API_KEY,
+]
+  .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+  .map((value) => value.trim())
 
 let cachedBotGuilds: {
   data: Set<string>
@@ -41,6 +53,49 @@ const normalizeEndpoint = (value: string) => {
   } catch {
     return ""
   }
+}
+
+const buildAuthHeaders = (): HeadersInit | undefined => {
+  if (!AUTH_TOKENS.length) return undefined
+  const primary = AUTH_TOKENS[0]
+  return {
+    Authorization: `Bearer ${primary}`,
+    "x-api-key": primary,
+    "x-bot-status-api-key": primary,
+    "x-status-api-key": primary,
+    "x-control-panel-key": process.env.CONTROL_PANEL_API_KEY || primary,
+    "x-server-settings-key": process.env.SERVER_SETTINGS_API_KEY || primary,
+  }
+}
+
+const appendTokenQuery = (endpoint: string) => {
+  if (!AUTH_TOKENS.length) return endpoint
+  try {
+    const url = new URL(endpoint)
+    const hasTokenParam =
+      url.searchParams.has("token") || url.searchParams.has("key") || url.searchParams.has("api_key")
+    if (!hasTokenParam) {
+      url.searchParams.set("token", AUTH_TOKENS[0])
+    }
+    return url.toString()
+  } catch {
+    return endpoint
+  }
+}
+
+const buildStatusCandidates = () => {
+  const nowMs = Date.now()
+  const baseCandidates = [BOT_STATUS_API_URL || "", preferredEndpoint, ...BOT_STATUS_FALLBACKS]
+  const hasConfiguredEndpoint = baseCandidates.some(Boolean)
+  const localFallbacks = ALLOW_LOCAL_FALLBACKS && !hasConfiguredEndpoint ? DEFAULT_FALLBACKS : []
+
+  return [...baseCandidates, ...localFallbacks]
+    .map((endpoint) => normalizeEndpoint(endpoint))
+    .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
+    .filter((endpoint) => {
+      const nextRetry = endpointCooldowns.get(endpoint)
+      return !nextRetry || nextRetry <= nowMs
+    })
 }
 
 const parseGuildIds = (payload: unknown): string[] => {
@@ -87,29 +142,20 @@ export const getBotStatus = async () => {
     return cachedBotStatus.data
   }
 
-  const fallbackSources =
-    BOT_STATUS_API_URL || preferredEndpoint ? BOT_STATUS_FALLBACKS : [...BOT_STATUS_FALLBACKS, ...DEFAULT_FALLBACKS]
-
-  const nowMs = Date.now()
-  const candidates = [BOT_STATUS_API_URL || "", preferredEndpoint, ...DEFAULT_FALLBACKS, ...fallbackSources]
-    .map((endpoint) => normalizeEndpoint(endpoint))
-    .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
-    .filter((endpoint) => {
-      const nextRetry = endpointCooldowns.get(endpoint)
-      return !nextRetry || nextRetry <= nowMs
-    })
+  const candidates = buildStatusCandidates()
+  if (candidates.length === 0) {
+    cachedBotStatus.expires = now + 10 * 1000
+    return cachedBotStatus.data
+  }
 
   let lastError: unknown = null
   for (const endpoint of candidates) {
+    const target = appendTokenQuery(endpoint)
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     try {
-      const response = await fetch(endpoint, {
-        headers: BOT_STATUS_API_KEY
-          ? {
-              Authorization: `Bearer ${BOT_STATUS_API_KEY}`,
-            }
-          : undefined,
+      const response = await fetch(target, {
+        headers: buildAuthHeaders(),
         next: {
           revalidate: 30,
         },
@@ -142,7 +188,7 @@ export const getBotStatus = async () => {
         lastError = error
       }
       lastError = error
-      endpointCooldowns.set(endpoint, nowMs + ENDPOINT_COOLDOWN_MS)
+      endpointCooldowns.set(endpoint, Date.now() + ENDPOINT_COOLDOWN_MS)
       continue
     }
   }
@@ -191,10 +237,12 @@ const deriveControlEndpoint = (endpoint: string, path = "/reconcile-routing") =>
 }
 
 const buildControlCandidates = () => {
-  const fallbackSources =
-    BOT_STATUS_API_URL || preferredEndpoint ? BOT_STATUS_FALLBACKS : [...BOT_STATUS_FALLBACKS, ...DEFAULT_FALLBACKS]
-  return [preferredEndpoint, BOT_STATUS_API_URL || "", ...fallbackSources]
-    .map((endpoint) => endpoint.trim())
+  const baseCandidates = [preferredEndpoint, BOT_STATUS_API_URL || "", ...BOT_STATUS_FALLBACKS]
+  const hasConfiguredEndpoint = baseCandidates.some(Boolean)
+  const localFallbacks = ALLOW_LOCAL_FALLBACKS && !hasConfiguredEndpoint ? DEFAULT_FALLBACKS : []
+
+  return [...baseCandidates, ...localFallbacks]
+    .map((endpoint) => normalizeEndpoint(endpoint))
     .filter((endpoint, index, array) => endpoint && array.indexOf(endpoint) === index)
 }
 
@@ -214,7 +262,7 @@ const postToBotControl = async (path: string, body: Record<string, any>): Promis
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(BOT_STATUS_API_KEY ? { Authorization: `Bearer ${BOT_STATUS_API_KEY}` } : {}),
+          ...buildAuthHeaders(),
         },
         signal: controller.signal,
         body: JSON.stringify(body),
