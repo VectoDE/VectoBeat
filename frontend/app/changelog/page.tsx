@@ -94,8 +94,8 @@ export default async function ChangelogPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 animate-fade-in-up">Version History</h1>
-          <p className="text-xl text-foreground/70 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6">Version History</h1>
+          <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
             Real-time sync with the official GitHub repository. Every release, every change, every fix—directly from the source.
           </p>
         </div>
@@ -106,7 +106,7 @@ export default async function ChangelogPage() {
           {summaryCards.length ? (
             <div className="grid md:grid-cols-4 gap-6">
               {summaryCards.map((item, i) => (
-                <div key={i} className="text-center p-4 animate-fade-in-up" style={{ animationDelay: `${i * 100}ms` }}>
+                <div key={i} className="text-center p-4">
                   <div className="text-3xl font-bold text-primary mb-1">{item.value}</div>
                   <p className="text-foreground/60 text-sm">{item.label}</p>
                 </div>
@@ -155,12 +155,12 @@ export default async function ChangelogPage() {
             )}
 
             {releases.map((release, idx) => (
-              <div key={release.id} className="relative animate-rise-up" style={{ animationDelay: `${idx * 120}ms` }}>
+              <div key={release.id} className="relative">
                 {idx < releases.length - 1 && (
                   <div className="absolute left-3 md:left-6 top-20 bottom-0 w-0.5 md:w-1 bg-linear-to-b from-primary/50 to-transparent" />
                 )}
                 <div className="absolute left-0 top-4 w-8 md:w-12 h-8 md:h-12 bg-background border-2 border-primary rounded-full flex items-center justify-center">
-                  <div className="w-4 md:w-6 h-4 md:h-6 bg-primary rounded-full animate-pulse-scale" />
+                  <div className="w-4 md:w-6 h-4 md:h-6 bg-primary rounded-full" />
                 </div>
 
                 <div className="ml-16 md:ml-24 pb-8 p-4 md:p-6 rounded-lg border border-border/50 hover:border-primary/30 bg-card/30 transition-all duration-300 hover:bg-card/50">

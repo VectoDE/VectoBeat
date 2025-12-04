@@ -1,3 +1,6 @@
+import fs from "fs/promises"
+import path from "path"
+
 const GITHUB_REPO = process.env.GITHUB_CHANGELOG_REPO || "VectoDE/VectoBeat"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
 
@@ -25,7 +28,7 @@ export type ChangelogEntry = {
 }
 
 const classifyReleaseType = (tag: string): "major" | "minor" | "patch" => {
-  const normalized = tag.replace(/^v/i, "")
+  const normalized = tag.replace(/^v/i, "").split("-")[0]
   const [majorRaw = "0", minorRaw = "0", patchRaw = "0"] = normalized.split(".")
   const major = Number.parseInt(majorRaw, 10)
   const minor = Number.parseInt(minorRaw, 10)
@@ -106,38 +109,47 @@ const parseReleaseBody = (body: string | null) => {
 }
 
 export const fetchChangelog = async (): Promise<ChangelogEntry[]> => {
-  const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}),
-    },
-    next: {
-      revalidate: 60 * 30,
-    },
-  })
+  try {
+    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}),
+      },
+      next: {
+        revalidate: 60 * 30,
+      },
+    })
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch releases: ${response.status}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch releases: ${response.status}`)
+    }
+
+    const releases = (await response.json()) as GitHubRelease[]
+    const parsed = releases
+      .filter((release) => !release.draft)
+      .map((release) => {
+        const { highlights, changes } = parseReleaseBody(release.body)
+        return {
+          id: release.id,
+          version: release.tag_name,
+          title: release.name || release.tag_name,
+          publishedAt: release.published_at,
+          type: classifyReleaseType(release.tag_name),
+          url: release.html_url,
+          body: release.body ?? "",
+          highlights,
+          changes,
+        }
+      })
+
+    if (parsed.length) {
+      return parsed
+    }
+  } catch (error) {
+    console.error("[VectoBeat] Failed to fetch GitHub changelog, falling back to local file:", error)
   }
 
-  const releases = (await response.json()) as GitHubRelease[]
-
-  return releases
-    .filter((release) => !release.draft)
-    .map((release) => {
-      const { highlights, changes } = parseReleaseBody(release.body)
-      return {
-        id: release.id,
-        version: release.tag_name,
-        title: release.name || release.tag_name,
-        publishedAt: release.published_at,
-        type: classifyReleaseType(release.tag_name),
-        url: release.html_url,
-        body: release.body ?? "",
-        highlights,
-        changes,
-      }
-    })
+  return readLocalChangelog()
 }
 
 export const summarizeReleases = (releases: ChangelogEntry[]) => {
@@ -152,4 +164,48 @@ export const summarizeReleases = (releases: ChangelogEntry[]) => {
     { label: "Patch Releases", value: patch.toString() },
     { label: "Latest Release", value: releases[0]?.version ?? "No release yet" },
   ]
+}
+
+const readLocalChangelog = async (): Promise<ChangelogEntry[]> => {
+  try {
+    const filePath = path.join(process.cwd(), "CHANGELOG.md")
+    const content = await fs.readFile(filePath, "utf8")
+    const headerRegex = /^## \[(.+?)\] - ([^\n]+)$/gm
+    const entries: ChangelogEntry[] = []
+    let match: RegExpExecArray | null
+    const positions: Array<{ version: string; date: string; start: number; end: number }> = []
+
+    while ((match = headerRegex.exec(content)) !== null) {
+      const version = match[1]
+      const date = match[2]
+      const start = headerRegex.lastIndex
+      positions.push({ version, date, start, end: content.length })
+      if (positions.length > 1) {
+        positions[positions.length - 2].end = match.index
+      }
+    }
+
+    positions.forEach((pos, index) => {
+      const body = content.slice(pos.start, pos.end).trim()
+      const { highlights, changes } = parseReleaseBody(body)
+      const sanitizedVersion = pos.version.trim()
+      const publishedAt = new Date(pos.date).toString() === "Invalid Date" ? null : pos.date
+      entries.push({
+        id: index + 1,
+        version: sanitizedVersion,
+        title: sanitizedVersion,
+        publishedAt,
+        type: classifyReleaseType(sanitizedVersion),
+        url: `https://github.com/${GITHUB_REPO}/releases/tag/${sanitizedVersion}`,
+        body,
+        highlights,
+        changes,
+      })
+    })
+
+    return entries
+  } catch (error) {
+    console.error("[VectoBeat] Failed to read local changelog:", error)
+    return []
+  }
 }
