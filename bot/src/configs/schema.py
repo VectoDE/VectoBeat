@@ -115,7 +115,7 @@ class StatusAPIConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = 3051
     api_key: Optional[str] = None
-    allow_unauthenticated: bool = False
+    allow_unauthenticated: bool = True
     cache_ttl_seconds: int = 5
     push_endpoint: Optional[str] = None
     push_token: Optional[str] = None
