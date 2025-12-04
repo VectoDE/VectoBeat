@@ -163,6 +163,7 @@ status_host = os.getenv("STATUS_API_HOST")
 status_port = os.getenv("STATUS_API_PORT")
 status_key = os.getenv("STATUS_API_KEY")
 status_cache = os.getenv("STATUS_API_CACHE_TTL")
+status_allow_unauth = os.getenv("STATUS_API_ALLOW_UNAUTHENTICATED") or os.getenv("STATUS_API_ALLOW_OPEN")
 status_push = os.getenv("STATUS_API_PUSH_URL")
 status_push_token = os.getenv("STATUS_API_PUSH_SECRET")
 status_push_interval = os.getenv("STATUS_API_PUSH_INTERVAL")
@@ -200,6 +201,7 @@ if (
         host=status_host or CONFIG.status_api.host,
         port=int(status_port) if status_port else CONFIG.status_api.port,
         api_key=status_key or CONFIG.status_api.api_key,
+        allow_unauthenticated=(status_allow_unauth.lower() == "true") if isinstance(status_allow_unauth, str) else CONFIG.status_api.allow_unauthenticated,
         cache_ttl_seconds=int(status_cache) if status_cache else CONFIG.status_api.cache_ttl_seconds,
         push_endpoint=status_push or CONFIG.status_api.push_endpoint,
         push_token=status_push_token or status_key or CONFIG.status_api.push_token,

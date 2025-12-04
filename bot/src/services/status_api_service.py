@@ -131,9 +131,10 @@ class StatusAPIService:
 
     # ------------------------------------------------------------------ request handlers
     async def _handle_status(self, request: web.Request) -> web.Response:
-        if self.config.api_key:
+        if self.config.api_key and not self.config.allow_unauthenticated:
             auth_header = request.headers.get("Authorization")
-            if auth_header != f"Bearer {self.config.api_key}":
+            token = request.query.get("token") or request.query.get("key") or request.query.get("api_key")
+            if auth_header != f"Bearer {self.config.api_key}" and token != self.config.api_key:
                 return web.json_response({"error": "unauthorized"}, status=401)
 
         payload = await self._snapshot()
@@ -520,9 +521,10 @@ class StatusAPIService:
         return states
 
     async def _handle_reconcile(self, request: web.Request) -> web.Response:
-        if self.config.api_key:
+        if self.config.api_key and not self.config.allow_unauthenticated:
             auth_header = request.headers.get("Authorization")
-            if auth_header != f"Bearer {self.config.api_key}":
+            token = request.query.get("token") or request.query.get("key") or request.query.get("api_key")
+            if auth_header != f"Bearer {self.config.api_key}" and token != self.config.api_key:
                 return web.json_response({"error": "unauthorized"}, status=401)
         try:
             payload = await request.json()
@@ -547,9 +549,10 @@ class StatusAPIService:
         return web.json_response({"ok": True})
 
     async def _handle_reconcile_settings(self, request: web.Request) -> web.Response:
-        if self.config.api_key:
+        if self.config.api_key and not self.config.allow_unauthenticated:
             auth_header = request.headers.get("Authorization")
-            if auth_header != f"Bearer {self.config.api_key}":
+            token = request.query.get("token") or request.query.get("key") or request.query.get("api_key")
+            if auth_header != f"Bearer {self.config.api_key}" and token != self.config.api_key:
                 return web.json_response({"error": "unauthorized"}, status=401)
 
         try:
@@ -577,9 +580,10 @@ class StatusAPIService:
         return web.json_response({"ok": True})
 
     async def _handle_reconcile_defaults(self, request: web.Request) -> web.Response:
-        if self.config.api_key:
+        if self.config.api_key and not self.config.allow_unauthenticated:
             auth_header = request.headers.get("Authorization")
-            if auth_header != f"Bearer {self.config.api_key}":
+            token = request.query.get("token") or request.query.get("key") or request.query.get("api_key")
+            if auth_header != f"Bearer {self.config.api_key}" and token != self.config.api_key:
                 return web.json_response({"error": "unauthorized"}, status=401)
 
         try:
@@ -600,9 +604,10 @@ class StatusAPIService:
         return web.json_response({"ok": True})
 
     async def _handle_control_action(self, request: web.Request) -> web.Response:
-        if self.config.api_key:
+        if self.config.api_key and not self.config.allow_unauthenticated:
             auth_header = request.headers.get("Authorization")
-            if auth_header != f"Bearer {self.config.api_key}":
+            token = request.query.get("token") or request.query.get("key") or request.query.get("api_key")
+            if auth_header != f"Bearer {self.config.api_key}" and token != self.config.api_key:
                 return web.json_response({"error": "unauthorized"}, status=401)
 
         action = (request.match_info.get("action") or "").lower().strip()
