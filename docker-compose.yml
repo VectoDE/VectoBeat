@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     env_file:
       - ./.env
     environment:

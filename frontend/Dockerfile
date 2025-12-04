@@ -8,12 +8,13 @@ RUN npm ci --include=dev
 
 FROM deps AS builder
 WORKDIR /app
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+RUN [ -n "$DATABASE_URL" ] || (echo "DATABASE_URL build arg is required for Prisma" && exit 1)
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
-# Ensure build uses real env (DATABASE_URL) for Prisma.
-COPY .env.build ./.env
-RUN set -a; . ./.env; set +a; \
-    npx prisma generate && \
+# Run Prisma with provided DATABASE_URL before building.
+RUN npx prisma generate && \
     npx prisma db push
 
 # Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
