@@ -120,7 +120,55 @@ export async function POST(request: NextRequest) {
     const billingInterval: "month" | "year" = billingCycle === "monthly" ? "month" : "year"
 
     const currency = (process.env.STRIPE_DEFAULT_CURRENCY || "eur").toLowerCase()
-    const locale = (typeof requestLocale === "string" && requestLocale.trim().toLowerCase()) || "de"
+    const allowedLocales = [
+      "auto",
+      "bg",
+      "cs",
+      "da",
+      "de",
+      "el",
+      "en",
+      "en-gb",
+      "es",
+      "es-419",
+      "et",
+      "fi",
+      "fil",
+      "fr",
+      "fr-ca",
+      "hr",
+      "hu",
+      "id",
+      "it",
+      "ja",
+      "ko",
+      "lt",
+      "lv",
+      "ms",
+      "mt",
+      "nb",
+      "nl",
+      "pl",
+      "pt",
+      "pt-br",
+      "ro",
+      "ru",
+      "sk",
+      "sl",
+      "sv",
+      "th",
+      "tr",
+      "vi",
+      "zh",
+      "zh-hk",
+      "zh-tw",
+    ]
+    const requestedLocale = typeof requestLocale === "string" ? requestLocale.trim().toLowerCase() : ""
+    const envLocale = typeof process.env.STRIPE_LOCALE === "string" ? process.env.STRIPE_LOCALE.trim().toLowerCase() : ""
+    const locale =
+      allowedLocales.find((entry) => entry === requestedLocale) ??
+      allowedLocales.find((entry) => entry === envLocale) ??
+      "de"
 
     const lineItem: Stripe.Checkout.SessionCreateParams.LineItem =
       priceId && priceId.startsWith("price_")
