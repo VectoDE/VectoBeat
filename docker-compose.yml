@@ -60,7 +60,6 @@ services:
       - ./bot/data:/app/data
     depends_on:
       - lavalink
-      - Redis
     ports:
       - "3062:3062"
       - "3061:3061"
