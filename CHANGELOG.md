@@ -3,6 +3,20 @@
 All notable changes to **VectoBeat** are tracked in this document.  
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2025-12-07
+
+### Highlights
+- SEO surface expanded: sitemap now includes all public marketing pages, blog posts, and public user profiles; robots directives explicitly allow favicon crawling and mirror rules for Googlebot.
+- Public profile discovery enabled for search engines while respecting privacy/search-visibility toggles.
+
+### Added
+- Sitemap generation now pulls live blog posts and public profile slugs so new articles and creators appear in search indices automatically.
+- Public profile listing helper (`listPublicProfileSlugs`) respects `profilePublic` and `searchVisibility` flags when exposing profile URLs.
+
+### Changed
+- Robots.txt now explicitly allows the site root and `favicon.ico`, keeps sensitive paths disallowed, and provides dedicated Googlebot rules while pointing to the canonical host/sitemap.
+- Static sitemap routes extended to cover all visible marketing/support pages and favicon with consistent priorities and weekly crawl hints.
+
 ## [2.0.2] - 2025-12-06
 
 ### Highlights
