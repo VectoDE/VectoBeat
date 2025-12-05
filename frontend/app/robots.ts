@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next"
+import { siteUrl } from "@/lib/seo"
 
 const DISALLOW = [
   "/api",
@@ -13,14 +14,20 @@ const DISALLOW = [
   "/imprint",
 ]
 
+const ALLOW = ["/", "/favicon.ico"]
+
 export default function robots(): MetadataRoute.Robots {
+  const baseRules = {
+    allow: ALLOW,
+    disallow: DISALLOW,
+  }
+
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: DISALLOW,
-    },
-    sitemap: "https://vectobeat.uplytech.de/sitemap.xml",
-    host: "https://vectobeat.uplytech.de",
+    rules: [
+      { ...baseRules, userAgent: "*" },
+      { ...baseRules, userAgent: "Googlebot" },
+    ],
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   }
 }

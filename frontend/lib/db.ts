@@ -1862,6 +1862,36 @@ export const getPublicProfileBySlug = async (slug: string) => {
   }
 }
 
+export const listPublicProfileSlugs = async (): Promise<Array<{ slug: string; updatedAt: Date }>> => {
+  try {
+    const db = getPool()
+    if (!db) return []
+
+    const privacy = await db.userPrivacy.findMany({
+      where: { profilePublic: true, searchVisibility: true },
+      select: { discordId: true, updatedAt: true },
+    })
+    if (!privacy.length) return []
+
+    const privacyUpdatedMap = new Map(privacy.map((row) => [row.discordId, row.updatedAt]))
+
+    const settings = await db.userProfileSetting.findMany({
+      where: { discordId: { in: privacy.map((row) => row.discordId) } },
+      select: { discordId: true, handle: true, updatedAt: true },
+    })
+
+    return settings
+      .filter((setting) => Boolean(setting.handle))
+      .map((setting) => ({
+        slug: setting.handle,
+        updatedAt: privacyUpdatedMap.get(setting.discordId) ?? setting.updatedAt ?? new Date(),
+      }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list public profile slugs:", error)
+    return []
+  }
+}
+
 export const recordSitePageView = async ({
   path,
   referrer,
