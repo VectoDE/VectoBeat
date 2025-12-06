@@ -20,7 +20,7 @@ type CheckoutSummary = {
 }
 
 const maskSessionId = (value: string | null) => {
-  if (!value) return "unbekannt"
+  if (!value) return "unknown"
   const trimmed = value.replace(/^cs_[^_]*_/i, "")
   const tail = trimmed.slice(-8)
   return `••••${tail}`

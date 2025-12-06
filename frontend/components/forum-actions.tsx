@@ -52,14 +52,14 @@ export function ForumComposer({
       if (!response.ok) {
         throw new Error(payload?.error || "failed")
       }
-      setMessage("Thread erstellt. Wir laden neu ...")
+      setMessage("Thread created. Reloading ...")
       reset()
       onCreated?.()
       // Reload to show fresh data with minimal effort
       setTimeout(() => window.location.reload(), 500)
     } catch (error) {
-      const reason = error instanceof Error ? error.message : "Fehler"
-      setMessage(`Konnte Thread nicht erstellen: ${reason}`)
+      const reason = error instanceof Error ? error.message : "error"
+      setMessage(`Could not create thread: ${reason}`)
     } finally {
       setSubmitting(false)
     }
@@ -198,7 +198,7 @@ export function ForumReplyBox({
           className="rounded-lg border border-border bg-background px-3 py-2 text-sm h-24"
           maxLength={5000}
           required
-          placeholder="Teile deine Learnings oder stelle eine Rückfrage."
+          placeholder="Share your learnings or ask a follow-up."
         />
       </label>
       <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ export function ForumReplyBox({
           disabled={posting}
           className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-semibold hover:bg-secondary/90 disabled:opacity-60"
         >
-          {posting ? "Sende..." : "Antwort posten"}
+          {posting ? "Sending..." : "Post reply"}
         </button>
       </div>
     </form>

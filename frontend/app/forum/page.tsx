@@ -158,17 +158,17 @@ export default async function ForumPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/60">Browse Threads</p>
-                <h3 className="text-2xl font-semibold text-foreground">Kategorisierte Diskussionen</h3>
+                <h3 className="text-2xl font-semibold text-foreground">Categorized discussions</h3>
                 <p className="text-sm text-foreground/60">
-                  Threads kommen direkt aus dem Forum. Team-Mitglieder eröffnen Haupt-Threads; Pro+ können darin Themen starten,
-                  alle angemeldeten Nutzer dürfen kommentieren.
+                  Threads come directly from the forum. Team members create primary threads; Pro+ members can start topics within
+                  them, and all signed-in users may comment.
                 </p>
               </div>
               <Link
                 href={SUPPORT_DESK_LINK}
                 className="text-sm font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-2"
               >
-                Support kontaktieren →
+                Contact support →
               </Link>
             </div>
 

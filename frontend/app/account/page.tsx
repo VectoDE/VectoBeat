@@ -330,9 +330,9 @@ const [subscriptions, setSubscriptions] = useState<AccountSubscription[]>([])
   const [renewingSubscriptionId, setRenewingSubscriptionId] = useState<string | null>(null)
 const [subscriptionPreview, setSubscriptionPreview] = useState<AccountSubscription | null>(null)
   const subscriptionOwnerName = profileMeta.displayName || profileMeta.username || formData.username || "You"
-  const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("de-DE") : "—")
+  const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString("en-US") : "—")
   const formatEuros = (amount: number) =>
-    new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(amount)
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR" }).format(amount)
   const handleSubscriptionPayment = useCallback(
     async (subscription: AccountSubscription) => {
       if (!formData.discordId) return
@@ -1582,9 +1582,9 @@ const profileShareUrl = profileShareSlug
                         className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                       >
                         <option value="en">English</option>
-                        <option value="de">Deutsch</option>
-                        <option value="fr">Français</option>
-                        <option value="es">Español</option>
+                        <option value="de">German</option>
+                        <option value="fr">French</option>
+                        <option value="es">Spanish</option>
                       </select>
                       {languageError && <p className="text-xs text-destructive">{languageError}</p>}
                       {languageSaving && <p className="text-xs text-foreground/60">Saving…</p>}

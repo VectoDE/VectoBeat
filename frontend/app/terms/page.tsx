@@ -17,7 +17,7 @@ const sections = [
     title: "1. Scope & Definitions",
     list: [
       "These Terms of Service (\"Terms\") govern the use of the VectoBeat Discord bot, APIs, control panel, forum, and related services (“Service”).",
-      "Operator: Tim Hauke / VectoDE, Breitenburger Straße 15, 25524 Itzehoe, Germany (see Imprint).",
+      "Operator: Tim Hauke / VectoDE, Breitenburger Strasse 15, 25524 Itzehoe, Germany (see Imprint).",
       "\"Customer\" or \"User\" includes any person or organisation inviting the bot, accessing the dashboard, or purchasing subscriptions.",
     ],
   },
@@ -108,7 +108,7 @@ export default function TermsPage() {
         <div className="relative max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">Terms of Service</h1>
           <p className="text-foreground/70">
-            Last updated {new Date(LAST_UPDATED).toLocaleDateString("de-DE")} — compliant with German, European, and international regulations (status 13.11.2025)
+            Last updated {new Date(LAST_UPDATED).toLocaleDateString("en-US")} — compliant with German, European, and international regulations (as of 13 November 2025)
           </p>
         </div>
       </section>

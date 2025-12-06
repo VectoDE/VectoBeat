@@ -16,8 +16,8 @@ const sections = [
   {
     title: "1. Controller (Art. 4 No. 7 GDPR)",
     content: [
-      "Tim Hauke – VectoDE / VectoBeat, Breitenburger Straße 15, 25524 Itzehoe, Germany",
-      "Tel.: +49 (172) 6166860 • Email: timhauke@uplytech.de",
+      "Tim Hauke – VectoDE / VectoBeat, Breitenburger Strasse 15, 25524 Itzehoe, Germany",
+      "Phone: +49 (172) 6166860 • Email: timhauke@uplytech.de",
       "Data Protection Contact / DPO: legal@uplytech.de (responses ≤72h)",
     ],
   },
@@ -106,7 +106,7 @@ const sections = [
     title: "11. Data Protection Officer & Supervisory Authority",
     content: [
       "DPO / Privacy Contact: legal@uplytech.de, phone +49 172 6166860 for urgent matters.",
-      "Supervisory authority: Unabhängiges Landeszentrum für Datenschutz Schleswig-Holstein, Holstenstraße 98, 24103 Kiel, Germany.",
+      "Supervisory authority: Independent State Center for Data Protection Schleswig-Holstein (ULD), Holstenstrasse 98, 24103 Kiel, Germany.",
     ],
   },
   {
@@ -130,7 +130,7 @@ export default function PrivacyPage() {
         <div className="relative max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">Privacy Policy</h1>
           <p className="text-foreground/70">
-            Last updated {new Date(LAST_UPDATED).toLocaleDateString("de-DE")} • GDPR / DSA / TTDSG / UK GDPR / CCPA / LGPD compliant
+            Last updated {new Date(LAST_UPDATED).toLocaleDateString("en-US")} • GDPR / DSA / TTDSG / UK GDPR / CCPA / LGPD compliant
           </p>
         </div>
       </section>
@@ -159,7 +159,7 @@ export default function PrivacyPage() {
               or contact legal@uplytech.de with your Discord ID so we can verify your identity.
             </p>
             <p>
-              Supervisory authority (Germany): Unabhängiges Landeszentrum für Datenschutz Schleswig-Holstein (ULD), Holstenstraße 98, 24103 Kiel, Germany.
+              Supervisory authority (Germany): Independent State Center for Data Protection Schleswig-Holstein (ULD), Holstenstrasse 98, 24103 Kiel, Germany.
             </p>
           </div>
         </div>

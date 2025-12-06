@@ -104,7 +104,7 @@ export default function SLAPage() {
           <p className="text-xs uppercase tracking-[0.35em] text-primary/70">Service Level Agreement</p>
           <h1 className="text-5xl md:text-6xl font-bold mb-6">VectoBeat SLA</h1>
           <p className="text-foreground/70">
-            Effective {new Date(LAST_UPDATED).toLocaleDateString("de-DE")} • Compliant with German, European, and international standards as of
+            Effective {new Date(LAST_UPDATED).toLocaleDateString("en-US")} • Compliant with German, European, and international standards as of
             13 November 2025.
           </p>
         </div>

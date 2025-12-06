@@ -20,22 +20,33 @@ REALTIME_TIERS = {"pro", "growth", "scale", "enterprise"}
 class QueueSyncService:
     """Send queue state snapshots to the control panel for real-time sync."""
 
+    MAX_QUEUE_DEPTH = 500
+
     def __init__(self, config: QueueSyncConfig, settings: ServerSettingsService):
         self.config = config
         self.settings = settings
         self.enabled = bool(config.enabled and config.endpoint)
         self.logger = logging.getLogger("VectoBeat.QueueSync")
         self._session: Optional[aiohttp.ClientSession] = None
-        self._lock = asyncio.Lock()
+        self._queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self._worker: Optional[asyncio.Task[None]] = None
 
     async def start(self) -> None:
         if not self.enabled or self._session:
             return
         timeout = aiohttp.ClientTimeout(total=5)
         self._session = aiohttp.ClientSession(timeout=timeout)
+        self._worker = asyncio.create_task(self._worker_loop())
         self.logger.info("Queue sync enabled (endpoint=%s).", self.config.endpoint)
 
     async def close(self) -> None:
+        if self._worker:
+            self._worker.cancel()
+            try:
+                await self._worker
+            except asyncio.CancelledError:
+                pass
+            self._worker = None
         if self._session:
             await self._session.close()
             self._session = None
@@ -67,24 +78,42 @@ class QueueSyncService:
             "metadata": payload_metadata,
             **snapshot,
         }
+        if self._queue.qsize() >= self.MAX_QUEUE_DEPTH:
+            self.logger.warning(
+                "Dropping queue sync publish for guild %s due to backlog (size=%s).",
+                guild_id,
+                self._queue.qsize(),
+            )
+            return
+        await self._queue.put(payload)
 
+    async def _worker_loop(self) -> None:
+        try:
+            while True:
+                payload = await self._queue.get()
+                await self._post(payload)
+        except asyncio.CancelledError:
+            pass
+
+    async def _post(self, payload: Dict[str, Any]) -> None:
+        if not self._session or not self.config.endpoint:
+            return
         headers = {"Content-Type": "application/json"}
         if self.config.api_key:
             headers["Authorization"] = f"Bearer {self.config.api_key}"
 
         try:
-            async with self._lock:
-                async with self._session.post(self.config.endpoint, json=payload, headers=headers) as resp:
-                    if resp.status >= 400:
-                        text = (await resp.text())[:200]
-                        self.logger.warning(
-                            "Queue sync POST failed for guild %s (%s): %s",
-                            guild_id,
-                            resp.status,
-                            text,
-                        )
+            async with self._session.post(self.config.endpoint, json=payload, headers=headers) as resp:
+                if resp.status >= 400:
+                    text = (await resp.text())[:200]
+                    self.logger.warning(
+                        "Queue sync POST failed for guild %s (%s): %s",
+                        payload.get("guildId"),
+                        resp.status,
+                        text,
+                    )
         except aiohttp.ClientError as exc:
-            self.logger.error("Queue sync transport error for guild %s: %s", guild_id, exc)
+            self.logger.error("Queue sync transport error for guild %s: %s", payload.get("guildId"), exc)
 
     @staticmethod
     def _snapshot(player: lavalink.DefaultPlayer) -> Dict[str, Any]:

@@ -1189,7 +1189,7 @@ export default function AdminControlPanelPage() {
           : new Date(value)
     return Number.isNaN(date.getTime())
       ? "—"
-      : date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" })
+      : date.toLocaleString("en-US", { dateStyle: "short", timeStyle: "medium" })
   }
 
   const packageEntries = useMemo(() => {

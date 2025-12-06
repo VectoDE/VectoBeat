@@ -93,7 +93,7 @@ export default function EulaPage() {
         <div className="relative max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">End User Licence Agreement (EULA)</h1>
           <p className="text-foreground/70">
-            Effective {new Date(LAST_UPDATED).toLocaleDateString("de-DE")} – compliant with German, European, and international law (status 13 November 2025)
+            Effective {new Date(LAST_UPDATED).toLocaleDateString("en-US")} – compliant with German, European, and international law (as of 13 November 2025)
           </p>
         </div>
       </section>

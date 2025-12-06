@@ -26,7 +26,7 @@ export default function ImprintPage() {
           <h1 className="text-5xl md:text-6xl font-bold mb-6">Imprint & Legal Notice</h1>
           <p className="text-foreground/70">
             Information pursuant to Section 5 TMG / Section 14 Austrian Commercial Code — Last updated{" "}
-            {new Date(LAST_UPDATED).toLocaleDateString("de-DE")}
+            {new Date(LAST_UPDATED).toLocaleDateString("en-US")}
           </p>
         </div>
       </section>
@@ -37,15 +37,15 @@ export default function ImprintPage() {
             <h2 className="text-2xl font-bold mb-4">Service provider (Section 5 TMG)</h2>
             <div className="bg-card/30 border border-border rounded-2xl p-6 text-foreground/70 space-y-3">
               <ul className="space-y-1">
-                <li>Tim Hauke – handelnd unter „VectoDE / VectoBeat“</li>
-                <li>c/o UplyTech, Breitenburger Straße 15, 25524 Itzehoe, Deutschland</li>
-                <li>Telefon: +49 (172) 6166860</li>
-                <li>Email (Allgemein): contact@uplytech.de</li>
+                <li>Tim Hauke — operating as “VectoDE / VectoBeat”</li>
+                <li>c/o UplyTech, Breitenburger Strasse 15, 25524 Itzehoe, Germany</li>
+                <li>Phone: +49 (172) 6166860</li>
+                <li>Email (General): contact@uplytech.de</li>
                 <li>Email (Support): support@uplytech.de</li>
-                <li>Email (Rechtlich / DSA): legal@uplytech.de</li>
+                <li>Email (Legal / DSA): legal@uplytech.de</li>
               </ul>
-              <p>Verantwortlicher gem. § 18 Abs. 2 MStV: Tim Hauke, Anschrift wie oben.</p>
-              <p>USt-IdNr. (falls zugeteilt): wird auf Anfrage mitgeteilt. Kleinunternehmerregelung § 19 UStG findet aktuell keine Anwendung.</p>
+              <p>Responsible under Section 18(2) MStV: Tim Hauke, address as above.</p>
+              <p>VAT ID (if assigned): provided on request. The small business regulation (Section 19 UStG) currently does not apply.</p>
             </div>
           </div>
 
@@ -53,8 +53,8 @@ export default function ImprintPage() {
             <h2 className="text-2xl font-bold mb-4">Hosting & Technical Infrastructure</h2>
             <div className="bg-card/30 border border-border rounded-2xl p-6 text-foreground/70 space-y-3">
               <p>
-                Web hosting &amp; CDN: Uplytech infrastructure (Breitenburger Straße 15, 25524 Itzehoe, Deutschland). Primary application
-                servers and the public CDN edge are operated on Uplytech-owned hardware in Germany.
+                Web hosting &amp; CDN: Uplytech infrastructure (Breitenburger Strasse 15, 25524 Itzehoe, Germany). Primary application servers
+                and the public CDN edge are operated on Uplytech-owned hardware in Germany.
               </p>
               <p>
                 Bot &amp; Lavalink clusters: Uplytech-operated bare-metal nodes that host the Discord bot runtime and the Lavalink audio
@@ -108,10 +108,10 @@ export default function ImprintPage() {
 
           <div className="bg-card/30 border border-border rounded-2xl p-6 text-foreground/70 space-y-2">
             <p>
-              <strong>Gültigkeitsdatum:</strong> {new Date(LAST_UPDATED).toLocaleDateString("de-DE")}
+              <strong>Effective date:</strong> {new Date(LAST_UPDATED).toLocaleDateString("en-US")}
             </p>
-            <p>Diese Fassung berücksichtigt deutsches, europäisches und internationales Recht mit Stand 13. November 2025.</p>
-            <p className="mt-1">Die aktuelle Version ist dauerhaft unter https://vectobeat.uplytech.de/imprint abrufbar.</p>
+            <p>This version reflects German, European, and international law as of 13 November 2025.</p>
+            <p className="mt-1">The current version is always available at https://vectobeat.uplytech.de/imprint.</p>
           </div>
         </div>
       </section>

@@ -18,13 +18,29 @@ def _module_to_category(module: Optional[str]) -> str:
 
 
 class HelpPaginationView(discord.ui.View):
-    def __init__(self, pages: Sequence[discord.Embed]):
+    def __init__(self, pages: Sequence[discord.Embed], categories: Sequence[str]):
         super().__init__(timeout=180)
         self.pages = list(pages)
         self.index = 0
         disabled = len(self.pages) <= 1
         self.previous_button.disabled = disabled
         self.next_button.disabled = disabled
+
+        # Category selector to jump directly to a section.
+        if categories:
+            options = [discord.SelectOption(label=cat, value=str(i)) for i, cat in enumerate(categories)]
+            select = discord.ui.Select(placeholder="Jump to category", options=options, min_values=1, max_values=1)
+
+            async def _on_select(interaction: discord.Interaction):
+                try:
+                    target = int(select.values[0])
+                    self.index = max(0, min(target, len(self.pages) - 1))
+                except Exception:
+                    self.index = 0
+                await self._update(interaction)
+
+            select.callback = _on_select  # type: ignore[assignment]
+            self.add_item(select)
 
     async def _update(self, interaction: discord.Interaction) -> None:
         embed = self.pages[self.index]
@@ -106,11 +122,69 @@ class HelpCommands(commands.Cog):
             pages.append(embed)
         return pages
 
+    def _command_details_embed(self, name: str) -> Optional[discord.Embed]:
+        """Return a detailed embed for a specific command name."""
+        targets = []
+        for command in self.bot.tree.get_commands():
+            targets.extend(self._flatten_command(command))
+        lookup = {full.lower(): (category, desc) for category, full, desc in targets}
+
+        match = None
+        for key, (category, desc) in lookup.items():
+            if key == name.lower() or key.endswith(f" {name.lower()}") or key.lstrip("/").lower() == name.lower():
+                match = (key, category, desc)
+                break
+        if not match:
+            return None
+
+        cmd_obj = next((c for c in self.bot.tree.get_commands() if match[0].lstrip("/") == c.qualified_name), None)
+        parameters = []
+        if cmd_obj:
+            for param in cmd_obj.parameters:
+                param_name = f"<{param.name}>"
+                param_desc = param.description or "No description provided."
+                optional = "" if param.required else " (optional)"
+                parameters.append(f"`{param_name}`{optional} – {param_desc}")
+
+        embed = discord.Embed(
+            title=f"Hilfe zu {match[0]}",
+            description=match[2],
+            color=discord.Color.blurple(),
+        )
+        embed.add_field(name="Kategorie", value=match[1], inline=True)
+        if parameters:
+            embed.add_field(name="Parameter", value="\n".join(parameters), inline=False)
+        else:
+            embed.add_field(name="Parameter", value="_No parameters_", inline=False)
+        return embed
+
     @app_commands.command(name="help", description="Show available commands grouped by category.")
-    async def help(self, interaction: discord.Interaction):
+    @app_commands.describe(command="Optional: show details for a specific command")
+    async def help(self, interaction: discord.Interaction, command: Optional[str] = None):
+        if command:
+            detail = self._command_details_embed(command)
+            if not detail:
+                await interaction.response.send_message(
+                    f"No command found for `{command}`.", ephemeral=True
+                )
+                return
+            await interaction.response.send_message(embed=detail, ephemeral=True)
+            return
+
         pages = self._build_pages()
-        view = HelpPaginationView(pages)
+        categories = [page.title for page in pages]
+        view = HelpPaginationView(pages, categories)
         await interaction.response.send_message(embed=pages[0], view=view, ephemeral=True)
+
+    @help.autocomplete("command")
+    async def help_autocomplete(self, interaction: discord.Interaction, current: str):
+        entries: list[Tuple[str, str, str]] = []
+        for command in self.bot.tree.get_commands():
+            entries.extend(self._flatten_command(command))
+        values = [name for _, name, _ in entries]
+        current_lower = current.lower()
+        filtered = [v for v in values if current_lower in v.lower()][:25]
+        return [app_commands.Choice(name=v, value=v) for v in filtered]
 
 
 async def setup(bot: commands.Bot):

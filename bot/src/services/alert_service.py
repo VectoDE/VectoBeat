@@ -6,6 +6,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+import asyncio
+
 import aiohttp
 
 from src.configs.schema import AlertsConfig
@@ -15,19 +17,31 @@ from src.services.server_settings_service import ServerSettingsService
 class AlertService:
     """Send moderator/on-call/compliance events to configured endpoints."""
 
+    MAX_QUEUE_DEPTH = 200
+
     def __init__(self, config: AlertsConfig, settings: ServerSettingsService):
         self.config = config
         self.settings = settings
         self.logger = logging.getLogger("VectoBeat.Alerts")
         self._session: Optional[aiohttp.ClientSession] = None
+        self._queue: asyncio.Queue[tuple[str, Dict[str, Any]]] = asyncio.Queue()
+        self._worker: Optional[asyncio.Task[None]] = None
 
     async def start(self) -> None:
         if self._session:
             return
         timeout = aiohttp.ClientTimeout(total=5)
         self._session = aiohttp.ClientSession(timeout=timeout)
+        self._worker = asyncio.create_task(self._worker_loop())
 
     async def close(self) -> None:
+        if self._worker:
+            self._worker.cancel()
+            try:
+                await self._worker
+            except asyncio.CancelledError:
+                pass
+            self._worker = None
         if self._session:
             await self._session.close()
             self._session = None
@@ -71,6 +85,26 @@ class AlertService:
         }
 
     async def _post(self, endpoint: str, payload: Dict[str, Any]) -> None:
+        if not self._session:
+            return
+        if self._queue.qsize() >= self.MAX_QUEUE_DEPTH:
+            self.logger.warning(
+                "Dropping alert for guild %s due to backlog (size=%s).",
+                payload.get("guildId"),
+                self._queue.qsize(),
+            )
+            return
+        await self._queue.put((endpoint, payload))
+
+    async def _worker_loop(self) -> None:
+        try:
+            while True:
+                endpoint, payload = await self._queue.get()
+                await self._deliver(endpoint, payload)
+        except asyncio.CancelledError:
+            pass
+
+    async def _deliver(self, endpoint: str, payload: Dict[str, Any]) -> None:
         if not self._session:
             return
         headers = {"Content-Type": "application/json"}

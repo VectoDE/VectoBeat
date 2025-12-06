@@ -8,7 +8,7 @@ import { join } from "path"
 const COMPANY = {
   name: "VectoBeat / VectoDE",
   line1: "c/o UplyTech",
-  line2: "Breitenburger Straße 15",
+  line2: "Breitenburger Strasse 15",
   city: "25524 Itzehoe",
   country: "Germany",
   email: "billing@uplytech.de",
@@ -17,7 +17,7 @@ const COMPANY = {
 }
 
 const formatCurrency = (amount: number, currency: string) =>
-  new Intl.NumberFormat("de-DE", {
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
   }).format(amount / 100)
@@ -264,7 +264,7 @@ export async function GET(request: NextRequest) {
       height: 68,
       color: palette.accent,
     })
-    drawText("Rechnung", pageWidth - marginX - invoiceLabelBoxWidth + 18, pageHeight - 40, {
+    drawText("Invoice", pageWidth - marginX - invoiceLabelBoxWidth + 18, pageHeight - 40, {
       size: 16,
       font: "bold",
       color: palette.header,
@@ -278,7 +278,7 @@ export async function GET(request: NextRequest) {
     const addressTop = pageHeight - headerHeight - 30
     const columnWidth = (pageWidth - marginX * 2 - 40) / 2
 
-    drawText("Rechnungsadresse", marginX, addressTop, { font: "bold", size: 12 })
+    drawText("Billing address", marginX, addressTop, { font: "bold", size: 12 })
     const billingHeight = drawWrappedText(
       [COMPANY.name, COMPANY.line1, COMPANY.line2, COMPANY.city, COMPANY.country].filter(Boolean).join("\n"),
       marginX,
@@ -287,7 +287,7 @@ export async function GET(request: NextRequest) {
       11,
     )
 
-    drawText("Lieferanschrift", marginX + columnWidth + 40, addressTop, { font: "bold", size: 12 })
+    drawText("Recipient address", marginX + columnWidth + 40, addressTop, { font: "bold", size: 12 })
     const customerAddressLines = [
       customerName,
       customerAddress?.line1,
@@ -308,12 +308,12 @@ export async function GET(request: NextRequest) {
 
     // Summary chips
     const summaryTop = addressTop - addressBlockHeight
-    drawText("Überblick", marginX, summaryTop, { font: "bold", size: 14 })
+    drawText("Summary", marginX, summaryTop, { font: "bold", size: 14 })
     const summaryCards = [
-      { label: "Rechnungsdatum", value: new Date(issueDate).toLocaleDateString("de-DE") },
-      { label: "Fälligkeitsdatum", value: new Date(dueDate).toLocaleDateString("de-DE") },
-      { label: "Kundennummer", value: displayCustomerId || "—" },
-      { label: "Status", value: paymentStatus ? paymentStatus.toUpperCase() : "OFFEN" },
+      { label: "Invoice date", value: new Date(issueDate).toLocaleDateString("en-US") },
+      { label: "Due date", value: new Date(dueDate).toLocaleDateString("en-US") },
+      { label: "Customer ID", value: displayCustomerId || "—" },
+      { label: "Status", value: paymentStatus ? paymentStatus.toUpperCase() : "OPEN" },
     ]
     const cardWidth = (pageWidth - marginX * 2 - 30) / 4
     summaryCards.forEach((card, index) => {
@@ -327,13 +327,13 @@ export async function GET(request: NextRequest) {
 
     // Line items table
     const tableTop = summaryTop - 90
-    drawText("Leistungsübersicht", marginX, tableTop + 10, { font: "bold", size: 14 })
+    drawText("Statement of services", marginX, tableTop + 10, { font: "bold", size: 14 })
     const tableHeaders = [
-      { label: "Beschreibung", width: 240 },
-      { label: "Menge", width: 60, align: "right" as const },
-      { label: "Einzelpreis", width: 90, align: "right" as const },
-      { label: "USt.", width: 60, align: "right" as const },
-      { label: "Gesamt", width: 95, align: "right" as const },
+      { label: "Description", width: 240 },
+      { label: "Quantity", width: 60, align: "right" as const },
+      { label: "Unit price", width: 90, align: "right" as const },
+      { label: "VAT", width: 60, align: "right" as const },
+      { label: "Total", width: 95, align: "right" as const },
     ]
     const tableWidth = tableHeaders.reduce((sum, col) => sum + col.width, 0)
     const tableStartX = marginX
@@ -419,9 +419,9 @@ export async function GET(request: NextRequest) {
     })
 
     const totalRows = [
-      { label: "Zwischensumme", value: formatCurrency(subtotal, currency) },
-      { label: `USt. (${vatLabel})`, value: formatCurrency(taxAmount, currency) },
-      { label: "Gesamtbetrag", value: formatCurrency(total, currency), bold: true },
+      { label: "Subtotal", value: formatCurrency(subtotal, currency) },
+      { label: `VAT (${vatLabel})`, value: formatCurrency(taxAmount, currency) },
+      { label: "Total amount", value: formatCurrency(total, currency), bold: true },
     ]
     totalRows.forEach((row, idx) => {
       const y = totalsY - idx * 24 - 12
@@ -436,13 +436,11 @@ export async function GET(request: NextRequest) {
 
     // Payment instructions
     const noteY = totalsY - 130
-    drawText("Zahlung & Hinweise", marginX, noteY, { font: "bold", size: 13 })
+    drawText("Payment & Notes", marginX, noteY, { font: "bold", size: 13 })
     const noteLines = [
-      "Bitte begleichen Sie den Rechnungsbetrag innerhalb von 30 Tagen auf das hinterlegte Geschäftskonto.",
-      `Als Verwendungszweck geben Sie bitte die Rechnungsnummer ${displayInvoiceNumber} sowie Ihre Kundennummer ${
-        displayCustomerId || "—"
-      } an.`,
-      "Für Fragen steht das Billing-Team unter billing@vectobeat.com oder telefonisch jederzeit zur Verfügung.",
+      "Please settle the invoice amount within 30 days using the registered business account.",
+      `Use invoice ${displayInvoiceNumber} and your customer ID ${displayCustomerId || "—"} as the payment reference.`,
+      "For questions, the billing team is available at billing@vectobeat.com or by phone at any time.",
     ]
     let offset = 0
     noteLines.forEach((line) => {
@@ -452,7 +450,7 @@ export async function GET(request: NextRequest) {
     // Footer
     page.drawRectangle({ x: 0, y: 40, width: pageWidth, height: 50, color: palette.header })
     drawText(
-      "VectoBeat · c/o UplyTech · Breitenburger Straße 15 · 25524 Itzehoe · Germany",
+      "VectoBeat · c/o UplyTech · Breitenburger Strasse 15 · 25524 Itzehoe · Germany",
       marginX,
       68,
       {
@@ -460,11 +458,11 @@ export async function GET(request: NextRequest) {
         color: rgb(0.82, 0.83, 0.87),
       },
     )
-    drawText(`Telefon: ${COMPANY.phone}   ·   Email: ${COMPANY.email}`, marginX, 54, {
+    drawText(`Phone: ${COMPANY.phone}   ·   Email: ${COMPANY.email}`, marginX, 54, {
       size: 9,
       color: rgb(0.82, 0.83, 0.87),
     })
-    drawText(`USt-ID: ${COMPANY.vatId}   ·   Infrastruktur: Prisma ORM + MySQL`, marginX, 40, {
+    drawText(`VAT ID: ${COMPANY.vatId}   ·   Infrastructure: Prisma ORM + MySQL`, marginX, 40, {
       size: 9,
       color: rgb(0.82, 0.83, 0.87),
     })

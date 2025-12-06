@@ -25,10 +25,10 @@ interface CheckoutSummary {
 }
 
 const currencyFormatter = (currency: string) =>
-  new Intl.NumberFormat("de-DE", { style: "currency", currency: currency.toUpperCase() })
+  new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() })
 
 const maskSessionId = (value: string | null) => {
-  if (!value) return "unbekannt"
+  if (!value) return "unknown"
   const trimmed = value.replace(/^cs_[^_]*_/i, "")
   const tail = trimmed.slice(-8)
   return `••••${tail}`
@@ -114,7 +114,7 @@ function SuccessContent() {
   const amountDisplay = currencyFormatter(currency).format(normalizedAmount)
   const nextBilling =
     summary?.nextBilling && !Number.isNaN(Date.parse(summary.nextBilling))
-      ? new Date(summary.nextBilling).toLocaleDateString("de-DE")
+      ? new Date(summary.nextBilling).toLocaleDateString("en-US")
       : "30 days from now"
   const invoiceAvailable = summary?.paymentStatus === "paid"
 
@@ -219,7 +219,7 @@ function SuccessContent() {
             <div className="grid gap-4 md:grid-cols-3 text-sm">
               <div className="p-4 rounded-lg border border-border/40 bg-background/60">
                 <p className="text-foreground/60 text-xs uppercase">Activation</p>
-                <p className="font-semibold">{new Date().toLocaleDateString("de-DE")}</p>
+                <p className="font-semibold">{new Date().toLocaleDateString("en-US")}</p>
                 <p className="text-xs text-foreground/60">Premium features enabled immediately.</p>
               </div>
               <div className="p-4 rounded-lg border border-border/40 bg-background/60">
