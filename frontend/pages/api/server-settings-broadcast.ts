@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import { ensureSocketServer } from "@/lib/socket-server"
+import { getApiKeySecret, getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKEN = process.env.SERVER_SETTINGS_API_KEY || process.env.STATUS_API_PUSH_SECRET || ""
+const AUTH_TOKEN_TYPES = ["server_settings", "status_events"]
 
 const normalizeGuildId = (value: unknown): string => {
   if (typeof value !== "string") return ""
@@ -14,11 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "method_not_allowed" })
   }
 
-  if (AUTH_TOKEN) {
-    const header = req.headers.authorization
-    if (header !== `Bearer ${AUTH_TOKEN}`) {
-      return res.status(401).json({ error: "unauthorized" })
-    }
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  const header = req.headers.authorization
+  if (!header || !secrets.some((token) => header === `Bearer ${token}`)) {
+    return res.status(401).json({ error: "unauthorized" })
   }
 
   const guildId = normalizeGuildId(req.body?.guildId)

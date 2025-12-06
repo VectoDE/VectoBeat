@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import {
   listGuildServerSettings,
   listActiveSubscriptionTiers,
@@ -7,15 +7,13 @@ import {
 } from "@/lib/db"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import { evaluateEntitlementDrift } from "@/lib/entitlement-drift"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const AUDIT_SECRETS = expandSecrets(
-  process.env.ENTITLEMENT_AUDIT_SECRET,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.SERVER_SETTINGS_API_KEY,
-)
+const AUDIT_SECRET_TYPES = ["entitlement_audit_secret", "status_events", "server_settings"]
 
 export async function POST(request: NextRequest) {
-  if (!authorizeRequest(request, AUDIT_SECRETS)) {
+  const secrets = await getApiKeySecrets(AUDIT_SECRET_TYPES, { includeEnv: false })
+  if (!authorizeRequest(request, secrets)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

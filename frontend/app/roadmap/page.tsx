@@ -7,39 +7,34 @@ import { Circle, Zap, Shield, MessageCircle, GitBranch } from "lucide-react"
 type Initiative = {
   title: string
   description: string
-  status: "planned" | "building" | "alpha" | "beta" | "concept"
+  status: "planned" | "building" | "alpha" | "beta" | "concept" | "live"
 }
 
 const reliabilityInitiatives: Initiative[] = [
   {
     title: "Self-Healing Voice Grid",
     description: "Automatically swap failing Lavalink nodes within seconds and rejoin queues mid-track.",
-    status: "building",
+    status: "live",
   },
   {
     title: "Queue Copilots",
     description: "Lightweight AI agents tidy queues, normalize loudness, and guard premium slots.",
-    status: "building",
+    status: "live",
   },
   {
     title: "Incident Mirroring",
     description: "Sandbox entire guild configs so fixes happen in staging before touching production.",
-    status: "planned",
+    status: "live",
   },
   {
     title: "Charge-Aware Subscriptions",
     description: "Sync Stripe webhooks directly with Discord so paid plans unlock instantly per guild.",
-    status: "building",
+    status: "live",
   },
   {
     title: "Zero-Downtime Security Patching",
     description: "Monthly CVE sweeps, hot-reloadable bot/worker patches, and automated dependency risk scoring.",
-    status: "planned",
-  },
-  {
-    title: "Zero-Downtime Security Patching",
-    description: "Monthly CVE sweeps, hot-reloadable bot/worker patches, and automated dependency risk scoring.",
-    status: "planned",
+    status: "live",
   },
 ]
 
@@ -52,22 +47,22 @@ const communityForumInitiatives: Initiative[] = [
   {
     title: "Support Desk Pairing",
     description: "Solved tickets and incident retros pipe directly into the forum knowledge base.",
-    status: "building",
+    status: "alpha",
   },
   {
     title: "Moderator Toolkit",
     description: "Escalation macros, category templates, and cohort badges for community leads.",
-    status: "beta",
+    status: "alpha",
   },
   {
     title: "Public Read Access",
     description: "Everyone can browse best practices while posting remains tied to verified customers.",
-    status: "planned",
+    status: "beta",
   },
   {
     title: "Forum Telemetry",
     description: "Moderation and audit events surfaced to admins and SRE dashboards.",
-    status: "planned",
+    status: "beta",
   },
 ]
 
@@ -85,11 +80,6 @@ const telemetryComplianceInitiatives: Initiative[] = [
   {
     title: "Compliance Mode",
     description: "Export-ready safety logs, GDPR tooling, and data residency controls.",
-    status: "planned",
-  },
-  {
-    title: "Enterprise Hardening Pack",
-    description: "SSO/SAML, SCIM lifecycle, and hardened audit/event signing for regulated tenants.",
     status: "planned",
   },
   {
@@ -151,6 +141,19 @@ const statusToken: Record<
     label: "Concept",
     className: "bg-foreground/10 border-border text-foreground/70",
   },
+  live: {
+    label: "Live",
+    className: "bg-emerald-500/10 border-emerald-400/30 text-emerald-200",
+  },
+}
+
+const statusDot: Record<Initiative["status"], string> = {
+  live: "bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.2)]",
+  beta: "bg-sky-400 shadow-[0_0_0_4px_rgba(56,189,248,0.18)]",
+  alpha: "bg-indigo-400 shadow-[0_0_0_4px_rgba(129,140,248,0.18)]",
+  building: "bg-amber-400/80 shadow-[0_0_0_4px_rgba(251,191,36,0.14)]",
+  planned: "bg-slate-500/70 shadow-[0_0_0_4px_rgba(148,163,184,0.12)]",
+  concept: "bg-slate-600/70 shadow-[0_0_0_4px_rgba(148,163,184,0.12)]",
 }
 
 const roadmapPhases = [
@@ -184,16 +187,16 @@ const timeline = [
   {
     period: "Mar – Apr 2026",
     items: [
-      "Self-Healing Voice Grid rollout",
-      "Charge-aware Stripe provisioning",
+      "Self-Healing Voice Grid rollout (live)",
+      "Charge-aware Stripe provisioning (live)",
       "Forum private alpha (Pro+ waitlist)",
-      "First zero-downtime security patch wave",
+      "First zero-downtime security patch wave (live)",
     ],
   },
   {
     period: "May – Jun 2026",
     items: [
-      "Queue Copilots closed beta",
+      "Queue Copilots (live)",
       "Support Desk ↔ Forum syncing",
       "Moderator toolkit preview",
     ],
@@ -201,7 +204,7 @@ const timeline = [
   {
     period: "Jul – Sep 2026",
     items: [
-      "Incident mirroring + sandbox configs",
+      "Incident mirroring + sandbox configs (live)",
       "Adaptive mastering pipeline",
       "Forum public read access",
       "Enterprise hardening pack preview (SSO/SCIM)",
@@ -273,7 +276,10 @@ export default function Roadmap() {
                         style={{ animationDelay: `${phaseIdx * 100 + featureIdx * 50}ms` }}
                       >
                         <div className="flex items-start gap-3 mb-3">
-                          <Circle className="text-primary mt-1 shrink-0" size={20} />
+                          <span
+                            className={`mt-1 h-4 w-4 shrink-0 rounded-full ${statusDot[feature.status] ?? "bg-slate-500"}`}
+                            aria-hidden="true"
+                          />
                           <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">
                             {feature.title}
                           </h3>

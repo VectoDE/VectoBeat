@@ -502,6 +502,110 @@ model ApiTokenEvent {
   @@map("api_token_events")
 }
 
+enum ApiCredentialStatus {
+  active
+  disabled
+}
+
+model ApiCredential {
+  id             String              @id @default(uuid())
+  type           String
+  label          String?
+  valueHash      String              @map("value_hash")
+  encryptedValue String              @map("encrypted_value") @db.LongText
+  iv             String
+  authTag        String              @map("auth_tag")
+  status         ApiCredentialStatus @default(active)
+  createdBy      String?             @map("created_by")
+  metadata       Json?
+  createdAt      DateTime            @default(now()) @map("created_at")
+  deactivatedAt  DateTime?           @map("deactivated_at")
+
+  @@index([type, status], name: "api_credentials_type_status_idx")
+  @@index([createdAt], name: "api_credentials_created_idx")
+  @@map("api_credentials")
+}
+
+model IncidentMirror {
+  id            String   @id @default(uuid())
+  sourceGuildId String   @map("source_guild_id")
+  targetLabel   String   @map("target_label")
+  tier          String?
+  settings      Json
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([sourceGuildId, targetLabel, createdAt], name: "incident_mirror_guild_label_created_idx")
+  @@map("incident_mirrors")
+}
+
+model ForumCategory {
+  id          String   @id @default(uuid())
+  title       String
+  description String?  @db.Text
+  slug        String   @unique
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  threads     ForumThread[]
+
+  @@map("forum_categories")
+}
+
+model ForumThread {
+  id          String       @id @default(uuid())
+  categoryId  String       @map("category_id")
+  title       String
+  summary     String?      @db.Text
+  status      String       @default("open")
+  authorId    String?      @map("author_id")
+  authorName  String?      @map("author_name")
+  tags        String?
+  replies     Int          @default(0)
+  lastReplyAt DateTime?    @map("last_reply_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts    ForumPost[]
+
+  @@index([categoryId], name: "forum_threads_category_idx")
+  @@map("forum_threads")
+}
+
+model ForumPost {
+  id         String      @id @default(uuid())
+  threadId   String      @map("thread_id")
+  authorId   String?     @map("author_id")
+  authorName String?     @map("author_name")
+  body       String      @db.Text
+  role       String      @default("member")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt], name: "forum_posts_thread_created_idx")
+  @@map("forum_posts")
+}
+
+model ForumEvent {
+  id           String   @id @default(uuid())
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  actorId      String?  @map("actor_id")
+  actorName    String?  @map("actor_name")
+  actorRole    String   @default("member") @map("actor_role")
+  categorySlug String?  @map("category_slug")
+  threadId     String?  @map("thread_id")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], name: "forum_events_created_idx")
+  @@index([threadId, createdAt], name: "forum_events_thread_idx")
+  @@index([categorySlug], name: "forum_events_category_idx")
+  @@map("forum_events")
+}
+
 model UserLinkedAccount {
   id        String   @id @default(uuid())
   discordId String   @map("discord_id")

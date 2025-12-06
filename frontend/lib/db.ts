@@ -110,6 +110,30 @@ export const verifyUserApiKey = (apiKey: string | null | undefined, expectedDisc
   return expected === apiKey
 }
 
+const normalizeApiKeyType = (value: string) => value.trim().toLowerCase()
+const hashSecretValue = (value: string) => crypto.createHash("sha256").update(value).digest("hex")
+
+const packSecretValue = (value: string) => {
+  const encrypted = encryptText(value)
+  if (encrypted) {
+    return { encryptedValue: encrypted.payload, iv: encrypted.iv, authTag: encrypted.tag, valueHash: hashSecretValue(value) }
+  }
+  const fallback = Buffer.from(value, "utf8").toString("base64")
+  // Flag the IV/tag so we can decode later even when encryption is unavailable.
+  return { encryptedValue: fallback, iv: "__plain__", authTag: "__plain__", valueHash: hashSecretValue(value) }
+}
+
+const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
+  if (record.iv === "__plain__" && record.authTag === "__plain__") {
+    try {
+      return Buffer.from(record.encryptedValue, "base64").toString("utf8")
+    } catch {
+      return null
+    }
+  }
+  return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
+}
+
 const parseReferrerForStorage = (value?: string | null) => {
   if (!value) {
     return { host: null as string | null, path: null as string | null }
@@ -3156,6 +3180,197 @@ export const updateServerSettings = async (
   return merged
 }
 
+export type ApiCredentialRecord = {
+  id: string
+  type: string
+  label: string | null
+  status: "active" | "disabled"
+  createdBy: string | null
+  metadata?: Record<string, any> | null
+  createdAt: string
+  deactivatedAt: string | null
+  value?: string | null
+}
+
+export const getApiCredentialsByType = async (types: string[]): Promise<ApiCredentialRecord[]> => {
+  const normalized = Array.from(new Set(types.map(normalizeApiKeyType).filter(Boolean)))
+  if (!normalized.length) return []
+
+  try {
+    const db = getPool()
+    if (!db) return []
+    const rows = await db.apiCredential.findMany({
+      where: { type: { in: normalized } },
+      orderBy: { createdAt: "desc" },
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      label: row.label ?? null,
+      status: row.status === "disabled" ? "disabled" : ("active" as const),
+      createdBy: row.createdBy ?? null,
+      metadata: (row.metadata as Record<string, any> | null) ?? null,
+      createdAt: row.createdAt.toISOString(),
+      deactivatedAt: row.deactivatedAt ? row.deactivatedAt.toISOString() : null,
+      value: unpackSecretValue({ encryptedValue: row.encryptedValue, iv: row.iv, authTag: row.authTag }),
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to load API credentials:", error)
+    return []
+  }
+}
+
+export const getActiveApiCredentialValue = async (type: string): Promise<string | null> => {
+  const records = await getApiCredentialsByType([type])
+  const active = records.find((record) => record.status === "active")
+  return active?.value ?? null
+}
+
+export const isApiCredentialActive = async (value: string, types?: string[]): Promise<boolean> => {
+  const normalized = types?.map(normalizeApiKeyType).filter(Boolean)
+  try {
+    const db = getPool()
+    if (!db) return false
+    const hash = hashSecretValue(value)
+    const row = await db.apiCredential.findFirst({
+      where: {
+        valueHash: hash,
+        status: Prisma.ApiCredentialStatus.active,
+        ...(normalized && normalized.length ? { type: { in: normalized } } : {}),
+      },
+    })
+    return Boolean(row)
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to validate API credential:", error)
+    return false
+  }
+}
+
+export const rotateApiCredential = async (payload: {
+  type: string
+  value: string
+  label?: string | null
+  createdBy?: string | null
+  metadata?: Record<string, any> | null
+}): Promise<ApiCredentialRecord | null> => {
+  const type = normalizeApiKeyType(payload.type)
+  if (!type || !payload.value) {
+    return null
+  }
+
+  const packed = packSecretValue(payload.value)
+  if (!packed) return null
+
+  try {
+    const db = getPool()
+    if (!db) return null
+
+    const record = await db.$transaction(async (tx) => {
+      await tx.apiCredential.updateMany({
+        where: { type, status: Prisma.ApiCredentialStatus.active },
+        data: { status: Prisma.ApiCredentialStatus.disabled, deactivatedAt: new Date() },
+      })
+      return tx.apiCredential.create({
+        data: {
+          type,
+          label: payload.label ?? null,
+          valueHash: packed.valueHash,
+          encryptedValue: packed.encryptedValue,
+          iv: packed.iv,
+          authTag: packed.authTag,
+          status: Prisma.ApiCredentialStatus.active,
+          createdBy: payload.createdBy ?? null,
+          metadata: payload.metadata as Prisma.JsonObject | undefined,
+        },
+      })
+    })
+
+    return {
+      id: record.id,
+      type: record.type,
+      label: record.label ?? null,
+      status: record.status === "disabled" ? "disabled" : ("active" as const),
+      createdBy: record.createdBy ?? null,
+      metadata: (record.metadata as Record<string, any> | null) ?? null,
+      createdAt: record.createdAt.toISOString(),
+      deactivatedAt: record.deactivatedAt ? record.deactivatedAt.toISOString() : null,
+      value: payload.value,
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to rotate API credential:", error)
+    return null
+  }
+}
+
+export type IncidentMirrorRecord = {
+  id: string
+  sourceGuildId: string
+  targetLabel: string
+  tier: string | null
+  createdBy: string | null
+  createdAt: string
+  settings: ServerFeatureSettings
+}
+
+export const createIncidentMirror = async (payload: {
+  sourceGuildId: string
+  targetLabel?: string
+  settings: ServerFeatureSettings
+  tier?: string | null
+  createdBy?: string | null
+}): Promise<IncidentMirrorRecord | null> => {
+  const targetLabel = (payload.targetLabel || "staging").trim().toLowerCase() || "staging"
+  try {
+    const db = getPool()
+    if (!db) return null
+    const record = await db.incidentMirror.create({
+      data: {
+        sourceGuildId: payload.sourceGuildId,
+        targetLabel,
+        tier: payload.tier ?? null,
+        createdBy: payload.createdBy ?? null,
+        settings: payload.settings as unknown as Prisma.JsonObject,
+      },
+    })
+    return {
+      id: record.id,
+      sourceGuildId: record.sourceGuildId,
+      targetLabel: record.targetLabel,
+      tier: record.tier,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt.toISOString(),
+      settings: (record.settings as ServerFeatureSettings) ?? defaultServerFeatureSettings,
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to create incident mirror:", error)
+    return null
+  }
+}
+
+export const getLatestIncidentMirror = async (sourceGuildId: string, targetLabel = "staging") => {
+  try {
+    const db = getPool()
+    if (!db) return null
+    const record = await db.incidentMirror.findFirst({
+      where: { sourceGuildId, targetLabel },
+      orderBy: { createdAt: "desc" },
+    })
+    if (!record) return null
+    return {
+      id: record.id,
+      sourceGuildId: record.sourceGuildId,
+      targetLabel: record.targetLabel,
+      tier: record.tier,
+      createdBy: record.createdBy,
+      createdAt: record.createdAt.toISOString(),
+      settings: (record.settings as ServerFeatureSettings) ?? defaultServerFeatureSettings,
+    } satisfies IncidentMirrorRecord
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to load incident mirror:", error)
+    return null
+  }
+}
+
 export type ApiTokenEventRecord = {
   id: string
   guildId: string
@@ -4677,5 +4892,530 @@ export const appendContactMessageThread = async ({
   } catch (error) {
     logDbError("[VectoBeat] Failed to append ticket message:", error)
     return null
+  }
+}
+
+export type ForumCategoryRecord = {
+  id: string
+  title: string
+  description: string | null
+  slug: string
+  threadCount: number
+}
+
+export type ForumThreadRecord = {
+  id: string
+  categoryId: string
+  categorySlug?: string | null
+  categoryTitle?: string | null
+  title: string
+  summary: string | null
+  status: string
+  authorId: string | null
+  authorName: string | null
+  tags: string[]
+  replies: number
+  lastReplyAt: string | null
+  createdAt: string
+}
+
+export type ForumPostRecord = {
+  id: string
+  threadId: string
+  authorId: string | null
+  authorName: string | null
+  role: string
+  body: string
+  createdAt: string
+}
+
+export type ForumEventRecord = {
+  id: string
+  action: string
+  entityType: string
+  entityId: string
+  actorId: string | null
+  actorName: string | null
+  actorRole: string
+  categorySlug: string | null
+  threadId: string | null
+  metadata: Record<string, any> | null
+  createdAt: string
+}
+
+export type ForumStats = {
+  categories: number
+  threads: number
+  posts: number
+  events24h: number
+  posts24h: number
+  threads24h: number
+  activePosters24h: number
+  lastEventAt: string | null
+  topCategories: Array<{ title: string; slug: string; threads: number }>
+}
+
+const DEFAULT_FORUM_CATEGORIES: Array<{ title: string; slug: string; description: string }> = [
+  {
+    title: "Playbooks & Onboarding",
+    slug: "playbooks",
+    description: "Step-by-step playbooks for rolling out automation, onboarding soundpacks, and mod rituals.",
+  },
+  {
+    title: "Automation Recipes",
+    slug: "automation",
+    description: "Automation snippets, triggers, and workflows that save your mods time every week.",
+  },
+  {
+    title: "Status & Resilience",
+    slug: "resilience",
+    description: "Incident drills, failover configs, and lessons learned from the Self-Healing Voice Grid.",
+  },
+  {
+    title: "Compliance & Safety",
+    slug: "compliance",
+    description: "Policy, consent, and safety guardrails for regulated or trust-sensitive communities.",
+  },
+  {
+    title: "Release Previews",
+    slug: "previews",
+    description: "Closed preview threads for alpha/beta drops, feedback surveys, and rollout guides.",
+  },
+  {
+    title: "Moderator Lounge",
+    slug: "moderator-lounge",
+    description: "Role-gated space for leads to compare templates, macros, and incident retros.",
+  },
+]
+
+const seedForumCategories = async () => {
+  try {
+    const db = getPool()
+    if (!db) return []
+    const existing = await db.forumCategory.count()
+    if (existing > 0) return []
+
+    await db.forumCategory.createMany({
+      data: DEFAULT_FORUM_CATEGORIES.map((entry) => ({
+        title: entry.title,
+        slug: entry.slug,
+        description: entry.description,
+      })),
+      skipDuplicates: true,
+    })
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to seed forum categories:", error)
+  }
+  return []
+}
+
+export const listForumCategories = async (): Promise<ForumCategoryRecord[]> => {
+  try {
+    const db = getPool()
+    if (!db) return []
+    const rows = await db.forumCategory.findMany({
+      include: { threads: { select: { id: true } } },
+      orderBy: { createdAt: "asc" },
+    })
+    if (!rows.length) {
+      await seedForumCategories()
+      return listForumCategories()
+    }
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description ?? null,
+      slug: row.slug,
+      threadCount: row.threads.length,
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list forum categories:", error)
+    return []
+  }
+}
+
+export const listForumThreads = async (categorySlug?: string): Promise<ForumThreadRecord[]> => {
+  try {
+    const db = getPool()
+    if (!db) return []
+    const where = categorySlug ? { category: { slug: categorySlug } } : undefined
+    const rows = await db.forumThread.findMany({
+      where,
+      include: { category: { select: { slug: true, title: true } } },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      categoryId: row.categoryId,
+      categorySlug: row.category?.slug ?? null,
+      categoryTitle: row.category?.title ?? null,
+      title: row.title,
+      summary: row.summary ?? null,
+      status: row.status,
+      authorId: row.authorId ?? null,
+      authorName: row.authorName ?? null,
+      tags: (row.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      replies: row.replies,
+      lastReplyAt: row.lastReplyAt ? row.lastReplyAt.toISOString() : null,
+      createdAt: row.createdAt.toISOString(),
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list forum threads:", error)
+    return []
+  }
+}
+
+export const listForumPosts = async (threadId: string): Promise<ForumPostRecord[]> => {
+  try {
+    const db = getPool()
+    if (!db) return []
+    const rows = await db.forumPost.findMany({
+      where: { threadId },
+      orderBy: { createdAt: "asc" },
+      take: 50,
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      threadId: row.threadId,
+      authorId: row.authorId ?? null,
+      authorName: row.authorName ?? null,
+      role: row.role,
+      body: row.body,
+      createdAt: row.createdAt.toISOString(),
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list forum posts:", error)
+    return []
+  }
+}
+
+export const recordForumEvent = async (payload: {
+  action: string
+  entityType: string
+  entityId: string
+  actorId?: string | null
+  actorName?: string | null
+  actorRole?: string | null
+  categorySlug?: string | null
+  threadId?: string | null
+  metadata?: Record<string, any> | null
+}): Promise<void> => {
+  try {
+    const db = getPool()
+    if (!db) return
+    await db.forumEvent.create({
+      data: {
+        action: payload.action,
+        entityType: payload.entityType,
+        entityId: payload.entityId,
+        actorId: payload.actorId ?? null,
+        actorName: payload.actorName ?? null,
+        actorRole: payload.actorRole ?? "member",
+        categorySlug: payload.categorySlug ?? null,
+        threadId: payload.threadId ?? null,
+        metadata: (payload.metadata ?? {}) as Prisma.JsonObject,
+      },
+    })
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to record forum event:", error)
+  }
+}
+
+export const listForumEvents = async (
+  limit = 50,
+  options?: { sinceHours?: number; categorySlug?: string },
+): Promise<ForumEventRecord[]> => {
+  const since =
+    options?.sinceHours && Number.isFinite(options.sinceHours) ? new Date(Date.now() - options.sinceHours * 3_600_000) : null
+  try {
+    const db = getPool()
+    if (!db) return []
+    const rows = await db.forumEvent.findMany({
+      where: {
+        ...(since ? { createdAt: { gte: since } } : {}),
+        ...(options?.categorySlug ? { categorySlug: options.categorySlug } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: Math.max(1, Math.min(limit, 200)),
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      actorId: row.actorId ?? null,
+      actorName: row.actorName ?? null,
+      actorRole: row.actorRole,
+      categorySlug: row.categorySlug ?? null,
+      threadId: row.threadId ?? null,
+      metadata: (row.metadata as Record<string, any> | null) ?? null,
+      createdAt: row.createdAt.toISOString(),
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list forum events:", error)
+    return []
+  }
+}
+
+export const getForumStats = async (): Promise<ForumStats> => {
+  try {
+    const db = getPool()
+    if (!db) {
+      return {
+        categories: 0,
+        threads: 0,
+        posts: 0,
+        events24h: 0,
+        posts24h: 0,
+        threads24h: 0,
+        activePosters24h: 0,
+        lastEventAt: null,
+        topCategories: [],
+      }
+    }
+
+    const now = new Date()
+    const since = new Date(now.getTime() - 24 * 3_600_000)
+    const [categories, threads, posts, events24h, posts24h, threads24h, eventsLatest, categoryCounts] = await Promise.all([
+      db.forumCategory.count(),
+      db.forumThread.count(),
+      db.forumPost.count(),
+      db.forumEvent.count({ where: { createdAt: { gte: since } } }),
+      db.forumPost.count({ where: { createdAt: { gte: since } } }),
+      db.forumThread.count({ where: { createdAt: { gte: since } } }),
+      db.forumEvent.findFirst({ orderBy: { createdAt: "desc" } }),
+      db.forumCategory.findMany({
+        select: { id: true, title: true, slug: true, threads: { select: { id: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
+    ])
+
+    const activePosters24h = await db.forumPost.groupBy({
+      by: ["authorId"],
+      where: { createdAt: { gte: since }, authorId: { not: null } },
+      _count: { authorId: true },
+    })
+
+    return {
+      categories,
+      threads,
+      posts,
+      events24h,
+      posts24h,
+      threads24h,
+      activePosters24h: activePosters24h.length,
+      lastEventAt: eventsLatest?.createdAt ? eventsLatest.createdAt.toISOString() : null,
+      topCategories: categoryCounts
+        .map((entry) => ({ title: entry.title, slug: entry.slug, threads: entry.threads.length }))
+        .sort((a, b) => b.threads - a.threads)
+        .slice(0, 6),
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to compute forum stats:", error)
+    return {
+      categories: 0,
+      threads: 0,
+      posts: 0,
+      events24h: 0,
+      posts24h: 0,
+      threads24h: 0,
+      activePosters24h: 0,
+      lastEventAt: null,
+      topCategories: [],
+    }
+  }
+}
+
+export const createForumThread = async (payload: {
+  categorySlug: string
+  title: string
+  summary?: string | null
+  tags?: string[]
+  authorId?: string | null
+  authorName?: string | null
+  body?: string | null
+}): Promise<ForumThreadRecord | null> => {
+  const title = normalizeInput(payload.title, 200)
+  if (!title) return null
+  const summary = normalizeInput(payload.summary ?? null, 400)
+  const tags = Array.isArray(payload.tags)
+    ? payload.tags
+        .map((tag) => normalizeInput(tag, 48))
+        .filter((value): value is string => Boolean(value))
+    : []
+  const authorId = normalizeInput(payload.authorId ?? null, 64)
+  const authorName = normalizeInput(payload.authorName ?? null, 80)
+  const body = normalizeInput(payload.body ?? null, 5000)
+
+  try {
+    const db = getPool()
+    if (!db) return null
+    await seedForumCategories()
+    const category =
+      (await db.forumCategory.findUnique({ where: { slug: payload.categorySlug } })) ||
+      (await db.forumCategory.findFirst())
+    if (!category) return null
+
+    const thread = await db.$transaction(async (tx) => {
+      const created = await tx.forumThread.create({
+        data: {
+          categoryId: category.id,
+          title,
+          summary,
+          status: "open",
+          authorId,
+          authorName,
+          tags: tags.join(","),
+          replies: body ? 1 : 0,
+          lastReplyAt: body ? new Date() : null,
+        },
+      })
+      if (body) {
+        await tx.forumPost.create({
+          data: {
+            threadId: created.id,
+            authorId,
+            authorName,
+            body,
+            role: "member",
+          },
+        })
+      }
+      return created
+    })
+
+    void recordForumEvent({
+      action: "thread_created",
+      entityType: "thread",
+      entityId: thread.id,
+      actorId,
+      actorName,
+      actorRole: "member",
+      categorySlug: category.slug,
+      threadId: thread.id,
+      metadata: { tags },
+    })
+
+    return {
+      id: thread.id,
+      categoryId: thread.categoryId,
+      title: thread.title,
+      summary: thread.summary ?? null,
+      status: thread.status,
+      authorId: thread.authorId ?? null,
+      authorName: thread.authorName ?? null,
+      tags,
+      replies: thread.replies,
+      lastReplyAt: thread.lastReplyAt ? thread.lastReplyAt.toISOString() : null,
+      createdAt: thread.createdAt.toISOString(),
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to create forum thread:", error)
+    return null
+  }
+}
+
+export const createForumPost = async (payload: {
+  threadId: string
+  body: string
+  authorId?: string | null
+  authorName?: string | null
+  role?: string | null
+}): Promise<ForumPostRecord | null> => {
+  const body = normalizeInput(payload.body, 5000)
+  if (!body) return null
+  const role = normalizeInput(payload.role ?? "member", 32) ?? "member"
+  const authorId = normalizeInput(payload.authorId ?? null, 64)
+  const authorName = normalizeInput(payload.authorName ?? null, 80)
+  try {
+    const db = getPool()
+    if (!db) return null
+    const thread = await db.forumThread.findUnique({
+      where: { id: payload.threadId },
+      include: { category: { select: { slug: true } } },
+    })
+    if (!thread) return null
+
+    const record = await db.$transaction(async (tx) => {
+      const post = await tx.forumPost.create({
+        data: {
+          threadId: payload.threadId,
+          body,
+          authorId,
+          authorName,
+          role,
+        },
+      })
+      await tx.forumThread.update({
+        where: { id: payload.threadId },
+        data: {
+          replies: { increment: 1 },
+          lastReplyAt: new Date(),
+        },
+      })
+      return post
+    })
+
+    void recordForumEvent({
+      action: "post_created",
+      entityType: "post",
+      entityId: record.id,
+      actorId,
+      actorName,
+      actorRole: role,
+      categorySlug: thread.category?.slug ?? null,
+      threadId: record.threadId,
+    })
+
+    return {
+      id: record.id,
+      threadId: record.threadId,
+      authorId: record.authorId ?? null,
+      authorName: record.authorName ?? null,
+      role: record.role,
+      body: record.body,
+      createdAt: record.createdAt.toISOString(),
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to create forum post:", error)
+    return null
+  }
+}
+
+export type SupportKnowledgeArticle = {
+  id: string
+  subject: string
+  summary: string
+  status: string
+  priority: string | null
+  resolvedAt: string | null
+  updatedAt: string
+  category: string | null
+}
+
+export const listSupportKnowledgeBase = async (limit = 6): Promise<SupportKnowledgeArticle[]> => {
+  try {
+    const db = getPool()
+    if (!db) return []
+    const statuses = ["resolved", "closed", "solved"]
+    const rows = await db.contactMessage.findMany({
+      where: { status: { in: statuses } },
+      orderBy: { updatedAt: "desc" },
+      take: Math.max(1, Math.min(limit, 12)),
+    })
+    return rows.map((row) => ({
+      id: row.id,
+      subject: row.subject ?? row.topic ?? "Ticket",
+      summary: (row.response || row.message || "").slice(0, 240) || "Resolved ticket",
+      status: row.status,
+      priority: row.priority ?? null,
+      resolvedAt: row.respondedAt ? row.respondedAt.toISOString() : null,
+      updatedAt: row.updatedAt.toISOString(),
+      category: row.topic ?? null,
+    }))
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to list support KB entries:", error)
+    return []
   }
 }

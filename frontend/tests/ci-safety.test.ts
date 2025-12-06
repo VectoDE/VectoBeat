@@ -64,15 +64,18 @@ const collectRelativeLinks = (filePath: string, content: string): string[] => {
 
 test("env files are anchored to the repo root", () => {
   const envFiles = gatherEnvFiles(repoRoot);
-  const allowed = [".env", ".env.example"]
-    .map((name) => path.join(repoRoot, name))
-    .filter((file) => fs.existsSync(file));
+  const allowedNames = [".env", ".env.example", ".env.development", ".env.production"];
+  const allowedPaths = [
+    ...allowedNames.map((name) => path.join(repoRoot, name)),
+    path.join(repoRoot, "bot", ".env"),
+    path.join(repoRoot, "frontend", ".env"),
+  ].filter((file) => fs.existsSync(file));
 
   assert.deepStrictEqual(
     envFiles.sort(),
-    allowed.sort(),
+    allowedPaths.sort(),
     `Unexpected .env-style files found: ${envFiles
-      .filter((f) => !allowed.includes(f))
+      .filter((f) => !allowedPaths.includes(f))
       .join(", ")}`,
   );
 });

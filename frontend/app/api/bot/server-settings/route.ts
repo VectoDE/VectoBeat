@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
-import { authorizeRequest, expandSecrets, extractToken } from "@/lib/api-auth"
+import { authorizeRequest, extractToken } from "@/lib/api-auth"
 import { getGuildSubscriptionTier, getServerSettings, updateServerSettings } from "@/lib/db"
 import {
   SERVER_FEATURE_GROUPS,
@@ -13,24 +13,21 @@ import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import type { MembershipTier } from "@/lib/memberships"
 import { notifySettingsChange } from "@/lib/bot-status"
 import { emitServerSettingsUpdate } from "@/lib/server-settings-sync"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKENS = expandSecrets(
-  process.env.CONTROL_PANEL_API_KEY,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.STATUS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-)
+const AUTH_TOKEN_TYPES = ["control_panel", "server_settings", "status_events", "status_api"]
 const BOT_ACTOR_ID =
   process.env.SERVER_SETTINGS_BOT_ACTOR_ID ||
   process.env.DISCORD_CLIENT_ID ||
   "vectobeat-bot"
 
-const isAuthorized = (request: NextRequest) =>
-  authorizeRequest(request, AUTH_TOKENS, {
+const isAuthorized = async (request: NextRequest) => {
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  return authorizeRequest(request, secrets, {
     allowLocalhost: true,
     headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
   })
+}
 
 const HEX_COLOR = /^#([0-9a-f]{6})$/i
 const DOMAIN_STATUS_VALUES = new Set(["unconfigured", "pending_dns", "pending_tls", "verified", "failed"])
@@ -362,7 +359,7 @@ const applyPlanBooleanOverride = (
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
@@ -386,7 +383,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!(await isAuthorized(request))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 

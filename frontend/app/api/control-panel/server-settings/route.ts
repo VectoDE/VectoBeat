@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { getServerSettings, updateServerSettings, getGuildSubscriptionTier } from "@/lib/db"
 import { sanitizeSettingsForTier } from "@/app/api/bot/server-settings/route"
 import type { ServerFeatureSettings } from "@/lib/server-settings"
@@ -7,23 +7,18 @@ import type { MembershipTier } from "@/lib/memberships"
 import { notifySettingsChange, triggerRoutingRebalance } from "@/lib/bot-status"
 import { verifyControlPanelGuildAccess } from "@/lib/control-panel-auth"
 import { emitServerSettingsUpdate } from "@/lib/server-settings-sync"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKENS = expandSecrets(
-  process.env.CONTROL_PANEL_API_KEY,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.STATUS_API_KEY,
-)
+const AUTH_TOKEN_TYPES = ["control_panel", "server_settings", "status_api", "status_events"]
 
-const hasAuthTokens = AUTH_TOKENS.length > 0
-
-const isAuthorizedByToken = (request: NextRequest) =>
-  hasAuthTokens &&
-  authorizeRequest(request, AUTH_TOKENS, {
+const isAuthorizedByToken = async (request: NextRequest) => {
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  if (!secrets.length) return false
+  return authorizeRequest(request, secrets, {
     allowLocalhost: true,
     headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
   })
+}
 
 const sanitizeForGuild = async (
   guildId: string,
@@ -51,7 +46,7 @@ export const createServerSettingsHandlers = (deps: RouteDeps = {}) => {
       const guildId = request.nextUrl.searchParams.get("guildId")
       const discordId = request.nextUrl.searchParams.get("discordId")
 
-      const tokenAuthorized = isAuthorizedByToken(request)
+      const tokenAuthorized = await isAuthorizedByToken(request)
       if (!guildId || (!discordId && !tokenAuthorized)) {
         return NextResponse.json({ error: "guildId and discordId are required" }, { status: 400 })
       }
@@ -78,7 +73,7 @@ export const createServerSettingsHandlers = (deps: RouteDeps = {}) => {
       const body = await request.json()
       const { discordId, guildId, settings } = body ?? {}
 
-      const tokenAuthorized = isAuthorizedByToken(request)
+      const tokenAuthorized = await isAuthorizedByToken(request)
       if (!guildId || !settings) {
         return NextResponse.json({ error: "guildId and settings are required" }, { status: 400 })
       }

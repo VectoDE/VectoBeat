@@ -69,6 +69,17 @@ const formatFileSize = (size?: number) => {
 }
 
 const getAuthToken = () => (typeof window === "undefined" ? "" : localStorage.getItem("discord_token") ?? "")
+const TIER_ORDER = ["free", "starter", "pro", "growth", "scale", "enterprise"]
+const highestTier = (tiers: string[]) => {
+  let best = "free"
+  tiers.forEach((tier) => {
+    const idx = TIER_ORDER.indexOf(tier.toLowerCase())
+    if (idx > TIER_ORDER.indexOf(best)) {
+      best = tier.toLowerCase()
+    }
+  })
+  return best
+}
 
 const isImageType = (type?: string) => (type ? type.startsWith("image/") : false)
 const isVideoType = (type?: string) => (type ? type.startsWith("video/") : false)
@@ -177,6 +188,10 @@ export function SupportDeskPanel() {
   const [loginUrl, setLoginUrl] = useState<string | null>(null)
   const [sessionInfo, setSessionInfo] = useState<{ name: string; email: string | null; discordId: string } | null>(null)
   const [highestSubscription, setHighestSubscription] = useState("free")
+  const [toolkitMacros, setToolkitMacros] = useState<Array<{ id: string; label: string; body: string }>>([])
+  const [selectedMacroId, setSelectedMacroId] = useState("")
+  const [toolkitStage, setToolkitStage] = useState<"alpha" | "beta" | null>(null)
+  const [toolkitBadges, setToolkitBadges] = useState<Array<{ id: string; label: string; description?: string }>>([])
 
   const selectedTicket = useMemo(
     () => (selectedTicketId ? tickets.find((ticket) => ticket.id === selectedTicketId) ?? null : null),
@@ -196,6 +211,22 @@ export function SupportDeskPanel() {
       })
     }
   }, [])
+
+  const fetchToolkit = useCallback(
+    async (discordId: string) => {
+      try {
+        const response = await fetch(`/api/moderator/toolkit?discordId=${discordId}`, { credentials: "include" })
+        if (!response.ok) return
+        const payload = await response.json()
+        setToolkitMacros(Array.isArray(payload?.macros) ? payload.macros : [])
+        setToolkitStage(payload?.stage === "alpha" ? "alpha" : payload?.stage === "beta" ? "beta" : null)
+        setToolkitBadges(Array.isArray(payload?.badges) ? payload.badges : [])
+      } catch (error) {
+        console.error("[VectoBeat] Moderator toolkit fetch failed:", error)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -221,7 +252,13 @@ export function SupportDeskPanel() {
         if (data?.authenticated && !cancelled) {
           const resolvedName = data.displayName || data.username || "Community Member"
           const resolvedEmail = data.email || ""
-          setSessionInfo({ name: resolvedName, email: data.email ?? null, discordId: data.id })
+          const tiers = Array.isArray(data.tiers) ? data.tiers : []
+          const bestTier = tiers.length ? highestTier(tiers) : "free"
+          setHighestSubscription(bestTier)
+          if (["pro", "growth", "scale", "enterprise"].includes(bestTier) && data.discordId) {
+            void fetchToolkit(data.discordId)
+          }
+          setSessionInfo({ name: resolvedName, email: data.email ?? null, discordId: data.discordId || data.id })
           setName(resolvedName)
           setEmail(resolvedEmail)
           setTicketEmail(resolvedEmail)
@@ -249,7 +286,7 @@ export function SupportDeskPanel() {
       cancelled = true
       controller.abort()
     }
-  }, [])
+  }, [fetchToolkit])
 
   const canSubmit = useMemo(
     () => !!sessionInfo && !!email && !!message && !!category && !!priority && acceptedPolicies,
@@ -429,6 +466,15 @@ export function SupportDeskPanel() {
 
   const canReply =
     !!selectedTicket && !replying && !scanInProgress && !hasBlockedAttachment && (hasMessage || hasReadyAttachments || statusChanged)
+
+  const applyMacro = useCallback(() => {
+    const macro = toolkitMacros.find((entry) => entry.id === selectedMacroId)
+    if (!macro) return
+    setReplyMessage((prev) => {
+      if (!prev.trim()) return macro.body
+      return `${prev}\n\n${macro.body}`
+    })
+  }, [selectedMacroId, toolkitMacros])
 
   const handleAttachmentChange = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
@@ -1018,6 +1064,59 @@ export function SupportDeskPanel() {
                 </div>
 
                 <form onSubmit={handleReplySubmit} className="border-t border-border/40 pt-4 space-y-3">
+                  {toolkitMacros.length > 0 && (
+                    <div className="flex flex-col gap-2 rounded-lg border border-border/50 bg-card/40 p-3 text-xs text-foreground/70">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-foreground font-semibold">Moderator Toolkit</span>
+                        {toolkitStage ? (
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                              toolkitStage === "alpha"
+                                ? "bg-amber-500/15 text-amber-200 border border-amber-500/30"
+                                : "bg-sky-500/15 text-sky-200 border border-sky-500/30"
+                            }`}
+                          >
+                            {toolkitStage === "alpha" ? "Alpha" : "Beta"}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <select
+                          value={selectedMacroId}
+                          onChange={(e) => setSelectedMacroId(e.target.value)}
+                          className="rounded-md border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/80"
+                        >
+                          <option value="">Select a macro</option>
+                          {toolkitMacros.map((macro) => (
+                            <option key={macro.id} value={macro.id}>
+                              {macro.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={applyMacro}
+                          className="rounded-md border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20"
+                          disabled={!selectedMacroId}
+                        >
+                          Insert Macro
+                        </button>
+                      </div>
+                      {toolkitBadges.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {toolkitBadges.map((badge) => (
+                            <span
+                              key={badge.id}
+                              className="rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-200 border border-emerald-500/30"
+                              title={badge.description}
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <textarea
                     value={replyMessage}
                     onChange={(event) => setReplyMessage(event.target.value)}

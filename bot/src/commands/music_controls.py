@@ -63,6 +63,9 @@ class MusicControls(commands.Cog):
     def _analytics_export_service(self):
         return getattr(self.bot, "analytics_export", None)
 
+    def _queue_copilot_service(self):
+        return getattr(self.bot, "queue_copilot", None)
+
     async def _publish_queue_state(
         self,
         player: Optional[lavalink.DefaultPlayer],
@@ -726,6 +729,14 @@ class MusicControls(commands.Cog):
         for track in selected:
             player.add(track)
 
+        copilot = self._queue_copilot_service()
+        copilot_meta: Dict[str, Any] = {}
+        if copilot and inter.guild:
+            try:
+                copilot_meta = await copilot.on_tracks_added(player, selected, guild_id=inter.guild.id)
+            except Exception as exc:  # pragma: no cover - defensive
+                self.bot.logger and self.bot.logger.debug("Queue copilot failed: %s", exc)
+
         estimated_wait = self._estimated_wait(player)
 
         if should_start:
@@ -752,7 +763,11 @@ class MusicControls(commands.Cog):
         if policy_hint:
             embed.add_field(name="Source Policy", value=policy_hint, inline=False)
 
-        await self._publish_queue_state(player, "tracks_added", {"count": len(selected)})
+        meta: Dict[str, Any] = {"count": len(selected)}
+        if copilot_meta.get("actions"):
+            meta["copilot"] = copilot_meta
+            embed.add_field(name="Queue Copilot", value=", ".join(copilot_meta["actions"]), inline=False)
+        await self._publish_queue_state(player, "tracks_added", meta)
         await inter.followup.send(embed=embed)
         if inter.guild:
             await self._apply_automation_rules(inter.guild.id, player, "play")

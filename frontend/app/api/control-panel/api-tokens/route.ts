@@ -1,29 +1,25 @@
 import { randomBytes, randomUUID, createHash } from "crypto"
 import { NextResponse, type NextRequest } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { getServerSettings, updateServerSettings, recordApiTokenEvent } from "@/lib/db"
 import type { MembershipTier } from "@/lib/memberships"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import { DEFAULT_API_SCOPES, sanitizeScopes } from "@/lib/api-scopes"
 import { sendNotificationEmail } from "@/lib/mailer"
 import { verifyControlPanelGuildAccess } from "@/lib/control-panel-auth"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKENS = expandSecrets(
-  process.env.CONTROL_PANEL_API_KEY,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.STATUS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.BOT_STATUS_API_KEY,
-)
+const AUTH_TOKEN_TYPES = ["control_panel", "server_settings", "status_api", "status_events"]
 
-const hasAuthTokens = AUTH_TOKENS.length > 0
-
-const isAuthorizedByToken = (request: NextRequest) =>
-  hasAuthTokens &&
-  authorizeRequest(request, AUTH_TOKENS, {
-    allowLocalhost: true,
-    headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
-  })
+const isAuthorizedByToken = async (request: NextRequest) => {
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  return secrets.length > 0
+    ? authorizeRequest(request, secrets, {
+        allowLocalhost: true,
+        headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
+      })
+    : false
+}
 
 type StoredToken = {
   id: string
@@ -140,7 +136,7 @@ export const createApiTokenHandlers = (deps: RouteDeps = {}) => {
   const getHandler = async (request: NextRequest) => {
     const guildId = request.nextUrl.searchParams.get("guildId")
     const discordId = request.nextUrl.searchParams.get("discordId")
-    const tokenAuthorized = isAuthorizedByToken(request)
+    const tokenAuthorized = await isAuthorizedByToken(request)
     if (!guildId || (!discordId && !tokenAuthorized)) {
       return NextResponse.json({ error: "guild_required" }, { status: 400 })
     }
@@ -169,7 +165,7 @@ export const createApiTokenHandlers = (deps: RouteDeps = {}) => {
     const discordId = typeof body?.discordId === "string" ? body.discordId.trim() : ""
     const label = sanitizeLabel(body?.label)
     const requestedScopes = sanitizeScopes(body?.scopes)
-    const tokenAuthorized = isAuthorizedByToken(request)
+    const tokenAuthorized = await isAuthorizedByToken(request)
     if (!guildId || !label || (!discordId && !tokenAuthorized)) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 })
     }
@@ -237,7 +233,7 @@ export const createApiTokenHandlers = (deps: RouteDeps = {}) => {
     const guildId = typeof body?.guildId === "string" ? body.guildId.trim() : ""
     const discordId = typeof body?.discordId === "string" ? body.discordId.trim() : ""
     const tokenId = typeof body?.tokenId === "string" ? body.tokenId.trim() : ""
-    const tokenAuthorized = isAuthorizedByToken(request)
+    const tokenAuthorized = await isAuthorizedByToken(request)
     if (!guildId || !tokenId || (!discordId && !tokenAuthorized)) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 })
     }
@@ -284,7 +280,7 @@ export const createApiTokenHandlers = (deps: RouteDeps = {}) => {
     const discordId = typeof body?.discordId === "string" ? body.discordId.trim() : ""
     const tokenId = typeof body?.tokenId === "string" ? body.tokenId.trim() : ""
     const action = typeof body?.action === "string" ? body.action : "rotate"
-    const tokenAuthorized = isAuthorizedByToken(request)
+    const tokenAuthorized = await isAuthorizedByToken(request)
     if (!guildId || !tokenId || (!discordId && !tokenAuthorized)) {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 })
     }

@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { getLatestBotMetricSnapshot, recordBotMetricSnapshot } from "@/lib/db"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const ANALYTICS_TOKENS = expandSecrets(
-  process.env.ANALYTICS_API_KEY,
-  process.env.STATUS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.CONTROL_PANEL_API_KEY,
-)
+const ANALYTICS_TOKEN_TYPES = ["analytics", "status_api", "status_events", "control_panel"]
 
 const unauthorized = () => NextResponse.json({ error: "unauthorized" }, { status: 401 })
 
@@ -16,7 +11,8 @@ const toNumber = (value: unknown, fallback = 0) =>
   typeof value === "number" && Number.isFinite(value) ? value : fallback
 
 export async function POST(request: NextRequest) {
-  if (!authorizeRequest(request, ANALYTICS_TOKENS, { allowLocalhost: true })) {
+  const secrets = await getApiKeySecrets(ANALYTICS_TOKEN_TYPES, { includeEnv: false })
+  if (!authorizeRequest(request, secrets, { allowLocalhost: true })) {
     return unauthorized()
   }
 
@@ -42,7 +38,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!authorizeRequest(request, ANALYTICS_TOKENS, { allowLocalhost: true })) {
+  const secrets = await getApiKeySecrets(ANALYTICS_TOKEN_TYPES, { includeEnv: false })
+  if (!authorizeRequest(request, secrets, { allowLocalhost: true })) {
     return unauthorized()
   }
 

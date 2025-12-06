@@ -1,12 +1,19 @@
 import type { MembershipTier } from "./memberships"
 import type { ServerFeatureSettings } from "./server-settings"
+import { getApiKeySecret } from "./api-keys"
 
 const getInternalBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 
-const BROADCAST_TOKEN = process.env.SERVER_SETTINGS_API_KEY || process.env.STATUS_API_PUSH_SECRET || ""
+const resolveBroadcastToken = async () => {
+  const serverSettingsKey = await getApiKeySecret("server_settings", { includeEnv: false })
+  if (serverSettingsKey) return serverSettingsKey
+  const statusPushKey = await getApiKeySecret("status_events", { includeEnv: false })
+  return statusPushKey ?? ""
+}
 
 const postWithAuth = async (path: string, body: Record<string, unknown>): Promise<boolean> => {
+  const token = await resolveBroadcastToken()
   const endpoint = `${getInternalBaseUrl()}${path}`
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 5000)
@@ -15,7 +22,7 @@ const postWithAuth = async (path: string, body: Record<string, unknown>): Promis
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(BROADCAST_TOKEN ? { Authorization: `Bearer ${BROADCAST_TOKEN}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
       signal: controller.signal,

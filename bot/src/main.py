@@ -34,6 +34,7 @@ from src.services.alert_service import AlertService
 from src.services.search_cache import SearchCacheService
 from src.services.status_api_service import StatusAPIService
 from src.services.queue_sync_service import QueueSyncService
+from src.services.queue_copilot_service import QueueCopilotService
 from src.services.scaling_service import ScalingService
 from src.services.server_settings_service import PanelParitySnapshot, ServerSettingsService
 from src.services.shard_supervisor import ShardSupervisor
@@ -91,6 +92,7 @@ class VectoBeat(commands.AutoShardedBot):
         self.analytics_export = AnalyticsExportService(self.server_settings)
         self.alerts = AlertService(CONFIG.alerts, self.server_settings)
         self.queue_telemetry = QueueTelemetryService(CONFIG.queue_telemetry, self.server_settings)
+        self.queue_copilot = QueueCopilotService(self.server_settings)
         self.search_cache = SearchCacheService(CONFIG.cache)
         self.status_api = StatusAPIService(self, CONFIG.status_api)
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)

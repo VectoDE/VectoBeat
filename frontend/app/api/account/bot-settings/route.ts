@@ -2,8 +2,9 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getBotSettings, updateBotSettings } from "@/lib/db"
 import { emitBotDefaultsUpdate } from "@/lib/server-settings-sync"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { clamp } from "@/lib/math"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -11,13 +12,7 @@ type RouteDeps = {
   saveBotSettings?: typeof updateBotSettings
 }
 
-const INTERNAL_SECRETS = expandSecrets(
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.STATUS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-)
-const hasInternalSecrets = INTERNAL_SECRETS.length > 0
+const INTERNAL_SECRET_TYPES = ["server_settings", "status_api", "status_events"]
 
 export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
   const verifyUser = deps.verifyUser ?? verifyRequestForUser
@@ -30,7 +25,8 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
       return NextResponse.json({ error: "discordId is required" }, { status: 400 })
     }
 
-    const isInternal = hasInternalSecrets && authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
+    const internalSecrets = await getApiKeySecrets(INTERNAL_SECRET_TYPES, { includeEnv: false })
+    const isInternal = internalSecrets.length > 0 && authorizeRequest(request, internalSecrets, { allowLocalhost: true })
     if (!isInternal) {
       const auth = await verifyUser(request, discordId)
       if (!auth.valid) {
@@ -49,7 +45,8 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
         return NextResponse.json({ error: "discordId is required" }, { status: 400 })
       }
 
-      const isInternal = hasInternalSecrets && authorizeRequest(request, INTERNAL_SECRETS, { allowLocalhost: true })
+      const internalSecrets = await getApiKeySecrets(INTERNAL_SECRET_TYPES, { includeEnv: false })
+      const isInternal = internalSecrets.length > 0 && authorizeRequest(request, internalSecrets, { allowLocalhost: true })
       if (!isInternal) {
         const auth = await verifyUser(request, discordId)
         if (!auth.valid) {

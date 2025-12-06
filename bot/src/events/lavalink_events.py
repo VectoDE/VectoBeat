@@ -7,11 +7,14 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from typing import List
+from typing import List, Optional
 
 import lavalink
+import discord
 from discord.ext import commands
 from lavalink.events import NodeDisconnectedEvent, NodeReadyEvent
+
+from src.services.lavalink_service import LavalinkVoiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,50 @@ class LavalinkNodeEvents(commands.Cog):
         players = getattr(stats, "players", 0)
         return float(players)
 
+    async def _ensure_voice_connected(self, player: lavalink.DefaultPlayer) -> None:
+        """Reconnect to the original voice channel if Discord dropped the session."""
+        guild = self.bot.get_guild(player.guild_id)
+        channel_id = getattr(player, "channel_id", None)
+        if not guild or not channel_id:
+            return
+
+        voice_client = guild.voice_client
+        if voice_client and getattr(voice_client, "channel", None):
+            connected_id = getattr(getattr(voice_client, "channel", None), "id", None)
+            if connected_id == channel_id and getattr(voice_client, "is_connected", lambda: False)():
+                return
+
+        channel = guild.get_channel(channel_id)
+        if isinstance(channel, discord.VoiceChannel):
+            try:
+                await channel.connect(cls=LavalinkVoiceClient)  # type: ignore[arg-type]
+                logger.info("Rejoined voice channel %s after node failover.", channel.id)
+            except Exception as exc:  # pragma: no cover - network/Discord behaviour
+                logger.warning("Failed to rejoin voice channel %s: %s", channel_id, exc)
+
+    async def _pick_target_node(
+        self, failed_node, player: lavalink.DefaultPlayer, candidates: List[lavalink.Node]
+    ) -> Optional[lavalink.Node]:
+        """Choose the best replacement node, preferring the guild's region when available."""
+        manager = getattr(self.bot, "lavalink_manager", None)
+        settings = getattr(self.bot, "server_settings", None)
+        desired_region = None
+        if settings:
+            try:
+                desired_region = await settings.lavalink_region(player.guild_id)
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("Failed to resolve lavalink region for guild %s: %s", player.guild_id, exc)
+
+        if manager and desired_region:
+            candidate = manager._pick_node(desired_region)  # type: ignore[attr-defined]
+            if candidate and candidate.available and candidate is not failed_node:
+                return candidate
+
+        for node in candidates:
+            if node is not failed_node and node.available:
+                return node
+        return None
+
     async def _migrate_players(self, failed_node) -> None:
         client = getattr(self.bot, "lavalink", None)
         if not client:
@@ -75,6 +122,16 @@ class LavalinkNodeEvents(commands.Cog):
 
         target = candidates[0]
         for player in players:
+            current_track = getattr(player, "current", None)
+            current_position = int(getattr(player, "position", 0) or 0)
+            was_paused = bool(getattr(player, "paused", False))
+            target = await self._pick_target_node(failed_node, player, candidates)
+            if not target:
+                logger.warning(
+                    "No available Lavalink node to migrate guild %s after failure.", player.guild_id
+                )
+                continue
+
             changer = getattr(player, "change_node", None)
             if not changer:
                 continue
@@ -82,9 +139,40 @@ class LavalinkNodeEvents(commands.Cog):
                 result = changer(target)
                 if inspect.isawaitable(result):
                     await result
-                if player.is_connected and player.current and not player.is_playing:
+
+                await self._ensure_voice_connected(player)
+
+                if current_track:
+                    resume_from = max(0, current_position - 1000)
+                    await player.play(track=current_track, start_time=resume_from, no_replace=False)
+                    if was_paused:
+                        await player.set_pause(True)
+                    logger.info(
+                        "Migrated player %s to node '%s' and resumed track at %sms.",
+                        player.guild_id,
+                        target.name,
+                        resume_from,
+                    )
+                elif player.queue:
                     await player.play()
-                logger.info("Migrated player %s to node '%s'.", player.guild_id, target.name)
+                    logger.info(
+                        "Migrated player %s to node '%s' and restarted queued playback.",
+                        player.guild_id,
+                        target.name,
+                    )
+                else:
+                    logger.info("Migrated player %s to node '%s' (no active track).", player.guild_id, target.name)
+
+                queue_sync = getattr(self.bot, "queue_sync", None)
+                if queue_sync:
+                    asyncio.create_task(
+                        queue_sync.publish_state(
+                            player.guild_id,
+                            player,
+                            "node_failover",
+                            {"from": getattr(failed_node, "name", None), "to": target.name},
+                        )
+                    )
             except Exception as exc:  # pragma: no cover - network and lavalink behaviour
                 logger.error("Failed to migrate player %s: %s", player.guild_id, exc)
 

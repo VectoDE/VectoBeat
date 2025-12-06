@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next"
 import { ensureSocketServer } from "@/lib/socket-server"
 import { getQueueSnapshot, setQueueSnapshot } from "@/lib/queue-sync-store"
 import type { QueueSnapshot } from "@/types/queue-sync"
-
-const QUEUE_SYNC_API_KEY = process.env.QUEUE_SYNC_API_KEY || ""
+import { getApiKeySecrets } from "@/lib/api-keys"
 
 const normalizeSnapshot = (body: any): QueueSnapshot | null => {
   const guildId = typeof body?.guildId === "string" ? body.guildId.trim() : ""
@@ -44,7 +43,11 @@ export const createQueueSyncHandler = (deps: QueueSyncDeps = {}) => {
   const getSnapshot = deps.getSnapshot ?? getQueueSnapshot
   const saveSnapshot = deps.saveSnapshot ?? setQueueSnapshot
   const ensureSocket = deps.ensureSocket ?? ensureSocketServer
-  const apiKey = deps.apiKey ?? QUEUE_SYNC_API_KEY
+  const resolveApiKey = async () => {
+    if (deps.apiKey) return deps.apiKey
+    const secrets = await getApiKeySecrets(["queue_sync"], { includeEnv: false })
+    return secrets[0] ?? ""
+  }
 
   const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     if (req.method === "GET") {
@@ -74,6 +77,7 @@ export const createQueueSyncHandler = (deps: QueueSyncDeps = {}) => {
       return res.status(405).json({ error: "method_not_allowed" })
     }
 
+    const apiKey = await resolveApiKey()
     if (!apiKey) {
       return res.status(501).json({ error: "queue_sync_disabled" })
     }

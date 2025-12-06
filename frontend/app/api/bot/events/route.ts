@@ -1,15 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { recordBotActivityEvent } from "@/lib/db"
+import { getApiKeySecrets } from "@/lib/api-keys"
+
+const SECRET_TYPES = ["status_events", "status_api"]
 
 export async function POST(request: NextRequest) {
-  // Resolve at request time so env changes are picked up without restart.
-  const secrets = expandSecrets(
-    process.env.STATUS_API_EVENT_SECRET,
-    process.env.STATUS_API_PUSH_SECRET,
-    process.env.STATUS_API_KEY,
-    process.env.BOT_STATUS_API_KEY,
-  )
+  const secrets = await getApiKeySecrets(SECRET_TYPES, { includeEnv: false })
   if (
     !authorizeRequest(request, secrets, {
       allowLocalhost: true,

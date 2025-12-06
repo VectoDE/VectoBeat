@@ -1,7 +1,8 @@
 import { randomBytes } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserRole } from "@/lib/db"
+import { getUserRole, getApiCredentialsByType, rotateApiCredential } from "@/lib/db"
+import { invalidateApiKeyCache, normalizeApiKeyType } from "@/lib/api-keys"
 
 const maskValue = (value: string | null) => {
   if (!value) return null
@@ -10,16 +11,6 @@ const maskValue = (value: string | null) => {
   const tail = trimmed.slice(-4)
   const hidden = "•".repeat(Math.max(trimmed.length - 4, 4))
   return `${hidden}${tail}`
-}
-
-const pickEnv = (keys: string[] | readonly string[]) => {
-  for (const key of keys) {
-    const value = process.env[key]
-    if (typeof value === "string" && value.trim()) {
-      return value.trim()
-    }
-  }
-  return null
 }
 
 const KEY_DEFINITIONS = [
@@ -112,8 +103,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: guard.error }, { status: guard.status })
   }
 
+  const credentialTypes = KEY_DEFINITIONS.map((definition) => normalizeApiKeyType(definition.id))
+  const credentials = await getApiCredentialsByType(credentialTypes)
+
   const keys = KEY_DEFINITIONS.map((definition) => {
-    const value = pickEnv(definition.envVars)
+    const normalizedType = normalizeApiKeyType(definition.id)
+    const credential = credentials.find((entry) => entry.type === normalizedType && entry.status === "active")
+    const value = credential?.value ?? null
     return {
       id: definition.id,
       label: definition.label,
@@ -165,11 +161,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unknown service" }, { status: 400 })
   }
 
-  const token = `vb_${randomBytes(24).toString("hex")}`
+  const token = typeof body?.value === "string" && body.value.trim() ? body.value.trim() : `vb_${randomBytes(24).toString("hex")}`
+  const record = await rotateApiCredential({
+    type: normalizeApiKeyType(definition.id),
+    value: token,
+    label: definition.label,
+    createdBy: discordId,
+    metadata: { envVar: definition.envVars[0], service: definition.id },
+  })
+  invalidateApiKeyCache([definition.id])
+
   return NextResponse.json({
     key: token,
     envVar: definition.envVars[0],
     service: definition.id,
-    message: "Update your environment variable and restart workers to apply the new key.",
+    message: record ? "API key rotated and stored in the database." : "Key generated.",
   })
 }

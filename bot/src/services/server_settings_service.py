@@ -136,6 +136,7 @@ class ServerSettingsService:
         self._global_defaults: Dict[str, Any] = {}
         self._defaults_path = Path("data/bot_defaults.json")
         self._restore_global_defaults()
+        self._incident_endpoint = "/api/bot/incident-mirror"
 
     async def start(self) -> None:
         """Initialise the HTTP session."""
@@ -163,6 +164,34 @@ class ServerSettingsService:
         self._global_defaults.clear()
         self._persist_global_defaults()
 
+    async def fetch_incident_mirror(self, guild_id: int, label: str = "staging") -> Optional[GuildSettingsState]:
+        """Retrieve a mirrored settings snapshot for a guild if available."""
+        if not self.enabled or not self._session:
+            return None
+        params = {"guildId": str(guild_id), "label": label}
+        headers = {"x-discord-id": str(guild_id)}
+        try:
+            async with self._session.get(
+                f"{self.config.base_url}{self._incident_endpoint}",
+                params=params,
+                headers=headers,
+            ) as response:
+                if response.status == 404:
+                    return None
+                if not response.ok:
+                    return None
+                payload = await response.json()
+                mirror = payload.get("mirror")
+                if not mirror:
+                    return None
+                settings = mirror.get("settings") or DEFAULT_SERVER_SETTINGS
+                tier = str(mirror.get("tier") or "free").lower()
+                signature = mirror.get("id")
+                return GuildSettingsState(tier=tier, settings=settings, signature=signature)
+        except Exception as exc:  # pragma: no cover - defensive
+            self.logger.debug("Incident mirror fetch failed for guild %s: %s", guild_id, exc)
+            return None
+
     async def get_settings(self, guild_id: int) -> GuildSettingsState:
         """Return cached settings for ``guild_id``."""
         if not guild_id:
@@ -180,7 +209,11 @@ class ServerSettingsService:
             cached = self._cache.get(guild_id)
             if cached and cached[1] > time.monotonic():
                 return cached[0]
-            state = await self._fetch_remote(guild_id)
+            mirror = await self.fetch_incident_mirror(guild_id)
+            if mirror:
+                state = mirror
+            else:
+                state = await self._fetch_remote(guild_id)
             ttl = max(5, self.config.cache_ttl_seconds)
             self._cache[guild_id] = (state, time.monotonic() + ttl)
             return state

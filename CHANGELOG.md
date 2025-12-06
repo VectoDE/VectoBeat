@@ -3,6 +3,27 @@
 All notable changes to **VectoBeat** are tracked in this document.  
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2025-12-08
+
+### Highlights
+- Forum is fully database-backed with category drilldowns, Pro+ topic creation, reactions, and public read access; Support Desk KB remains team-only.
+- Forum telemetry added end-to-end (events table, stats API, admin tab, `/stats` surfacing) and a new security patches page now renders live CVE-style summaries.
+- Stripe/webhook typing hardened and product/version identifiers bumped to 2.2.0 across runtime headers and metadata.
+
+### Added
+- Forum thread browser (category filters, topic modal, reactions) plus Pro+ topic creation and signed-in replies; Support Desk KB gated to admin/operator.
+- Forum telemetry pipeline (`forum_events`, stats aggregation, `/api/forum/telemetry`) and control-room “Forum” tab showing categories, threads, and recent events; forum metrics now appear on `/stats`.
+- Dynamic security patches page backed by `/api/security/patches`, synthesizing CVE-style summaries per version; changelog parsing with generated CVE IDs when none are present.
+
+### Changed
+- Forum UI and access copy translated to English; role messaging clarified for team vs. Pro+ vs. read-only users.
+- Analytics overview (and dashboard analytics handler) now returns `forumStats`/`forumEvents`; server-settings/bot-control flows consistently consume DB API keys.
+- Stripe app info/UA and frontend package version updated to 2.2.0.
+
+### Fixed
+- Stripe webhook TS errors resolved (subscription IDs on invoices/sessions, period fields); analytics guild handler now matches the full `AnalyticsOverview` shape.
+- Forum page parsing errors fixed; ensured public read with Pro+ posting/commenting rules enforced.
+
 ## [2.1.0] - 2025-12-07
 
 ### Highlights

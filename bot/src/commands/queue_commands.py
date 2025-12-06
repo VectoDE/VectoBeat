@@ -83,6 +83,9 @@ class QueueCommands(commands.Cog):
     def _analytics_export_service(self):
         return getattr(self.bot, "analytics_export", None)
 
+    def _queue_copilot_service(self):
+        return getattr(self.bot, "queue_copilot", None)
+
     async def _publish_queue_state(
         self,
         guild_id: int,
@@ -914,6 +917,14 @@ class QueueCommands(commands.Cog):
         for track in tracks:
             player.add(track)
 
+        copilot = self._queue_copilot_service()
+        copilot_meta: Dict[str, Any] = {}
+        if copilot:
+            try:
+                copilot_meta = await copilot.on_tracks_added(player, tracks, guild_id=inter.guild.id)
+            except Exception as exc:  # pragma: no cover - defensive
+                self.bot.logger and self.bot.logger.debug("Queue copilot failed: %s", exc)
+
         if should_start:
             player.store("suppress_next_announcement", True)
             await player.play()
@@ -938,7 +949,10 @@ class QueueCommands(commands.Cog):
             "playlist:load",
             details=f"{name} ({len(tracks)} tracks, replace={'yes' if replace_queue else 'no'})",
         )
-        await self._publish_queue_state(inter.guild.id, player, "playlist_load", {"tracks": len(tracks)})
+        meta: Dict[str, Any] = {"tracks": len(tracks)}
+        if copilot_meta.get("actions"):
+            meta["copilot"] = copilot_meta
+        await self._publish_queue_state(inter.guild.id, player, "playlist_load", meta)
         await self._apply_automation_rules(inter.guild.id, player, "playlist_load")
         await self._record_compliance(
             inter.guild.id,

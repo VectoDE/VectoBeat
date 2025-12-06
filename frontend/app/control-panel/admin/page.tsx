@@ -33,7 +33,7 @@ type AdminTabKey =
   | "subscriptions"
   | "billing"
   | "apiKeys"
-  | "apiKeys"
+  | "forum"
 
 type NewsletterSubscriber = {
   email: string
@@ -126,6 +126,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "users", label: "Users", description: "Manage member accounts and access levels" },
   { key: "apiKeys", label: "API Keys", description: "Monitor system credentials and rotate secrets safely" },
   { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
+  { key: "forum", label: "Forum", description: "Manage forum categories, threads, and telemetry" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
 ]
@@ -226,6 +227,11 @@ export default function AdminControlPanelPage() {
   const [supportTickets, setSupportTickets] = useState<any[]>([])
   const [supportTicketsLoading, setSupportTicketsLoading] = useState(false)
   const [supportTicketsError, setSupportTicketsError] = useState<string | null>(null)
+  const [forumStats, setForumStats] = useState<any | null>(null)
+  const [forumEvents, setForumEvents] = useState<any[]>([])
+  const [forumCategories, setForumCategories] = useState<any[]>([])
+  const [forumThreads, setForumThreads] = useState<any[]>([])
+  const [forumLoading, setForumLoading] = useState(false)
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -487,6 +493,33 @@ export default function AdminControlPanelPage() {
       setSupportTicketsLoading(false)
     }
   }, [authToken, discordId])
+
+  const loadForumData = useCallback(async () => {
+    if (!discordId) return
+    setForumLoading(true)
+    try {
+      const telemetryUrl = `/api/forum/telemetry?discordId=${discordId}`
+      const threadsUrl = `/api/forum/threads?discordId=${discordId}`
+      const [telemetryRes, threadsRes] = await Promise.all([
+        fetch(telemetryUrl, { cache: "no-store", credentials: "include" }),
+        fetch(threadsUrl, { cache: "no-store", credentials: "include" }),
+      ])
+      if (telemetryRes.ok) {
+        const payload = await telemetryRes.json()
+        setForumStats(payload.stats ?? null)
+        setForumEvents(Array.isArray(payload.events) ? payload.events : [])
+      }
+      if (threadsRes.ok) {
+        const payload = await threadsRes.json()
+        setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
+        setForumThreads(Array.isArray(payload.threads) ? payload.threads : [])
+      }
+    } catch (error) {
+      console.error("Failed to load forum data:", error)
+    } finally {
+      setForumLoading(false)
+    }
+  }, [discordId])
 
   const loadContactMessages = useCallback(async () => {
     if (!discordId) return
@@ -808,7 +841,7 @@ export default function AdminControlPanelPage() {
       loadCampaigns()
       loadSupportTickets()
       loadAdminUsers()
-      loadAdminSubscriptions()
+    loadAdminSubscriptions()
     loadContactMessages()
     loadSystemKeys()
     loadEnvEntries()
@@ -816,6 +849,7 @@ export default function AdminControlPanelPage() {
     loadLogs()
     loadRuntimeInfo()
     loadConnectivity()
+    loadForumData()
   }
   }, [
     loading,
@@ -832,6 +866,7 @@ export default function AdminControlPanelPage() {
     loadLogs,
     loadRuntimeInfo,
     loadConnectivity,
+    loadForumData,
   ])
 
   useEffect(() => {
@@ -3378,6 +3413,114 @@ export default function AdminControlPanelPage() {
               </div>
             </section>
           </>
+        )
+      }
+      case "forum": {
+        return (
+          <div className="space-y-6">
+            <section className="grid md:grid-cols-3 gap-4">
+              {[
+                { label: "Categories", value: forumStats?.categories ?? 0, detail: "Total categories" },
+                { label: "Threads", value: forumStats?.threads ?? 0, detail: `${forumStats?.threads24h ?? 0} last 24h` },
+                { label: "Posts", value: forumStats?.posts ?? 0, detail: `${forumStats?.posts24h ?? 0} last 24h` },
+              ].map((card) => (
+                <div key={card.label} className="rounded-xl border border-border/50 bg-card/40 p-5">
+                  <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-1">{card.label}</p>
+                  <p className="text-3xl font-bold">{card.value}</p>
+                  <p className="text-xs text-foreground/60 mt-1">{card.detail}</p>
+                </div>
+              ))}
+            </section>
+
+            <section className="rounded-xl border border-border/50 bg-card/30 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-foreground">Categories</h3>
+                  <p className="text-xs text-foreground/60">Managed by the forum service</p>
+                </div>
+                <button
+                  onClick={loadForumData}
+                  className="px-3 py-2 rounded-lg border border-border/50 text-sm hover:border-primary/50"
+                  disabled={forumLoading}
+                >
+                  {forumLoading ? "Refreshing..." : "Refresh"}
+                </button>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                {forumCategories.map((cat) => (
+                  <div key={cat.id ?? cat.slug} className="rounded-lg border border-border/40 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-foreground/50">{cat.slug}</p>
+                        <h4 className="text-lg font-semibold text-foreground">{cat.title}</h4>
+                      </div>
+                      <span className="text-xs rounded-full bg-primary/10 text-primary px-2 py-1 border border-primary/20">
+                        {cat.threadCount ?? cat.threads?.length ?? 0} threads
+                      </span>
+                    </div>
+                    {cat.description ? <p className="text-sm text-foreground/60 mt-1">{cat.description}</p> : null}
+                  </div>
+                ))}
+                {forumCategories.length === 0 ? (
+                  <p className="text-sm text-foreground/60">No categories found.</p>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-foreground">Threads</h3>
+                <p className="text-xs text-foreground/60">Latest 20 threads</p>
+              </div>
+              <div className="space-y-2">
+                {forumThreads.map((thread) => (
+                  <div
+                    key={thread.id}
+                    className="rounded-lg border border-border/40 bg-card/40 p-3 flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-foreground/50">{thread.categorySlug}</p>
+                      <p className="font-semibold text-foreground">{thread.title}</p>
+                      <p className="text-xs text-foreground/60">
+                        {thread.authorName || "Team"} · {thread.replies} replies
+                      </p>
+                    </div>
+                    <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-2 py-1 border border-emerald-500/30">
+                      {thread.status}
+                    </span>
+                  </div>
+                ))}
+                {forumThreads.length === 0 ? (
+                  <p className="text-sm text-foreground/60">No threads available.</p>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-foreground">Recent Events</h3>
+                <p className="text-xs text-foreground/60">{forumEvents.length} events</p>
+              </div>
+              <div className="space-y-2">
+                {forumEvents.map((event) => (
+                  <div key={event.id} className="rounded-lg border border-border/40 bg-card/40 p-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-foreground">{event.action}</p>
+                      <p className="text-xs text-foreground/60">
+                        {event.entityType} · {event.actorName || "Unknown"} · {event.categorySlug || "forum"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-foreground/60">
+                      {new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+                {forumEvents.length === 0 ? (
+                  <p className="text-sm text-foreground/60">No forum telemetry events yet.</p>
+                ) : null}
+              </div>
+            </section>
+          </div>
         )
       }
       case "overview":

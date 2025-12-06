@@ -31,6 +31,7 @@ class MusicEvents(commands.Cog):
         self._fade_tasks: dict[int, asyncio.Task] = {}
         if hasattr(bot, "lavalink"):
             bot.lavalink.add_event_hooks(self)
+        self._queue_copilot = getattr(bot, "queue_copilot", None)
 
     def _telemetry(self):
         return getattr(self.bot, "queue_telemetry", None)
@@ -271,6 +272,12 @@ class MusicEvents(commands.Cog):
             "identifier": getattr(track, "identifier", ""),
         }
         player.store("last_track_metadata", payload)
+
+        if self._queue_copilot:
+            try:
+                asyncio.create_task(self._queue_copilot.on_track_start(player, track))
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("Queue copilot track_start failed: %s", exc)
 
         lyrics_payload = None
         lyrics_service = getattr(self.bot, "lyrics_service", None)

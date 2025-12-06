@@ -631,6 +631,10 @@ class StatusAPIService:
             await self._run_or_fallback(self.config.control_start_cmd, self._noop)
         elif action in {"stop", "stop-bot", "stop_bot"}:
             await self._run_or_fallback(self.config.control_stop_cmd, self._noop)
+        elif action in {"hot-patch", "hot_patch"}:
+            # Zero-downtime patch: reload config + extensions without restart.
+            await self._reload_configuration()
+            await self._reload_commands()
         else:
             return web.json_response({"error": "unknown_action"}, status=400)
 

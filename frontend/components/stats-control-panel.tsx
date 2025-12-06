@@ -139,6 +139,18 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
   const referrerPaths: { host: string; path: string; views: number }[] = []
   const botSummary = data.botSummary ?? []
   const botHistory = data.botHistory ?? []
+  const forumStats = data.forumStats ?? {
+    categories: 0,
+    threads: 0,
+    posts: 0,
+    events24h: 0,
+    posts24h: 0,
+    threads24h: 0,
+    activePosters24h: 0,
+    lastEventAt: null,
+    topCategories: [],
+  }
+  const forumEvents = data.forumEvents ?? []
   const botHistoryChart = botHistory.map((entry) => ({
     label: new Date(entry.recordedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     guilds: entry.guildCount,
@@ -197,6 +209,85 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
                 {stat.detail ? <p className="text-foreground/50 text-xs">{stat.detail}</p> : null}
               </div>
             ))}
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-4">
+            {[
+              { label: "Forum Threads", value: forumStats.threads, detail: `${forumStats.threads24h} in 24h` },
+              { label: "Forum Posts", value: forumStats.posts, detail: `${forumStats.posts24h} in 24h` },
+              { label: "Events (24h)", value: forumStats.events24h, detail: `${forumStats.activePosters24h} active posters` },
+              { label: "Categories", value: forumStats.categories, detail: "Top categories below" },
+            ].map((card) => (
+              <div key={card.label} className="p-5 rounded-lg border border-border/50 bg-card/40">
+                <p className="text-sm text-foreground/60">{card.label}</p>
+                <p className="text-3xl font-bold mt-2">{formatNumber(card.value)}</p>
+                <p className="text-xs text-foreground/50 mt-1">{card.detail}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="p-5 rounded-lg border border-border/50 bg-card/40">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-foreground">Top Categories</h3>
+                <span className="text-xs text-foreground/50">Forum telemetry</span>
+              </div>
+              <div className="space-y-3">
+                {forumStats.topCategories.slice(0, 5).map((cat) => (
+                  <div key={cat.slug} className="flex items-center gap-3">
+                    <div className="w-full">
+                      <div className="flex items-center justify-between text-sm text-foreground/70">
+                        <span className="font-semibold text-foreground">{cat.title}</span>
+                        <span className="text-xs text-foreground/60">{cat.threads} threads</span>
+                      </div>
+                      <div className="w-full h-2 bg-border rounded-full mt-1 overflow-hidden">
+                        <div
+                          className="h-2 bg-primary rounded-full"
+                          style={{
+                            width: `${Math.min(100, (cat.threads / Math.max(forumStats.threads || 1, 1)) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {forumStats.topCategories.length === 0 ? (
+                  <p className="text-sm text-foreground/60">No forum activity recorded yet.</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="p-5 rounded-lg border border-border/50 bg-card/40">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-foreground">Recent Forum Events</h3>
+                <span className="text-xs text-foreground/50">
+                  {forumStats.lastEventAt ? `Last: ${new Date(forumStats.lastEventAt).toLocaleString()}` : "No events"}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {forumEvents.slice(0, 8).map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between rounded-lg border border-border/40 bg-card/30 px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {event.action.replace(/_/g, " ")} · {event.entityType}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {event.actorName || "Unknown"} · {event.categorySlug || "forum"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-foreground/50">
+                      {new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+                {forumEvents.length === 0 ? (
+                  <p className="text-sm text-foreground/60">No forum telemetry events yet.</p>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           {activeVoiceConnections.length ? (

@@ -13,9 +13,10 @@ const LINK_GROUPS = [
     links: [
       { label: "Home", href: "/" },
       { label: "Pricing", href: "/pricing" },
-      { label: "Blog", href: "/blog" },
       { label: "Features", href: "/features" },
+      { label: "Blog", href: "/blog" },
       { label: "Changelog", href: "/changelog" },
+      { label: "Security", href: "/security-patches" },
     ],
   },
   {

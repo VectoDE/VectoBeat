@@ -8,6 +8,10 @@ import {
   type BotMetricHistoryEntry,
   BOT_SNAPSHOT_INTERVAL_MS,
   recordAnalyticsSnapshot,
+  getForumStats,
+  listForumEvents,
+  type ForumStats,
+  type ForumEventRecord,
 } from "./db"
 import { getBotStatus } from "./bot-status"
 
@@ -29,6 +33,8 @@ type BaseMetrics = {
   totals: BaseTotals
   traffic: Awaited<ReturnType<typeof getSiteTrafficSummary>>
   activeVoiceConnections: Array<{ guildId: string; channelId: string; listeners: number }>
+  forumStats: Awaited<ReturnType<typeof getForumStats>>
+  forumEvents: Awaited<ReturnType<typeof listForumEvents>>
 }
 
 export type SummaryStat = {
@@ -73,6 +79,8 @@ export type AnalyticsOverview = {
   engagementMetrics: Array<{ metric: string; value: string; detail: string }>
   pageViews24h: number
   uniqueVisitors24h: number
+  forumStats: ForumStats
+  forumEvents: ForumEventRecord[]
   updatedAt: string
 }
 
@@ -140,10 +148,12 @@ const formatUptimeLabel = (value: number) => {
 }
 
 const buildBaseMetrics = async (): Promise<BaseMetrics> => {
-  const [postsResult, botStatusResult, trafficResult] = await Promise.allSettled([
+  const [postsResult, botStatusResult, trafficResult, forumStatsResult, forumEventsResult] = await Promise.allSettled([
     getBlogPosts(),
     getBotStatus(),
     getSiteTrafficSummary(),
+    getForumStats(),
+    listForumEvents(25, { sinceHours: 72 }),
   ])
   const posts = postsResult.status === "fulfilled" ? postsResult.value : []
   const botStatus = botStatusResult.status === "fulfilled" ? botStatusResult.value : null
@@ -164,6 +174,21 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
           dailySeries: [],
           monthlySeries: [],
         }
+  const forumStats =
+    forumStatsResult.status === "fulfilled"
+      ? forumStatsResult.value
+      : {
+          categories: 0,
+          threads: 0,
+          posts: 0,
+          events24h: 0,
+          posts24h: 0,
+          threads24h: 0,
+          activePosters24h: 0,
+          lastEventAt: null,
+          topCategories: [],
+        }
+  const forumEvents = forumEventsResult.status === "fulfilled" ? forumEventsResult.value : []
   let fallbackSnapshot: BotMetricHistoryEntry | null = null
   if (!botStatus) {
     const history = await getBotMetricHistory(1)
@@ -276,6 +301,8 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     },
     traffic,
     activeVoiceConnections: listenerDetail,
+    forumStats,
+    forumEvents,
   }
 }
 
@@ -478,6 +505,9 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       }))
     : aggregated?.paths ?? []
 
+  const forumStats = base.forumStats
+  const forumEvents = base.forumEvents
+
   const summaryCards: AnalyticsOverview["summaryCards"] = [
     {
       label: "Site Views (30d)",
@@ -515,6 +545,12 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       change: totals.totalStreams ? "Live bot telemetry" : "No data yet",
       detail: "Playback events",
     },
+    {
+      label: "Forum Threads",
+      value: shortNumber(forumStats.threads),
+      change: `${shortNumber(forumStats.posts24h)} posts last 24h`,
+      detail: `${forumStats.categories} categories · ${forumStats.events24h} events`,
+    },
   ]
 
   const uptimePercentAnalytics = botHistory.length
@@ -546,6 +582,11 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       metric: "Bot Uptime",
       value: `${uptimePercentAnalytics.toFixed(2)}%`,
       detail: uptimePercentAnalytics ? "Live bot telemetry" : "No telemetry yet",
+    },
+    {
+      metric: "Forum Events (24h)",
+      value: shortNumber(forumStats.events24h),
+      detail: `${forumStats.threads24h} threads · ${forumStats.posts24h} posts`,
     },
   ]
 
@@ -584,6 +625,11 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       metric: "Avg Response",
       value: totals.responseTimeMs ? `${Math.round(totals.responseTimeMs)}ms` : "n/a",
       detail: totals.responseTimeMs ? "Bot latency" : "No telemetry yet",
+    },
+    {
+      metric: "Active Posters (24h)",
+      value: shortNumber(forumStats.activePosters24h),
+      detail: forumStats.lastEventAt ? `Last event ${new Date(forumStats.lastEventAt).toLocaleString()}` : "No activity",
     },
   ]
 
@@ -649,6 +695,8 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
     botSummary,
     botHistory: botHistorySeries,
     activeVoiceConnections: base.activeVoiceConnections,
+    forumStats,
+    forumEvents,
     updatedAt: new Date().toISOString(),
   }
 }

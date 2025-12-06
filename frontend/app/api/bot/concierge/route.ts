@@ -8,13 +8,9 @@ import {
 } from "@/lib/db"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import type { MembershipTier } from "@/lib/memberships"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const SECRETS = expandSecrets(
-  process.env.CONCIERGE_API_SECRET,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-  process.env.AUTOMATION_LOG_SECRET,
-)
+const SECRET_TYPES = ["concierge_api_secret", "server_settings", "status_api", "automation_log_secret"]
 
 const sanitize = (value: unknown, max = 255) => {
   if (typeof value !== "string") return ""
@@ -32,13 +28,15 @@ type RouteDeps = {
 }
 
 export const createBotConciergeHandlers = (deps: RouteDeps = {}) => {
-  const secrets = deps.secret ? expandSecrets(deps.secret) : SECRETS
+  const resolveSecrets = async () =>
+    deps.secret ? expandSecrets(deps.secret) : await getApiKeySecrets(SECRET_TYPES, { includeEnv: false })
   const fetchUsage = deps.fetchUsage ?? getConciergeUsage
   const saveRequest = deps.saveRequest ?? recordConciergeRequest
   const markResolved = deps.markResolved ?? resolveConciergeRequest
   const fetchTier = deps.fetchTier ?? getGuildSubscriptionTier
 
   const getHandler = async (request: NextRequest) => {
+    const secrets = await resolveSecrets()
     if (!authorizeRequest(request, secrets)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
@@ -62,6 +60,7 @@ export const createBotConciergeHandlers = (deps: RouteDeps = {}) => {
   }
 
   const postHandler = async (request: NextRequest) => {
+    const secrets = await resolveSecrets()
     if (!authorizeRequest(request, secrets)) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }

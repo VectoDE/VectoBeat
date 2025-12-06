@@ -1,13 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { getBotMetricHistory, recordBotMetricSnapshot } from "@/lib/db"
+import { getApiKeySecret, getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKENS = expandSecrets(
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.STATUS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-  process.env.CONTROL_PANEL_API_KEY,
-)
+const AUTH_TOKEN_TYPES = ["status_events", "status_api", "control_panel"]
 
 const parseNumber = (value: unknown, fallback = 0) => {
   const number = Number(value)
@@ -15,7 +11,8 @@ const parseNumber = (value: unknown, fallback = 0) => {
 }
 
 export async function POST(request: NextRequest) {
-  if (!authorizeRequest(request, AUTH_TOKENS, { allowLocalhost: true })) {
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  if (!authorizeRequest(request, secrets, { allowLocalhost: true })) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
 
@@ -55,10 +52,15 @@ export async function GET() {
     "http://localhost:3051/status"
   let liveSnapshot: any = null
   try {
+    const statusToken =
+      (await getApiKeySecret("status_api", { includeEnv: false })) ||
+      (await getApiKeySecret("status_events", { includeEnv: false })) ||
+      (await getApiKeySecret("control_panel", { includeEnv: false })) ||
+      null
     const res = await fetch(defaultStatusUrl, {
       headers:
-        process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
-          ? { Authorization: `Bearer ${process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY || ""}` }
+        statusToken
+          ? { Authorization: `Bearer ${statusToken}` }
           : undefined,
       cache: "no-store",
     })

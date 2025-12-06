@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
 import { getGuildSubscriptionTier, getScaleAccountContact, upsertScaleAccountContact } from "@/lib/db"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import type { MembershipTier } from "@/lib/memberships"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const SECRETS = expandSecrets(
-  process.env.SCALE_CONTACT_API_SECRET,
-  process.env.SUCCESS_POD_API_SECRET,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.BOT_STATUS_API_KEY,
-)
+const SECRET_TYPES = ["scale_contact_api_secret", "success_pod_api_secret", "server_settings", "status_api"]
 
 const sanitize = (value?: string | null, max = 255) => {
   if (typeof value !== "string") return ""
@@ -19,7 +14,10 @@ const sanitize = (value?: string | null, max = 255) => {
 }
 
 export async function GET(request: NextRequest) {
-  if (!authorizeRequest(request, SECRETS)) {
+  const secrets = await getApiKeySecrets(SECRET_TYPES, { includeEnv: false })
+  const header = request.headers.get("authorization")
+  const token = header?.replace(/^Bearer\s+/i, "")
+  if (!token || !secrets.includes(token)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const guildId = sanitize(request.nextUrl.searchParams.get("guildId"), 32)
@@ -36,7 +34,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!authorizeRequest(request, SECRETS)) {
+  const secrets = await getApiKeySecrets(SECRET_TYPES, { includeEnv: false })
+  const header = request.headers.get("authorization")
+  const token = header?.replace(/^Bearer\s+/i, "")
+  if (!token || !secrets.includes(token)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   let payload: any

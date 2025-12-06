@@ -1,9 +1,9 @@
+import { getApiKeySecrets } from "./api-keys"
+
 const BOT_API_BASE_URL = process.env.BOT_API_BASE_URL || ""
 const BOT_STATUS_API_URL =
   process.env.BOT_STATUS_API_URL ||
   (BOT_API_BASE_URL ? `${BOT_API_BASE_URL.replace(/\/+$/, "")}/status` : "")
-// Fallback to STATUS_API_KEY so local/prod configs that only set one variable still authenticate.
-const BOT_STATUS_API_KEY = process.env.BOT_STATUS_API_KEY || process.env.STATUS_API_KEY
 const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
   .split(",")
   .map((entry) => entry.trim())
@@ -14,16 +14,7 @@ const ENDPOINT_COOLDOWN_MS = 30_000
 const FETCH_TIMEOUT_MS = 8_000
 const ALLOW_LOCAL_FALLBACKS =
   process.env.ALLOW_LOCAL_STATUS_FALLBACKS === "1" || process.env.NODE_ENV !== "production"
-const AUTH_TOKENS = [
-  BOT_STATUS_API_KEY,
-  process.env.STATUS_API_KEY,
-  process.env.STATUS_API_EVENT_SECRET,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.CONTROL_PANEL_API_KEY,
-  process.env.SERVER_SETTINGS_API_KEY,
-]
-  .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-  .map((value) => value.trim())
+const AUTH_TOKEN_TYPES = ["status_api", "status_events", "control_panel", "server_settings"]
 
 let cachedBotGuilds: {
   data: Set<string>
@@ -58,27 +49,27 @@ const normalizeEndpoint = (value: string) => {
   }
 }
 
-const buildAuthHeaders = (): HeadersInit | undefined => {
-  if (!AUTH_TOKENS.length) return undefined
-  const primary = AUTH_TOKENS[0]
+const buildAuthHeaders = (tokens: string[]): HeadersInit | undefined => {
+  if (!tokens.length) return undefined
+  const primary = tokens[0]
   return {
     Authorization: `Bearer ${primary}`,
     "x-api-key": primary,
     "x-bot-status-api-key": primary,
     "x-status-api-key": primary,
-    "x-control-panel-key": process.env.CONTROL_PANEL_API_KEY || primary,
-    "x-server-settings-key": process.env.SERVER_SETTINGS_API_KEY || primary,
+    "x-control-panel-key": primary,
+    "x-server-settings-key": primary,
   }
 }
 
-const appendTokenQuery = (endpoint: string) => {
-  if (!AUTH_TOKENS.length) return endpoint
+const appendTokenQuery = (endpoint: string, tokens: string[]) => {
+  if (!tokens.length) return endpoint
   try {
     const url = new URL(endpoint)
     const hasTokenParam =
       url.searchParams.has("token") || url.searchParams.has("key") || url.searchParams.has("api_key")
     if (!hasTokenParam) {
-      url.searchParams.set("token", AUTH_TOKENS[0])
+      url.searchParams.set("token", tokens[0])
     }
     return url.toString()
   } catch {
@@ -145,6 +136,7 @@ export const getBotStatus = async () => {
     return cachedBotStatus.data
   }
 
+  const authTokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
   const candidates = buildStatusCandidates()
   if (candidates.length === 0) {
     cachedBotStatus.expires = now + 10 * 1000
@@ -153,12 +145,12 @@ export const getBotStatus = async () => {
 
   let lastError: unknown = null
   for (const endpoint of candidates) {
-    const target = appendTokenQuery(endpoint)
+    const target = appendTokenQuery(endpoint, authTokens)
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     try {
       const response = await fetch(target, {
-        headers: buildAuthHeaders(),
+        headers: buildAuthHeaders(authTokens),
         next: {
           revalidate: 30,
         },
@@ -251,6 +243,7 @@ const buildControlCandidates = () => {
 
 const postToBotControl = async (path: string, body: Record<string, any>): Promise<boolean> => {
   const nowMs = Date.now()
+  const tokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
   const candidates = buildControlCandidates()
   let lastError: unknown = null
   for (const endpoint of candidates) {
@@ -265,7 +258,7 @@ const postToBotControl = async (path: string, body: Record<string, any>): Promis
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...buildAuthHeaders(),
+          ...buildAuthHeaders(tokens),
         },
         signal: controller.signal,
         body: JSON.stringify(body),

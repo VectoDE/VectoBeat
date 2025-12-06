@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { authorizeRequest, expandSecrets } from "@/lib/api-auth"
+import { authorizeRequest } from "@/lib/api-auth"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserSubscriptions } from "@/lib/db"
 import { getQueueSnapshot } from "@/lib/queue-sync-store"
@@ -7,20 +7,17 @@ import type { MembershipTier } from "@/lib/memberships"
 import type { AnalyticsOverview } from "@/lib/metrics"
 import type { QueueSnapshot } from "@/types/queue-sync"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
+import { getApiKeySecrets } from "@/lib/api-keys"
 
-const AUTH_TOKENS = expandSecrets(
-  process.env.CONTROL_PANEL_API_KEY,
-  process.env.SERVER_SETTINGS_API_KEY,
-  process.env.STATUS_API_KEY,
-  process.env.STATUS_API_PUSH_SECRET,
-  process.env.BOT_STATUS_API_KEY,
-)
+const AUTH_TOKEN_TYPES = ["control_panel", "server_settings", "status_api", "status_events", "analytics"]
 
-const isAuthorizedByToken = (request: NextRequest) =>
-  authorizeRequest(request, AUTH_TOKENS, {
+const isAuthorizedByToken = async (request: NextRequest) => {
+  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  return authorizeRequest(request, secrets, {
     allowLocalhost: true,
     headerKeys: ["authorization", "x-api-key", "x-server-settings-key", "x-status-key", "x-analytics-key"],
   })
+}
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -36,7 +33,7 @@ export const createAnalyticsHandlers = (deps: RouteDeps = {}) => {
   const getHandler = async (request: NextRequest) => {
     const discordId = request.nextUrl.searchParams.get("discordId")
     const guildId = request.nextUrl.searchParams.get("guildId")
-    const tokenAuthorized = isAuthorizedByToken(request)
+    const tokenAuthorized = await isAuthorizedByToken(request)
     if (!guildId || (!discordId && !tokenAuthorized)) {
       return NextResponse.json({ error: "discordId and guildId required" }, { status: 400 })
     }
@@ -141,6 +138,18 @@ const buildGuildAnalytics = (guildId: string, snapshot: QueueSnapshot | null): A
     ],
     pageViews24h: queueLength,
     uniqueVisitors24h: queueLength,
+    forumStats: {
+      categories: 0,
+      threads: 0,
+      posts: 0,
+      events24h: 0,
+      posts24h: 0,
+      threads24h: 0,
+      activePosters24h: 0,
+      lastEventAt: null,
+      topCategories: [],
+    },
+    forumEvents: [],
     updatedAt,
   }
 }
