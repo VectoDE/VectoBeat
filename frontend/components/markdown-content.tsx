@@ -42,12 +42,34 @@ const markdownComponents: Components = {
         .join(" ")}
     />
   ),
-  p: ({ node, className, ...props }) => (
-    <p
-      {...props}
-      className={["text-foreground/80 leading-relaxed my-6 text-base md:text-lg", className].filter(Boolean).join(" ")}
-    />
-  ),
+  p: ({ node, className, children, ...props }) => {
+    const hasBlockChild = React.Children.toArray(children).some((child: any) => {
+      const tag = child?.props?.node?.tagName || child?.type
+      return tag === "pre" || tag === "table" || tag === "hr"
+    })
+    if (hasBlockChild) {
+      return (
+        <div
+          {...props}
+          className={["text-foreground/80 leading-relaxed my-6 text-base md:text-lg", className]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {children}
+        </div>
+      )
+    }
+    return (
+      <p
+        {...props}
+        className={["text-foreground/80 leading-relaxed my-6 text-base md:text-lg", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {children}
+      </p>
+    )
+  },
   h1: ({ node, className, ...props }) => (
     <h1 {...props} className={[headingClasses.h1, className].filter(Boolean).join(" ")} />
   ),

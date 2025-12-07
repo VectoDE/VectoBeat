@@ -121,12 +121,12 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "newsletter", label: "Newsletters", description: "Send announcements to subscribers" },
   { key: "ticket", label: "Tickets", description: "Respond to support tickets and attachments" },
   { key: "contacts", label: "Contacts", description: "Inbound contact form submissions and replies" },
+  { key: "forum", label: "Forum", description: "Manage forum categories, threads, and telemetry" },
   { key: "subscriptions", label: "Subscriptions", description: "Oversee guild plans and entitlements" },
   { key: "billing", label: "Billings", description: "Track invoices and manual billing workflows" },
   { key: "users", label: "Users", description: "Manage member accounts and access levels" },
   { key: "apiKeys", label: "API Keys", description: "Monitor system credentials and rotate secrets safely" },
   { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
-  { key: "forum", label: "Forum", description: "Manage forum categories, threads, and telemetry" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
 ]
@@ -231,6 +231,9 @@ export default function AdminControlPanelPage() {
   const [forumEvents, setForumEvents] = useState<any[]>([])
   const [forumCategories, setForumCategories] = useState<any[]>([])
   const [forumThreads, setForumThreads] = useState<any[]>([])
+  const [forumPosts, setForumPosts] = useState<any[]>([])
+  const [forumSelectedCategory, setForumSelectedCategory] = useState<string>("")
+  const [forumSelectedThread, setForumSelectedThread] = useState<string>("")
   const [forumLoading, setForumLoading] = useState(false)
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
@@ -496,32 +499,42 @@ export default function AdminControlPanelPage() {
     }
   }, [authToken, discordId])
 
-  const loadForumData = useCallback(async () => {
+  const loadForumData = useCallback(
+    async (opts?: { threadId?: string; category?: string }) => {
     if (!discordId) return
     setForumLoading(true)
     try {
-      const telemetryUrl = `/api/forum/telemetry?discordId=${discordId}`
-      const threadsUrl = `/api/forum/threads?discordId=${discordId}`
-      const [telemetryRes, threadsRes] = await Promise.all([
-        fetch(telemetryUrl, { cache: "no-store", credentials: "include" }),
-        fetch(threadsUrl, { cache: "no-store", credentials: "include" }),
-      ])
-      if (telemetryRes.ok) {
-        const payload = await telemetryRes.json()
-        setForumStats(payload.stats ?? null)
-        setForumEvents(Array.isArray(payload.events) ? payload.events : [])
+      const params = new URLSearchParams({ discordId })
+      const category = opts?.category ?? forumSelectedCategory
+      const threadId = opts?.threadId ?? forumSelectedThread
+      if (category) params.set("category", category)
+      if (threadId) params.set("threadId", threadId)
+      const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+        cache: "no-store",
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error("Failed to load forum data")
+      const payload = await res.json()
+      setForumStats(payload.stats ?? null)
+      setForumEvents(Array.isArray(payload.events) ? payload.events : [])
+      setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
+      setForumThreads(Array.isArray(payload.threads) ? payload.threads : [])
+      setForumPosts(Array.isArray(payload.posts) ? payload.posts : [])
+      // auto-select defaults
+      if (!forumSelectedCategory && payload.categories?.length) {
+        setForumSelectedCategory(payload.categories[0].slug || payload.categories[0].id || "")
       }
-      if (threadsRes.ok) {
-        const payload = await threadsRes.json()
-        setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
-        setForumThreads(Array.isArray(payload.threads) ? payload.threads : [])
+      if (!threadId && payload.threads?.length) {
+        setForumSelectedThread(payload.threads[0].id)
       }
     } catch (error) {
       console.error("Failed to load forum data:", error)
     } finally {
       setForumLoading(false)
     }
-  }, [discordId])
+  },
+    [discordId, forumSelectedCategory, forumSelectedThread],
+  )
 
   const loadContactMessages = useCallback(async () => {
     if (!discordId) return
@@ -569,7 +582,23 @@ export default function AdminControlPanelPage() {
         throw new Error(payload.error || "Failed to load users")
       }
       const data = await response.json()
-      setUsers(Array.isArray(data.users) ? data.users : [])
+      const normalizedUsers = Array.isArray(data.users)
+        ? data.users.map((user: any) => ({
+            id: String(user.id),
+            username: user.username ?? null,
+            displayName: user.displayName ?? user.username ?? null,
+            email: user.email ?? null,
+            phone: user.phone ?? null,
+            avatarUrl: user.avatarUrl ?? null,
+            guildCount: Number.isFinite(user.guildCount) ? user.guildCount : 0,
+            lastSeen: user.lastSeen || new Date().toISOString(),
+            role: (user.role as UserRole) ?? "member",
+            twoFactorEnabled: Boolean(user.twoFactorEnabled),
+            handle: user.handle ?? null,
+            profilePublic: Boolean(user.profilePublic),
+          }))
+        : []
+      setUsers(normalizedUsers)
     } catch (error) {
       console.error("Failed to load admin users:", error)
       setUsersError(error instanceof Error ? error.message : "Unable to load users")
@@ -843,16 +872,16 @@ export default function AdminControlPanelPage() {
       loadCampaigns()
       loadSupportTickets()
       loadAdminUsers()
-    loadAdminSubscriptions()
-    loadContactMessages()
-    loadSystemKeys()
-    loadEnvEntries()
-    loadSystemHealth()
-    loadLogs()
-    loadRuntimeInfo()
-    loadConnectivity()
-    loadForumData()
-  }
+      loadAdminSubscriptions()
+      loadContactMessages()
+      loadSystemKeys()
+      loadEnvEntries()
+      loadSystemHealth()
+      loadLogs()
+      loadRuntimeInfo()
+      loadConnectivity()
+      loadForumData()
+    }
   }, [
     loading,
     accessDenied,
@@ -870,6 +899,12 @@ export default function AdminControlPanelPage() {
     loadConnectivity,
     loadForumData,
   ])
+
+  useEffect(() => {
+    if (forumSelectedThread) {
+      void loadForumData({ threadId: forumSelectedThread })
+    }
+  }, [forumSelectedThread, loadForumData])
 
   useEffect(() => {
     setTicketDraft((prev) => ({
@@ -3483,107 +3518,149 @@ export default function AdminControlPanelPage() {
       case "forum": {
         return (
           <div className="space-y-6">
-            <section className="grid md:grid-cols-3 gap-4">
-              {[
-                { label: "Categories", value: forumStats?.categories ?? 0, detail: "Total categories" },
-                { label: "Threads", value: forumStats?.threads ?? 0, detail: `${forumStats?.threads24h ?? 0} last 24h` },
-                { label: "Posts", value: forumStats?.posts ?? 0, detail: `${forumStats?.posts24h ?? 0} last 24h` },
-              ].map((card) => (
-                <div key={card.label} className="rounded-xl border border-border/50 bg-card/40 p-5">
-                  <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-1">{card.label}</p>
-                  <p className="text-3xl font-bold">{card.value}</p>
-                  <p className="text-xs text-foreground/60 mt-1">{card.detail}</p>
-                </div>
-              ))}
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/30 p-6">
-              <div className="flex items-center justify-between mb-4">
+            <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <h3 className="text-xl font-semibold text-foreground">Categories</h3>
-                  <p className="text-xs text-foreground/60">Managed by the forum service</p>
+                  <h3 className="text-xl font-semibold text-foreground">Forum manager</h3>
+                  <p className="text-xs text-foreground/60">
+                    Browse categories, threads und Posts. Moderation folgt.
+                  </p>
                 </div>
-                <button
-                  onClick={loadForumData}
-                  className="px-3 py-2 rounded-lg border border-border/50 text-sm hover:border-primary/50"
-                  disabled={forumLoading}
-                >
-                  {forumLoading ? "Refreshing..." : "Refresh"}
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <select
+                    value={forumSelectedCategory}
+                    onChange={(e) => {
+                      const slug = e.target.value
+                      setForumSelectedCategory(slug)
+                      setForumSelectedThread("")
+                      void loadForumData({ category: slug, threadId: "" })
+                    }}
+                    className="px-4 py-2 rounded-lg bg-background border border-border/50 text-sm focus:border-primary/50 outline-none"
+                  >
+                    <option value="">Alle Kategorien</option>
+                    {forumCategories.map((cat) => (
+                      <option key={cat.id ?? cat.slug} value={cat.slug ?? cat.id}>
+                        {cat.title} ({cat.threadCount ?? cat.threads?.length ?? 0})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => loadForumData()}
+                    className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/40 transition-colors"
+                    disabled={forumLoading}
+                  >
+                    {forumLoading ? "Refreshing…" : "Refresh"}
+                  </button>
+                </div>
               </div>
-              <div className="grid md:grid-cols-2 gap-3">
-                {forumCategories.map((cat) => (
-                  <div key={cat.id ?? cat.slug} className="rounded-lg border border-border/40 bg-card/40 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-foreground/50">{cat.slug}</p>
-                        <h4 className="text-lg font-semibold text-foreground">{cat.title}</h4>
+
+              <div className="grid lg:grid-cols-3 gap-4">
+                <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">Kategorien</h4>
+                    <span className="text-xs text-foreground/60">{forumCategories.length}</span>
+                  </div>
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
+                    {forumCategories.map((cat) => (
+                      <button
+                        key={cat.id ?? cat.slug}
+                        onClick={() => {
+                          setForumSelectedCategory(cat.slug ?? cat.id ?? "")
+                          setForumSelectedThread("")
+                          void loadForumData({ category: cat.slug ?? cat.id ?? "" })
+                        }}
+                        className={`w-full text-left border rounded-lg px-3 py-2 ${
+                          forumSelectedCategory === (cat.slug ?? cat.id)
+                            ? "border-primary/60 bg-primary/5"
+                            : "border-border/40 hover:border-primary/40"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">{cat.title}</p>
+                        <p className="text-xs text-foreground/60">
+                          {cat.threadCount ?? cat.threads?.length ?? 0} Threads
+                        </p>
+                      </button>
+                    ))}
+                    {forumCategories.length === 0 && <p className="text-sm text-foreground/60">Keine Kategorien.</p>}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">Threads</h4>
+                    <span className="text-xs text-foreground/60">{forumThreads.length}</span>
+                  </div>
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
+                    {forumThreads.map((thread) => (
+                      <button
+                        key={thread.id}
+                        onClick={() => setForumSelectedThread(thread.id)}
+                        className={`w-full text-left border rounded-lg px-3 py-2 ${
+                          forumSelectedThread === thread.id
+                            ? "border-primary/60 bg-primary/5"
+                            : "border-border/40 hover:border-primary/40"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">{thread.title}</p>
+                        <p className="text-xs text-foreground/60">
+                          {thread.categorySlug || "forum"} · {thread.authorName || "Team"} · {thread.replies} replies
+                        </p>
+                      </button>
+                    ))}
+                    {forumThreads.length === 0 && <p className="text-sm text-foreground/60">Keine Threads gefunden.</p>}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold">Beiträge</h4>
+                    <span className="text-xs text-foreground/60">{forumPosts.length}</span>
+                  </div>
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
+                    {forumPosts.map((post) => (
+                      <div key={post.id} className="border border-border/40 rounded-lg px-3 py-2 bg-background/70">
+                        <p className="text-xs text-foreground/60 mb-1">
+                          {post.authorName || "Member"} · {new Date(post.createdAt).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.body}</p>
                       </div>
-                      <span className="text-xs rounded-full bg-primary/10 text-primary px-2 py-1 border border-primary/20">
-                        {cat.threadCount ?? cat.threads?.length ?? 0} threads
+                    ))}
+                    {forumPosts.length === 0 && (
+                      <p className="text-sm text-foreground/60">
+                        {forumSelectedThread ? "Keine Beiträge im Thread." : "Thread auswählen, um Beiträge zu sehen."}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <section className="rounded-xl border border-border/50 bg-card/30 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Neueste Events</h4>
+                  <span className="text-xs text-foreground/60">{forumEvents.length} events</span>
+                </div>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 muted-scroll">
+                  {forumEvents.map((event) => (
+                    <div
+                      key={event.id}
+                      className="rounded-lg border border-border/40 bg-background/60 p-3 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{event.action}</p>
+                        <p className="text-xs text-foreground/60">
+                          {event.entityType} · {event.actorName || "Unknown"} · {event.categorySlug || "forum"}
+                        </p>
+                      </div>
+                      <span className="text-xs text-foreground/60">
+                        {new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
-                    {cat.description ? <p className="text-sm text-foreground/60 mt-1">{cat.description}</p> : null}
-                  </div>
-                ))}
-                {forumCategories.length === 0 ? (
-                  <p className="text-sm text-foreground/60">No categories found.</p>
-                ) : null}
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-foreground">Threads</h3>
-                <p className="text-xs text-foreground/60">Latest 20 threads</p>
-              </div>
-              <div className="space-y-2">
-                {forumThreads.map((thread) => (
-                  <div
-                    key={thread.id}
-                    className="rounded-lg border border-border/40 bg-card/40 p-3 flex items-center justify-between gap-3"
-                  >
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-foreground/50">{thread.categorySlug}</p>
-                      <p className="font-semibold text-foreground">{thread.title}</p>
-                      <p className="text-xs text-foreground/60">
-                        {thread.authorName || "Team"} · {thread.replies} replies
-                      </p>
-                    </div>
-                    <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-2 py-1 border border-emerald-500/30">
-                      {thread.status}
-                    </span>
-                  </div>
-                ))}
-                {forumThreads.length === 0 ? (
-                  <p className="text-sm text-foreground/60">No threads available.</p>
-                ) : null}
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-foreground">Recent Events</h3>
-                <p className="text-xs text-foreground/60">{forumEvents.length} events</p>
-              </div>
-              <div className="space-y-2">
-                {forumEvents.map((event) => (
-                  <div key={event.id} className="rounded-lg border border-border/40 bg-card/40 p-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground">{event.action}</p>
-                      <p className="text-xs text-foreground/60">
-                        {event.entityType} · {event.actorName || "Unknown"} · {event.categorySlug || "forum"}
-                      </p>
-                    </div>
-                    <span className="text-xs text-foreground/60">
-                      {new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                ))}
-                {forumEvents.length === 0 ? (
-                  <p className="text-sm text-foreground/60">No forum telemetry events yet.</p>
-                ) : null}
-              </div>
+                  ))}
+                  {forumEvents.length === 0 && (
+                    <p className="text-sm text-foreground/60">Noch keine Forum-Events.</p>
+                  )}
+                </div>
+              </section>
             </section>
           </div>
         )
@@ -4511,8 +4588,8 @@ export default function AdminControlPanelPage() {
             </header>
 
             <section>
-              <div className="border-b border-border/60 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex flex-nowrap gap-3 min-w-max">
+              <div className="border-b border-border/60 overflow-x-auto pb-1 bg-card/40 rounded-lg muted-scroll">
+                <div className="flex flex-nowrap gap-3 min-w-max px-1">
                   {ADMIN_TABS.map((tab) => {
                     const isActive = tab.key === activeTab
                     return (
@@ -4539,7 +4616,7 @@ export default function AdminControlPanelPage() {
         </main>
         <Footer />
       </div>
-
+      <AdminPageStyles />
       {confirmModal && (
         <Modal title="Confirm action" onClose={() => setConfirmModal(null)}>
           <div className="space-y-4">
@@ -5343,3 +5420,27 @@ export default function AdminControlPanelPage() {
     </>
   )
 }
+
+const AdminPageStyles = () => (
+  <style jsx>{`
+    .muted-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(99, 102, 241, 0.55) rgba(0, 0, 0, 0);
+    }
+    .muted-scroll::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .muted-scroll::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0);
+    }
+    .muted-scroll::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(99, 102, 241, 0.6), rgba(56, 189, 248, 0.55));
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .muted-scroll::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(99, 102, 241, 0.75), rgba(56, 189, 248, 0.7));
+    }
+  `}</style>
+)

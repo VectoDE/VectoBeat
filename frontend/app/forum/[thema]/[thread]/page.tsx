@@ -138,7 +138,7 @@ export default async function ForumThreadPage({ params }: { params: Promise<Para
               </div>
               {viewer.canComment ? (
                 <div className="mt-4">
-                  <ForumReplyBox discordId={viewer.discordId ?? ""} threadId={currentThread.id} onPosted={() => {}} />
+                  <ForumReplyBox discordId={viewer.discordId ?? ""} threadId={currentThread.id} />
                 </div>
               ) : (
                 <div className="rounded-lg border border-border/60 bg-card/30 px-3 py-2 text-xs text-foreground/60 mt-4">
