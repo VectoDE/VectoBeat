@@ -15,7 +15,6 @@ const LINK_GROUPS = [
       { label: "Pricing", href: "/pricing" },
       { label: "Features", href: "/features" },
       { label: "Blog", href: "/blog" },
-      { label: "Changelog", href: "/changelog" },
       { label: "Security", href: "/security-patches" },
     ],
   },
@@ -53,6 +52,7 @@ const LINK_GROUPS = [
     links: [
       { label: "Forum", href: "/forum" },
       { label: "GitHub", href: "https://github.com/VectoDE/VectoBeat", external: true },
+      { label: "Changelog", href: "/changelog" },
       { label: "Documentation", href: "https://github.com/VectoDE/VectoBeat#readme", external: true },
       { label: "Add to Discord", href: DISCORD_BOT_INVITE_URL, external: true },
     ],

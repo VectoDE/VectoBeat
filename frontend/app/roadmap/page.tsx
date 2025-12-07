@@ -70,7 +70,7 @@ const telemetryComplianceInitiatives: Initiative[] = [
   {
     title: "Expanded Telemetry Webhooks",
     description: "Live queue, billing, and safety events streamed to your monitoring stack.",
-    status: "building",
+    status: "beta",
   },
   {
     title: "Adaptive Mastering Pipeline",

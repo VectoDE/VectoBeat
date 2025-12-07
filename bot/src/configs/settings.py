@@ -316,15 +316,21 @@ telemetry_enabled = os.getenv("QUEUE_TELEMETRY_ENABLED")
 telemetry_endpoint = os.getenv("QUEUE_TELEMETRY_ENDPOINT")
 telemetry_key = os.getenv("QUEUE_TELEMETRY_API_KEY")
 telemetry_include = os.getenv("QUEUE_TELEMETRY_INCLUDE_GUILD")
-if telemetry_enabled or telemetry_endpoint or telemetry_key or telemetry_include:
+# Fallback to control-panel ingest if explicit endpoint is not provided
+default_telemetry_endpoint = None
+if CONFIG.control_panel_api.enabled and CONFIG.control_panel_api.base_url:
+    default_telemetry_endpoint = CONFIG.control_panel_api.base_url.rstrip("/") + "/api/telemetry/ingest"
+if not telemetry_endpoint and os.getenv("TELEMETRY_INGEST_URL"):
+    telemetry_endpoint = os.getenv("TELEMETRY_INGEST_URL")
+if telemetry_enabled or telemetry_endpoint or telemetry_key or telemetry_include or default_telemetry_endpoint:
     CONFIG.queue_telemetry = QueueTelemetryConfig(
         enabled=(
             telemetry_enabled.lower() == "true"
             if isinstance(telemetry_enabled, str)
             else CONFIG.queue_telemetry.enabled
         ),
-        endpoint=telemetry_endpoint or CONFIG.queue_telemetry.endpoint,
-        api_key=telemetry_key or CONFIG.queue_telemetry.api_key,
+        endpoint=telemetry_endpoint or default_telemetry_endpoint or CONFIG.queue_telemetry.endpoint,
+        api_key=telemetry_key or CONFIG.queue_telemetry.api_key or CONFIG.control_panel_api.api_key,
         include_guild_metadata=(
             telemetry_include.lower() == "true"
             if isinstance(telemetry_include, str)

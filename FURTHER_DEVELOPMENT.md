@@ -17,7 +17,7 @@ This roadmap lists what has **not** shipped yet and will guide development throu
 - Forum Telemetry — moderation/audit events exposed to admins and SRE dashboards (Complete).
 
 ## Telemetry, Compliance, & Security
-- Expanded Telemetry Webhooks — live queue/billing/safety events to customer monitoring (Building).
+- Expanded Telemetry Webhooks — live queue/billing/safety events to customer monitoring (Complete).
 - Adaptive Mastering Pipeline — per-track loudness normalisation (Planned).
 - Compliance Mode — export-ready safety logs, GDPR tooling, residency controls (Planned).
 - Trust & Safety Exports — one-click bundles with consent, permissions, retention (Planned).

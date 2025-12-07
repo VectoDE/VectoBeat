@@ -29,6 +29,8 @@ export type ServerFeatureSettings = {
   analyticsMode: "basic" | "advanced" | "predictive"
   aiRecommendations: boolean
   exportWebhooks: boolean
+  webhookEndpoint: string
+  webhookSecret: string
   automationLevel: "off" | "smart" | "full"
   automationWindow: string
   webhookEvents: string[]
@@ -66,6 +68,8 @@ export const defaultServerFeatureSettings: ServerFeatureSettings = {
   analyticsMode: "basic",
   aiRecommendations: false,
   exportWebhooks: false,
+  webhookEndpoint: "",
+  webhookSecret: "",
   automationLevel: "off",
   automationWindow: "",
   webhookEvents: [],
@@ -266,6 +270,24 @@ export const SERVER_FEATURE_GROUPS: ServerFeatureGroup[] = [
         description: "Send listening sessions and key metrics to your own data warehouse.",
         type: "boolean",
         minTier: "pro",
+      },
+      {
+        key: "webhookEndpoint",
+        label: "Webhook endpoint",
+        description: "HTTPS endpoint to receive telemetry (queue, billing, safety).",
+        type: "text",
+        minTier: "pro",
+        maxLength: 500,
+        placeholder: "https://example.com/vectobeat/webhooks",
+      },
+      {
+        key: "webhookSecret",
+        label: "Webhook secret",
+        description: "Optional HMAC signing secret for validating payloads.",
+        type: "text",
+        minTier: "pro",
+        maxLength: 120,
+        placeholder: "optional-secret",
       },
     ],
   },

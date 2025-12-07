@@ -170,9 +170,17 @@ export const sanitizeSettingsForTier = (
       case "text": {
         const maxLength = option.maxLength ?? 32
         const fallback = (defaultServerFeatureSettings[key] as string) || option.placeholder || ""
-        const normalized =
-          typeof value === "string" ? value.trim().slice(0, maxLength) : fallback.slice(0, maxLength)
-        target[key] = normalized || fallback
+        if (option.key === "webhookEndpoint") {
+          const normalized = sanitizeUrlInput(value)
+          target[key] = normalized ? normalized.slice(0, maxLength) : ""
+        } else if (option.key === "webhookSecret") {
+          const normalized = typeof value === "string" ? value.trim().slice(0, maxLength) : ""
+          target[key] = normalized
+        } else {
+          const normalized =
+            typeof value === "string" ? value.trim().slice(0, maxLength) : fallback.slice(0, maxLength)
+          target[key] = normalized || fallback
+        }
         break
       }
       case "color": {
@@ -201,6 +209,10 @@ export const sanitizeSettingsForTier = (
     safe.automationLevel,
     plan.serverSettings.maxAutomationLevel,
   )
+  if (!safe.exportWebhooks) {
+    safe.webhookEndpoint = ""
+    safe.webhookSecret = ""
+  }
   if (!plan.serverSettings.allowAutomationWindow) {
     safe.automationWindow = ""
   } else {

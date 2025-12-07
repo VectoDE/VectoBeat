@@ -22,11 +22,12 @@ export async function POST(request: NextRequestWithGeo) {
         ? body.referrer
         : request.headers.get("referer") || null
 
+    const location = resolveClientLocation(request)
     await recordSitePageView({
       path,
       referrer,
       userAgent: request.headers.get("user-agent"),
-      country: request.geo?.country || null,
+      country: location,
       ip: resolveClientIp(request),
     })
 

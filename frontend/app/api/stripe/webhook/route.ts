@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import Stripe from "stripe"
 import { upsertSubscription } from "@/lib/db"
+import { deliverTelemetryWebhook } from "@/lib/telemetry-webhooks"
 
 const stripeSecret = process.env.STRIPE_SECRET_KEY
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
@@ -79,6 +80,24 @@ const handleSubscriptionEvent = async (subscription: Stripe.Subscription) => {
     return { ok: false, error: "missing_metadata" }
   }
   const record = await upsertSubscription(payload)
+  const guildId = (record as any)?.discordServerId || payload.guildId
+  if (guildId) {
+    void deliverTelemetryWebhook({
+      guildId,
+      event: "billing_usage",
+      payload: {
+        status: payload.status,
+        tier: payload.tier,
+        monthlyPrice: payload.monthlyPrice,
+        currency: payload.currency,
+        periodEnd: payload.currentPeriodEnd,
+        periodStart: payload.currentPeriodStart,
+        stripeSubscriptionId: payload.id,
+        stripeCustomerId: payload.stripeCustomerId,
+      },
+      source: "billing",
+    })
+  }
   return { ok: Boolean(record), record }
 }
 

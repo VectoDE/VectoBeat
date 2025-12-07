@@ -280,6 +280,8 @@ export default function AdminControlPanelPage() {
   const [ticketReplyStatus, setTicketReplyStatus] = useState("")
   const [ticketAttachmentFiles, setTicketAttachmentFiles] = useState<File[]>([])
   const [ticketAttachmentKey, setTicketAttachmentKey] = useState(0)
+  const [developerToken, setDeveloperToken] = useState<string | null>(null)
+  const [developerTokenMessage, setDeveloperTokenMessage] = useState<string | null>(null)
   const [ticketDraft, setTicketDraft] = useState({
     name: "",
     email: "",
@@ -1604,6 +1606,69 @@ export default function AdminControlPanelPage() {
                         <div className="flex flex-wrap gap-3 text-xs text-foreground/60">
                           <span>Created {new Date(ticketThread.createdAt).toLocaleString()}</span>
                           <span>Updated {new Date(ticketThread.updatedAt).toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!discordId || !ticketThread) return
+                              setDeveloperTokenMessage("Generating developer API key…")
+                              setDeveloperToken(null)
+                              try {
+                                const requesterMessage =
+                                  ticketThread.messages?.find((msg: any) => msg.role === "member") ?? null
+                                const response = await fetch(`/api/admin/developer-keys?discordId=${discordId}`, {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    ticketId: ticketThread.id,
+                                    requesterId: requesterMessage?.authorId || null,
+                                    requesterEmail: ticketThread.email,
+                                    requesterName: ticketThread.name,
+                                    label: `Developer API Key (${ticketThread.email || ticketThread.name || "request"})`,
+                                  }),
+                                })
+                                const payload = await response.json().catch(() => ({}))
+                                if (!response.ok) {
+                                  throw new Error(payload?.error || "Failed to generate key")
+                                }
+                                const token = payload?.token as string
+                                setDeveloperToken(token)
+                                setDeveloperTokenMessage("Key generated. It was also added to the ticket thread.")
+
+                                if (token) {
+                                  const form = new FormData()
+                                  form.append(
+                                    "message",
+                                    `Here is your developer API token. Keep it secret:\n\n${token}\n\nRevoke it anytime via support.`,
+                                  )
+                                  form.append("authorName", "VectoBeat Support")
+                                  await fetch(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
+                                    method: "POST",
+                                    body: form,
+                                  })
+                                  await fetchTicketThread(ticketThread.id)
+                                  loadSupportTickets()
+                                }
+                              } catch (error) {
+                                console.error("Developer key generation failed:", error)
+                                setDeveloperToken(null)
+                                setDeveloperTokenMessage(
+                                  error instanceof Error ? error.message : "Unable to generate key right now.",
+                                )
+                              }
+                            }}
+                            className="px-3 py-2 rounded-lg border border-primary/40 text-xs font-semibold hover:border-primary transition-colors"
+                            disabled={!discordId}
+                          >
+                            Generate developer API key
+                          </button>
+                          {developerTokenMessage ? (
+                            <span className="text-xs text-foreground/60">{developerTokenMessage}</span>
+                          ) : null}
+                          {developerToken ? (
+                            <code className="text-xs px-2 py-1 rounded bg-card border border-border/50">{developerToken}</code>
+                          ) : null}
                         </div>
                       </div>
 

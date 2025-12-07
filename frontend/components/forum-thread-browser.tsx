@@ -1,7 +1,20 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
+
 import { ForumReplyBox } from "./forum-actions"
+import { ForumTopicStarter } from "./forum-topic-starter"
+
+const safeSegment = (value: string) => {
+  const raw = typeof value === "string" ? value.trim() : ""
+  if (/^[A-Za-z0-9-_]+$/.test(raw)) return raw
+  try {
+    return encodeURIComponent(raw)
+  } catch {
+    return ""
+  }
+}
 
 type Category = { title: string; slug: string }
 type Thread = {
@@ -49,10 +62,6 @@ export function ForumThreadBrowser({
   const [posts, setPosts] = useState<Post[]>(initialPosts)
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [loadingPosts, setLoadingPosts] = useState(false)
-  const [showTopicModal, setShowTopicModal] = useState(false)
-  const [topicTitle, setTopicTitle] = useState("")
-  const [topicBody, setTopicBody] = useState("")
-  const [topicSubmitting, setTopicSubmitting] = useState(false)
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({})
 
   const threadsByCategory = useMemo(() => {
@@ -119,37 +128,15 @@ export function ForumThreadBrowser({
 
   const currentThreads = threadsByCategory[selectedCategory] ?? []
   const currentThread = currentThreads.find((t) => t.id === selectedThreadId) || currentThreads[0]
+  const safeCategorySlug = currentThread?.categorySlug ? safeSegment(currentThread.categorySlug) : ""
+  const safeThreadId = currentThread?.id ? safeSegment(currentThread.id) : ""
+  const threadHref = safeCategorySlug && safeThreadId ? `/forum/${safeCategorySlug}/${safeThreadId}` : "/forum"
 
   const addReaction = (postId: string, emoji: string) => {
     setReactionCounts((prev) => {
       const key = `${postId}:${emoji}`
       return { ...prev, [key]: (prev[key] ?? 0) + 1 }
     })
-  }
-
-  const submitTopic = async () => {
-    if (!discordId || !currentThread?.id || !topicTitle.trim() || !topicBody.trim()) return
-    setTopicSubmitting(true)
-    try {
-      const content = `${topicTitle.trim()}\n\n${topicBody.trim()}`
-      const response = await fetch("/api/forum/posts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ discordId, threadId: currentThread.id, body: content, role: "topic" }),
-      })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || "failed")
-      }
-      setTopicTitle("")
-      setTopicBody("")
-      setShowTopicModal(false)
-      setSelectedThreadId(currentThread.id)
-    } catch (error) {
-      console.error("[VectoBeat] Failed to create topic:", error)
-    } finally {
-      setTopicSubmitting(false)
-    }
   }
 
   return (
@@ -215,15 +202,15 @@ export function ForumThreadBrowser({
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/60">{currentThread.categoryTitle || "Thread"}</p>
                 <h3 className="text-xl font-semibold text-foreground">{currentThread.title}</h3>
                 {currentThread.summary ? <p className="text-sm text-foreground/70">{currentThread.summary}</p> : null}
+                {currentThread.categorySlug ? (
+                  <Link href={threadHref} className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 mt-2">
+                    Open full view →
+                  </Link>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
                 {canPost ? (
-                  <button
-                    onClick={() => setShowTopicModal(true)}
-                    className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
-                  >
-                    Start topic
-                  </button>
+                  <ForumTopicStarter discordId={discordId} threadId={currentThread.id} />
                 ) : null}
                 <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-3 py-1 border border-emerald-500/30">
                   {currentThread.status || "Open"}
@@ -282,54 +269,6 @@ export function ForumThreadBrowser({
           <p className="text-sm text-foreground/60">Choose a category to browse threads.</p>
         )}
       </div>
-      {showTopicModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" onClick={() => setShowTopicModal(false)} />
-          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border/60 bg-card shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-foreground">New topic in this thread</h3>
-              <button onClick={() => setShowTopicModal(false)} className="text-foreground/60 hover:text-foreground text-xl">
-                ×
-              </button>
-            </div>
-            <label className="flex flex-col gap-1">
-                <span className="text-sm text-foreground/70">Title</span>
-              <input
-                value={topicTitle}
-                onChange={(e) => setTopicTitle(e.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                maxLength={120}
-                placeholder="What do you want to discuss?"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-                <span className="text-sm text-foreground/70">Description</span>
-              <textarea
-                value={topicBody}
-                onChange={(e) => setTopicBody(e.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm h-28"
-                maxLength={4000}
-                placeholder="Share details, attachments, or context."
-              />
-            </label>
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowTopicModal(false)}
-                className="px-4 py-2 rounded-lg border border-border text-sm text-foreground/70 hover:border-primary/40"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitTopic}
-                disabled={topicSubmitting || !topicTitle.trim() || !topicBody.trim()}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
-              >
-                {topicSubmitting ? "Saving..." : "Create topic"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

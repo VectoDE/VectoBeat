@@ -293,8 +293,9 @@ export default function DeveloperPortalPage() {
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold">Build on top of VectoBeat.</h1>
                 <p className="text-foreground/70 max-w-2xl">
-                  Access unified docs for REST endpoints, webhook schemas, SDK snippets, and rate limits. Everything
-                  honours your control-panel plan gating, so the behaviour documented here mirrors production.
+                  Access unified docs for REST endpoints, webhook schemas, SDK snippets, and rate limits. Everything honours your
+                  control-panel plan gating, so the behaviour documented here mirrors production. Need an API key? Request it via
+                  Support and we&apos;ll mint a developer token tied to your account.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
@@ -308,6 +309,12 @@ export default function DeveloperPortalPage() {
                     className="px-5 py-2 rounded-lg border border-border/60 text-sm font-semibold text-foreground/80 hover:border-primary/40 hover:text-primary transition-colors"
                   >
                     Webhook schemas
+                  </Link>
+                  <Link
+                    href="/support-desk?category=Developer%20API%20Key&priority=high"
+                    className="px-5 py-2 rounded-lg border border-primary/50 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    Request developer key
                   </Link>
                 </div>
               </div>

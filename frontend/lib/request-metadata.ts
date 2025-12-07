@@ -22,16 +22,24 @@ export const resolveClientIp = (request: NextRequest & { ip?: string | null }) =
 export const resolveClientLocation = (request: NextRequest & { geo?: { city?: string | null; region?: string | null; country?: string | null } }) => {
   const headers = request.headers
   const geo = request.geo
-  const city = sanitizeHeaderValue(geo?.city || headers.get("x-vercel-ip-city") || headers.get("x-geo-city") || headers.get("x-appengine-city"))
+  const city = sanitizeHeaderValue(
+    geo?.city ||
+      headers.get("x-vercel-ip-city") ||
+      headers.get("cf-ipcity") ||
+      headers.get("x-geo-city") ||
+      headers.get("x-appengine-city"),
+  )
   const region = sanitizeHeaderValue(
     geo?.region ||
       headers.get("x-vercel-ip-country-region") ||
+      headers.get("cf-region") ||
       headers.get("x-geo-region") ||
       headers.get("x-appengine-region"),
   )
   const country = sanitizeHeaderValue(
     geo?.country ||
       headers.get("x-vercel-ip-country") ||
+      headers.get("cf-ipcountry") ||
       headers.get("cloudfront-viewer-country") ||
       headers.get("x-geo-country") ||
       headers.get("x-appengine-country"),

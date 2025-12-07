@@ -12,6 +12,7 @@ import aiohttp
 
 from src.configs.schema import AlertsConfig
 from src.services.server_settings_service import ServerSettingsService
+from src.services.queue_telemetry_service import QueueTelemetryService
 
 
 class AlertService:
@@ -19,13 +20,19 @@ class AlertService:
 
     MAX_QUEUE_DEPTH = 200
 
-    def __init__(self, config: AlertsConfig, settings: ServerSettingsService):
+    def __init__(
+        self,
+        config: AlertsConfig,
+        settings: ServerSettingsService,
+        telemetry: Optional[QueueTelemetryService] = None,
+    ):
         self.config = config
         self.settings = settings
         self.logger = logging.getLogger("VectoBeat.Alerts")
         self._session: Optional[aiohttp.ClientSession] = None
         self._queue: asyncio.Queue[tuple[str, Dict[str, Any]]] = asyncio.Queue()
         self._worker: Optional[asyncio.Task[None]] = None
+        self._telemetry = telemetry
 
     async def start(self) -> None:
         if self._session:
@@ -61,6 +68,7 @@ class AlertService:
             return
         payload = self._base_payload(guild_id, {"message": message, **extras, "priority": priority})
         await self._post(endpoint, payload)
+        await self._mirror_to_telemetry(guild_id, "incident_created", payload)
 
     async def record_compliance(self, guild_id: int, event: str, details: Dict[str, Any]) -> None:
         enabled = await self._flag(guild_id, "compliancePack")
@@ -117,3 +125,17 @@ class AlertService:
                     self.logger.warning("Alert POST failed (%s): %s", resp.status, text)
         except aiohttp.ClientError as exc:
             self.logger.error("Alert POST error: %s", exc)
+
+    async def _mirror_to_telemetry(self, guild_id: int, event: str, payload: Dict[str, Any]) -> None:
+        """Optionally mirror safety events into telemetry webhooks."""
+        if not self._telemetry:
+            return
+        try:
+            await self._telemetry.emit(
+                event=event,
+                guild_id=guild_id,
+                shard_id=None,
+                payload={"safety": payload},
+            )
+        except Exception as exc:
+            self.logger.debug("Telemetry mirror failed for guild %s: %s", guild_id, exc)
