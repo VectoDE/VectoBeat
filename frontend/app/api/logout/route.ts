@@ -37,7 +37,8 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true, revoked })
-  response.cookies.set("discord_token", "", { expires: new Date(0) })
-  response.cookies.set("discord_user_id", "", { expires: new Date(0) })
+  ;["discord_token", "discord_user_id", "discord_id", "discordId", "discord_pkce_verifier", "discord_pkce_redirect"].forEach(
+    (cookieName) => response.cookies.delete(cookieName),
+  )
   return response
 }
