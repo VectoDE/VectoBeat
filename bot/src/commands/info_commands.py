@@ -151,6 +151,21 @@ class InfoCommands(commands.Cog):
         """Return a checkmark or cross emoji for boolean values."""
         return "✅" if value else "❌"
 
+    def _latency_snapshot(self) -> Tuple[float, float, float, list[Tuple[int, float]], Optional[float]]:
+        """Return best/avg/p95, per-shard latencies (ms) and loop lag if available."""
+        monitor = getattr(self.bot, "latency_monitor", None)
+        if monitor:
+            snap = monitor.snapshot()
+            shard_pairs = sorted(snap.shards.items())
+            return snap.best, snap.average, snap.p95, shard_pairs, snap.loop_lag_ms
+
+        shard_pairs = [(sid, round(lat * 1000, 2)) for sid, lat in getattr(self.bot, "latencies", [])]
+        latency_values = [lat for _, lat in shard_pairs] or [round(self.bot.latency * 1000, 2)]
+        gateway_best = min(latency_values)
+        gateway_avg = statistics.mean(latency_values)
+        gateway_p95 = sorted(latency_values)[max(0, int(0.95 * (len(latency_values) - 1)))]
+        return gateway_best, gateway_avg, gateway_p95, shard_pairs, None
+
     # ------------------------------------------------------------------ commands
     @app_commands.command(name="ping", description="Quick latency & uptime snapshot for VectoBeat.")
     async def ping(self, inter: discord.Interaction):
@@ -163,11 +178,7 @@ class InfoCommands(commands.Cog):
         shard_total = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
         shard_id = inter.guild.shard_id + 1 if inter.guild else "N/A"
 
-        shard_latencies = [(sid, round(lat * 1000, 2)) for sid, lat in getattr(self.bot, "latencies", [])]
-        latency_values = [lat for _, lat in shard_latencies] or [round(self.bot.latency * 1000, 2)]
-        gateway_best = min(latency_values)
-        gateway_avg = statistics.mean(latency_values)
-        gateway_p95 = sorted(latency_values)[max(0, int(0.95 * (len(latency_values) - 1)))]
+        gateway_best, gateway_avg, gateway_p95, shard_latencies, loop_lag_ms = self._latency_snapshot()
 
         # Optional service pings gathered in parallel; kept short with timeouts.
         pings: list[Tuple[str, Optional[float], bool]] = []
@@ -175,12 +186,19 @@ class InfoCommands(commands.Cog):
         autoplay_service = getattr(self.bot, "autoplay_service", None)
         tasks = []
         if playlist_service and hasattr(playlist_service, "ping"):
-            tasks.append(self._timed_ping("Playlist (Redis)", playlist_service.ping()))
+            tasks.append(asyncio.create_task(self._timed_ping("Playlist (Redis)", playlist_service.ping())))
         if autoplay_service and hasattr(autoplay_service, "ping"):
-            tasks.append(self._timed_ping("Autoplay (Redis)", autoplay_service.ping()))
+            tasks.append(asyncio.create_task(self._timed_ping("Autoplay (Redis)", autoplay_service.ping())))
 
         if tasks:
-            pings = await asyncio.gather(*tasks, return_exceptions=False)
+            done, pending = await asyncio.wait(tasks, timeout=0.75)
+            for task in pending:
+                task.cancel()
+            for task in done:
+                try:
+                    pings.append(task.result())
+                except Exception:
+                    continue
 
         processing_ms = max(0.0, (time.perf_counter() - started_at) * 1000)
 
@@ -192,6 +210,8 @@ class InfoCommands(commands.Cog):
         embed.add_field(name="Command Handling", value=f"`{processing_ms:.1f} ms`", inline=True)
         embed.add_field(name="Uptime", value=f"`{self._format_duration(uptime_seconds)}`", inline=True)
         embed.add_field(name="Shard", value=f"`{shard_id}/{shard_total}`", inline=True)
+        if loop_lag_ms is not None:
+            embed.add_field(name="Loop Lag", value=f"`{loop_lag_ms:.1f} ms`", inline=True)
 
         # Lavalink node visibility to highlight transport health.
         nodes = self._lavalink_nodes()
@@ -221,12 +241,7 @@ class InfoCommands(commands.Cog):
         async with self._status_lock:
             uptime_seconds = HealthState.uptime()
             shard_total = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
-            shard_latencies = [(sid, round(lat * 1000, 2)) for sid, lat in getattr(self.bot, "latencies", [])]
-            latency_values = [lat for _, lat in shard_latencies] or [round(self.bot.latency * 1000, 2)]
-            avg_latency = statistics.mean(latency_values)
-            sorted_latencies = sorted(latency_values)
-            p95_index = max(0, int(0.95 * (len(sorted_latencies) - 1)))
-            p95_latency = sorted_latencies[p95_index]
+            best_latency, avg_latency, p95_latency, shard_latencies, loop_lag_ms = self._latency_snapshot()
 
             guild_count = len(self.bot.guilds)
             text_channels = sum(len(g.text_channels) for g in self.bot.guilds)
@@ -242,14 +257,23 @@ class InfoCommands(commands.Cog):
             playlist_service = getattr(self.bot, "playlist_service", None)
             autoplay_service = getattr(self.bot, "autoplay_service", None)
             backends: list[str] = []
-            for label, svc in (("Playlist (Redis)", playlist_service), ("Autoplay (Redis)", autoplay_service)):
-                if svc and hasattr(svc, "ping"):
+            backend_tasks = []
+            if playlist_service and hasattr(playlist_service, "ping"):
+                backend_tasks.append(asyncio.create_task(self._timed_ping("Playlist (Redis)", playlist_service.ping())))
+            if autoplay_service and hasattr(autoplay_service, "ping"):
+                backend_tasks.append(asyncio.create_task(self._timed_ping("Autoplay (Redis)", autoplay_service.ping())))
+            if backend_tasks:
+                done, pending = await asyncio.wait(backend_tasks, timeout=0.75)
+                for task in pending:
+                    task.cancel()
+                for task in done:
                     try:
-                        start = time.perf_counter()
-                        await asyncio.wait_for(svc.ping(), timeout=1.5)
-                        duration = (time.perf_counter() - start) * 1000
-                        backends.append(f"✅ {label} `{duration:.1f} ms`")
+                        label, duration, ok = task.result()
                     except Exception:
+                        continue
+                    if ok and duration is not None:
+                        backends.append(f"✅ {label} `{duration:.1f} ms`")
+                    else:
                         backends.append(f"⚠️ {label} timeout/failed")
 
             embed = factory.primary("📊 VectoBeat Diagnostics")
@@ -258,7 +282,8 @@ class InfoCommands(commands.Cog):
             shard_lines = [f"`#{sid}` {lat} ms" for sid, lat in shard_latencies] or ["`#1` n/a"]
             embed.add_field(
                 name="Latency",
-                value=f"`avg {avg_latency:.1f} ms • p95 {p95_latency:.1f} ms`\n" + "\n".join(shard_lines),
+                value=f"`best {best_latency:.1f} • avg {avg_latency:.1f} • p95 {p95_latency:.1f} ms`\n"
+                + "\n".join(shard_lines),
                 inline=False,
             )
 
@@ -305,12 +330,14 @@ class InfoCommands(commands.Cog):
             if nodes:
                 node_lines = []
                 for node in nodes:
-                    cpu_sys = node["cpu_system"]
-                    cpu_ll = node["cpu_lavalink"]
-                    mem_used = node["memory_used"]
-                    mem_alloc = node["memory_allocated"]
+                    cpu_sys = node.get("cpu_system") or 0.0
+                    cpu_ll = node.get("cpu_lavalink") or 0.0
+                    mem_used = node.get("memory_used")
+                    mem_alloc = node.get("memory_allocated")
+                    playing = node.get("playing") or 0
+                    players_count = node.get("players") or 0
                     node_lines.append(
-                        f"{node['name']} (`{node['region']}`) — players {node['playing']}/{node['players']} | "
+                        f"{node['name']} (`{node['region']}`) — players {playing}/{players_count} | "
                         f"CPU {cpu_ll*100:.1f}% LL / {cpu_sys*100:.1f}% SYS | "
                         f"Mem {self._format_bytes(mem_used)} / {self._format_bytes(mem_alloc)}"
                     )
@@ -332,6 +359,8 @@ class InfoCommands(commands.Cog):
                 process_lines.append(f"RAM `{memory_mb:.1f} MB`")
             if process_lines:
                 embed.add_field(name="Process", value="\n".join(process_lines), inline=True)
+            if loop_lag_ms is not None:
+                embed.add_field(name="Loop Lag", value=f"`{loop_lag_ms:.1f} ms`", inline=True)
 
             if backends:
                 embed.add_field(name="Backends", value="\n".join(backends), inline=False)

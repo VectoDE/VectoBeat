@@ -101,7 +101,16 @@ class MetricsService:
             self.active_players_gauge.set(0)
             self.queue_tracks_gauge.set(0)
 
-        if hasattr(self.bot, "shards") and self.bot.shards:
+        monitor = getattr(self.bot, "latency_monitor", None)
+        if monitor:
+            snapshot = monitor.snapshot()
+        else:
+            snapshot = None
+
+        if snapshot and snapshot.shards:
+            for shard_id, latency_ms in snapshot.shards.items():
+                self.shard_latency_gauge.labels(shard=str(shard_id)).set(latency_ms / 1000)
+        elif hasattr(self.bot, "shards") and self.bot.shards:
             for shard_id, shard in self.bot.shards.items():
                 latency = getattr(shard, "latency", None) or 0.0
                 self.shard_latency_gauge.labels(shard=str(shard_id)).set(latency)

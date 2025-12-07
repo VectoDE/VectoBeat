@@ -6,6 +6,7 @@ import asyncio
 import asyncio.subprocess
 import logging
 from collections import deque
+import statistics
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -164,6 +165,30 @@ class StatusAPIService:
             return payload
 
     # ------------------------------------------------------------------ helpers
+    def _latency_snapshot(self) -> Tuple[float, float, float, Dict[int, float], Optional[float]]:
+        monitor = getattr(self.bot, "latency_monitor", None)
+        if monitor:
+            snap = monitor.snapshot()
+            return snap.average, snap.best, snap.p95, snap.shards, snap.loop_lag_ms
+
+        shard_pairs: List[Tuple[int, Optional[float]]] = getattr(self.bot, "latencies", [])
+        shard_lookup: Dict[int, float] = {}
+        latencies_ms: List[float] = []
+        for shard_id, latency in shard_pairs:
+            latency_ms = self._safe_float(latency, 0.0) * 1000
+            shard_lookup[shard_id] = round(latency_ms, 2)
+            latencies_ms.append(latency_ms)
+        if not latencies_ms:
+            fallback = self._safe_float(getattr(self.bot, "latency", 0.0), 0.0) * 1000
+            latencies_ms = [fallback]
+            shard_lookup[0] = round(fallback, 2)
+
+        sorted_vals = sorted(latencies_ms)
+        best = sorted_vals[0]
+        avg = statistics.mean(sorted_vals)
+        p95 = sorted_vals[max(0, int(0.95 * (len(sorted_vals) - 1)))]
+        return avg, best, p95, shard_lookup, None
+
     def _build_payload(self) -> Dict[str, Any]:
         self._prune_events()
         guilds = getattr(self.bot, "guilds", [])
@@ -184,8 +209,8 @@ class StatusAPIService:
         voice_connections, listener_count, listener_detail = self._voice_snapshot()
         self._record_listener_sample(listener_count)
         listener_peak_24h, listener_sum_24h = self._listener_window()
-        latency_ms = round(self._safe_float(self.bot.latency, 0.0) * 1000, 2)
-        shards, shards_online, shards_total = self._build_shard_snapshot()
+        latency_avg_ms, latency_best_ms, latency_p95_ms, shard_lookup, loop_lag_ms = self._latency_snapshot()
+        shards, shards_online, shards_total = self._build_shard_snapshot(shard_lookup)
         commands, categories = self._command_reference()
         uptime_seconds = round(HealthState.uptime(), 2)
         uptime_percent = round(HealthState.uptime_percent(), 2)
@@ -220,9 +245,12 @@ class StatusAPIService:
             "uptimePercent": uptime_percent,
             "uptimePercentage": uptime_percent,
             "uptime_percent": uptime_percent,
-            "latency": latency_ms,
-            "averageLatency": latency_ms,
-            "latencyMs": latency_ms,
+            "latency": round(latency_avg_ms, 2),
+            "averageLatency": round(latency_avg_ms, 2),
+            "latencyMs": round(latency_avg_ms, 2),
+            "latencyBest": round(latency_best_ms, 2),
+            "latencyP95": round(latency_p95_ms, 2),
+            "loopLagMs": round(loop_lag_ms, 2) if loop_lag_ms is not None else None,
             "shardsOnline": shards_online,
             "shardsTotal": shards_total,
             "shardCount": shards_total,
@@ -718,8 +746,11 @@ class StatusAPIService:
             "duration": getattr(track, "duration", None),
         }
 
-    def _build_shard_snapshot(self) -> Tuple[List[Dict[str, Any]], int, int]:
-        latencies: List[Tuple[int, Optional[float]]] = getattr(self.bot, "latencies", [])
+    def _build_shard_snapshot(self, snapshot: Optional[Dict[int, float]] = None) -> Tuple[List[Dict[str, Any]], int, int]:
+        if snapshot:
+            latencies: List[Tuple[int, Optional[float]]] = [(sid, lat / 1000.0) for sid, lat in snapshot.items()]
+        else:
+            latencies = getattr(self.bot, "latencies", [])
         shards: List[Dict[str, Any]] = []
         online = 0
         total = self.bot.shard_count or len(latencies) or 1

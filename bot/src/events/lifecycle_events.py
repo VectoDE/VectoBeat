@@ -47,7 +47,7 @@ class LifecycleEvents(commands.Cog):
         """Set presence for all shards using a formatted template."""
         total_shards = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
         total_guilds = len(self.bot.guilds)
-        latency_lookup = {sid: int(lat * 1000) for sid, lat in getattr(self.bot, "latencies", [])}
+        latency_lookup = self._latency_lookup()
 
         for shard_id in range(total_shards):
             shard_guilds = sum(1 for guild in self.bot.guilds if guild.shard_id == shard_id)
@@ -65,6 +65,12 @@ class LifecycleEvents(commands.Cog):
                 activity=activity,
                 shard_id=shard_id,
             )
+
+    def _latency_lookup(self):
+        monitor = getattr(self.bot, "latency_monitor", None)
+        if monitor:
+            return {sid: int(lat) for sid, lat in monitor.snapshot().shards.items()}
+        return {sid: int(lat * 1000) for sid, lat in getattr(self.bot, "latencies", [])}
 
 
 async def setup(bot: commands.Bot) -> None:

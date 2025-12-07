@@ -281,7 +281,11 @@ export const markWelcomeEmailSent = async (discordId: string) => {
 export type StoredUserProfile = {
   id: string
   username: string | null
+  displayName: string | null
   email: string | null
+  avatarUrl: string | null
+  createdAt: string | null
+  lastSeen: string | null
   guilds: Array<{ id: string; name: string; hasBot?: boolean; isAdmin?: boolean }>
 }
 
@@ -289,6 +293,12 @@ export const getStoredUserProfile = async (discordId: string): Promise<StoredUse
   try {
     const payload = await getDecryptedProfilePayload(discordId)
     const contact = await getUserContact(discordId)
+    const profileRow = await getPrismaClient()
+      ?.userProfile.findUnique({
+        where: { discordId },
+        select: { username: true, displayName: true, avatarUrl: true, lastSeen: true },
+      })
+      .catch(() => null)
     const guilds = Array.isArray(payload?.guilds) ? payload.guilds : []
     const normalizedGuilds = guilds
       .map((guild) => {
@@ -308,8 +318,12 @@ export const getStoredUserProfile = async (discordId: string): Promise<StoredUse
 
     return {
       id: discordId,
-      username: payload?.username ?? null,
+      username: profileRow?.username ?? payload?.username ?? null,
+      displayName: profileRow?.displayName ?? payload?.displayName ?? payload?.username ?? null,
       email: contact?.email ?? payload?.email ?? null,
+      avatarUrl: profileRow?.avatarUrl ?? (payload as any)?.avatarUrl ?? null,
+      createdAt: null,
+      lastSeen: profileRow?.lastSeen ? profileRow.lastSeen.toISOString() : null,
       guilds: normalizedGuilds,
     }
   } catch (error) {

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
-import { getUserSecurity } from "@/lib/db"
+import { getUserSecurity, recordLoginSession } from "@/lib/db"
+import { hashSessionToken } from "@/lib/session"
 
 const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
 const REDIRECT_COOKIE = "discord_pkce_redirect"
@@ -240,6 +241,16 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(redirectUrl)
 
+    const sessionHash = hashSessionToken(tokenData.access_token)
+    const userAgent = request.headers.get("user-agent")
+    const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+    await recordLoginSession({
+      discordId: userData.id,
+      sessionHash,
+      userAgent,
+      ipAddress,
+    })
+
     response.cookies.set("discord_token", tokenData.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -248,6 +259,19 @@ export async function GET(request: NextRequest) {
     })
 
     response.cookies.set("discord_user_id", userData.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+    })
+    // Backwards-compatible cookie names used by some API routes.
+    response.cookies.set("discord_id", userData.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+    })
+    response.cookies.set("discordId", userData.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

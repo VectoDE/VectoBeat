@@ -31,6 +31,7 @@ from src.services.playlist_service import PlaylistService
 from src.services.profile_service import GuildProfileManager
 from src.services.queue_telemetry_service import QueueTelemetryService
 from src.services.alert_service import AlertService
+from src.services.latency_service import LatencyMonitor
 from src.services.search_cache import SearchCacheService
 from src.services.status_api_service import StatusAPIService
 from src.services.queue_sync_service import QueueSyncService
@@ -94,6 +95,7 @@ class VectoBeat(commands.AutoShardedBot):
         self.alerts = AlertService(CONFIG.alerts, self.server_settings, self.queue_telemetry)
         self.queue_copilot = QueueCopilotService(self.server_settings)
         self.search_cache = SearchCacheService(CONFIG.cache)
+        self.latency_monitor = LatencyMonitor(self)
         self.status_api = StatusAPIService(self, CONFIG.status_api)
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
         self._entrypoint_payloads: List[dict] = []
@@ -158,6 +160,8 @@ class VectoBeat(commands.AutoShardedBot):
 
         if hasattr(self, "metrics_service"):
             await self.metrics_service.close()
+        if hasattr(self, "latency_monitor"):
+            await self.latency_monitor.close()
 
         if hasattr(self, "chaos_service"):
             await self.chaos_service.close()
@@ -243,6 +247,7 @@ class VectoBeat(commands.AutoShardedBot):
         await self.queue_sync.start()
         await self.status_api.start()
         # search_cache is synchronous; no start required
+        await self.latency_monitor.start()
 
         if self._panel_parity_task:
             self._panel_parity_task.cancel()

@@ -932,7 +932,11 @@ export default function ControlPanelPage() {
           phone: sessionData.phone,
           discordUsername: sessionData.displayName || sessionData.username,
           avatar: sessionData.avatarUrl || sessionData.avatar,
-          joinedDate: new Date(sessionData.createdAt).toISOString(),
+          joinedDate: (() => {
+            const raw = sessionData.createdAt || sessionData.lastSeen
+            const parsed = raw ? new Date(raw) : new Date()
+            return isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString()
+          })(),
         })
 
         const guildsWithAdmin = Array.isArray(sessionData.guilds)

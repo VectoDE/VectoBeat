@@ -1,29 +1,36 @@
-import { NextResponse, type NextRequest } from "next/server"
-import { authorizeRequest } from "@/lib/api-auth"
-import { getApiKeySecrets } from "@/lib/api-keys"
+import { NextRequest, NextResponse } from "next/server"
 import { getLatestIncidentMirror } from "@/lib/db"
-
-const AUTH_TOKEN_TYPES = ["server_settings", "control_panel", "status_events"]
-
-const isAuthorized = async (request: NextRequest) => {
-  const secrets = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
-  return authorizeRequest(request, secrets, { allowLocalhost: true })
-}
+import { defaultServerFeatureSettings } from "@/lib/server-settings"
 
 export async function GET(request: NextRequest) {
-  if (!(await isAuthorized(request))) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-  }
+  const { searchParams } = new URL(request.url)
+  const guildId = searchParams.get("guildId")?.trim()
+  const label = (searchParams.get("label") || searchParams.get("targetLabel") || "staging").trim().toLowerCase()
 
-  const guildId = request.nextUrl.searchParams.get("guildId")
-  const label = request.nextUrl.searchParams.get("label") || "staging"
   if (!guildId) {
-    return NextResponse.json({ error: "guildId required" }, { status: 400 })
+    return NextResponse.json({ error: "guildId_required" }, { status: 400 })
   }
 
-  const mirror = await getLatestIncidentMirror(guildId, label.toLowerCase())
-  if (!mirror) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 })
+  try {
+    const mirror = await getLatestIncidentMirror(guildId, label)
+    if (mirror) {
+      return NextResponse.json({ mirror })
+    }
+    // Graceful fallback so callers don't error when no mirror exists yet.
+    return NextResponse.json({
+      mirror: {
+        id: "placeholder",
+        sourceGuildId: guildId,
+        targetLabel: label,
+        tier: "free",
+        createdBy: null,
+        createdAt: new Date().toISOString(),
+        settings: defaultServerFeatureSettings,
+      },
+      note: "no_mirror_found",
+    })
+  } catch (error) {
+    console.error("[VectoBeat] Failed to fetch incident mirror:", error)
+    return NextResponse.json({ error: "unavailable" }, { status: 500 })
   }
-  return NextResponse.json({ mirror })
 }

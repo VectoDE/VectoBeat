@@ -6,7 +6,10 @@ import { normalizeTierId } from "@/lib/memberships"
 
 const resolveDiscordId = async (request: NextRequest) => {
   const cookieStore = await cookies()
-  const cookieId = cookieStore.get("discord_id")?.value || cookieStore.get("discordId")?.value
+  const cookieId =
+    cookieStore.get("discord_user_id")?.value ||
+    cookieStore.get("discord_id")?.value ||
+    cookieStore.get("discordId")?.value
   const queryId = request.nextUrl.searchParams.get("discordId")
   return cookieId || queryId
 }
@@ -28,6 +31,8 @@ export async function GET(request: NextRequest) {
   const username = (user as any)?.username || (user as any)?.displayName || discordId
   const displayName = (user as any)?.displayName || (user as any)?.username || username
   const email = (user as any)?.email || (user as any)?.contact?.email || null
+  const avatarUrl = (user as any)?.avatarUrl || null
+  const createdAt = (user as any)?.createdAt || (user as any)?.lastSeen || null
   return NextResponse.json({
     authenticated: true,
     id: discordId,
@@ -35,6 +40,8 @@ export async function GET(request: NextRequest) {
     username,
     displayName,
     email,
+    avatarUrl,
+    createdAt,
     user,
     subscriptions,
     tiers,
