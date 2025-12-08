@@ -165,7 +165,7 @@ We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format an
   - Crossfade and gapless playback ship with tunable fade steps and base volume controls in `config.yml` (`crossfade.*`, `52cbbd9`).
   - Rich now-playing embeds add requester metadata, progress bars, and permission audits; Lavalink integration records requester IDs for telemetry (`src/commands/music_controls.py`, `4f95ad2`).
   - DJ permissions (`/dj add-role|remove-role|show|clear`) protect critical queue operations (`src/commands/dj_commands.py`).
-  - Core playback/voice commands from the prototype (`/play`, `/pause`, `/resume`, `/seek`, `/skip`, `/queue`, `/nowplaying`, `/volume`, `/connect`, `/disconnect`, `/voiceinfo`) anchor the UX (`src/commands/music_controls.py`, `src/commands/connection_commands.py`, `36e3c3e`).
+  - Core playback/voice commands from the prototype (`/play`, `/pause`, `/resume`, `/jump`, `/skip`, `/queue`, `/nowplaying`, `/volume`, `/connect`, `/disconnect`, `/voiceinfo`) anchor the UX (`src/commands/music_controls.py`, `src/commands/connection_commands.py`, `36e3c3e`).
 - **Infrastructure & Onboarding**
 - Production-grade Docker setup (multi-stage `Dockerfile`, `docker-compose.yml`, `docker-compose.local.yml`) plus Lavalink installation guide streamline deployments (`docs/INSTALL_LAVALINK.md`, `3b48611`).
   - GitHub Actions for build, deploy, docs, security, and releases create a complete automation pipeline (`.github/workflows/*.yml`, `3b48611`).

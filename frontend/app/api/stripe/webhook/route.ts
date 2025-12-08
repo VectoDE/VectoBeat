@@ -12,7 +12,7 @@ if (!stripeSecret) {
 
 const stripe = new Stripe(stripeSecret, {
   apiVersion: "2025-11-17.clover",
-  appInfo: { name: "VectoBeat", version: "2.2.0" },
+  appInfo: { name: "VectoBeat", version: "2.2.1" },
 })
 
 const parseTier = (subscription: Stripe.Subscription): string => {

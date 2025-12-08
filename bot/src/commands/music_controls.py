@@ -969,9 +969,9 @@ class MusicControls(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
         self._log_dj_action(inter, "loop", details=mode.name)
 
-    @app_commands.command(name="seek", description="Seek within the current track (mm:ss).")
-    @app_commands.describe(position="Timestamp to seek to, e.g. 1:30")
-    async def seek(self, inter: discord.Interaction, position: str):
+    @app_commands.command(name="jump", description="Jump within the current track (mm:ss).")
+    @app_commands.describe(position="Timestamp to jump to, e.g. 1:30")
+    async def jump(self, inter: discord.Interaction, position: str):
         """Jump to a specific timestamp within the current track."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if (error := self._require_dj(inter)) is not None:
@@ -991,14 +991,14 @@ class MusicControls(commands.Cog):
 
         if target >= player.current.duration:
             return await inter.response.send_message(
-                embed=factory.warning("Seek position is beyond track duration."),
+                embed=factory.warning("Jump position is beyond track duration."),
                 ephemeral=True,
             )
 
         await player.seek(target)
-        embed = factory.primary("⏩ Seeked", f"Jumped to **{position}**")
+        embed = factory.primary("⏩ Jumped", f"Jumped to **{position}**")
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "seek", details=position)
+        self._log_dj_action(inter, "jump", details=position)
 
     @app_commands.command(name="replay", description="Restart the current track from the beginning.")
     async def replay(self, inter: discord.Interaction):

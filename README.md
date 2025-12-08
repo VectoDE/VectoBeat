@@ -114,7 +114,7 @@
   <tbody>
     <tr>
       <td><strong>Playback</strong></td>
-      <td>Randomised search results, queue autosync, manual seek, replay, loop modes, volume control, auto-resume protection, Redis-backed playlists, history-aware autoplay</td>
+      <td>Randomised search results, queue autosync, manual jump, replay, loop modes, volume control, auto-resume protection, Redis-backed playlists, history-aware autoplay</td>
     </tr>
     <tr>
       <td><strong>Queueing</strong></td>
@@ -249,7 +249,7 @@ docker compose logs -f frontend bot</code></pre>
     <tr><td><code>/volume</code></td><td>Set volume (0–200%).</td></tr>
     <tr><td><code>/volume-info</code></td><td>Show current and default volume.</td></tr>
     <tr><td><code>/loop</code></td><td>Toggle Off/Track/Queue loop modes.</td></tr>
-    <tr><td><code>/seek</code></td><td>Seek within current track (mm:ss).</td></tr>
+    <tr><td><code>/jump</code></td><td>Jump within current track (mm:ss).</td></tr>
     <tr><td><code>/replay</code></td><td>Restart current track.</td></tr>
     <tr><td rowspan="6"><strong>Queue</strong></td><td><code>/queue</code></td><td>Paginated queue with now-playing and up-next.</td></tr>
     <tr><td><code>/queueinfo</code></td><td>Queue summary (duration, loop, up-next).</td></tr>
