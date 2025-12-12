@@ -6,12 +6,7 @@ export const runtime = "nodejs"
 
 const PUBLIC_KEY_PREFIX = Buffer.from("302a300506032b6570032100", "hex")
 const PUBLIC_KEY_HEX = (process.env.DISCORD_INTERACTIONS_PUBLIC_KEY || "").trim()
-if (!PUBLIC_KEY_HEX || !/^[a-fA-F0-9]{64}$/.test(PUBLIC_KEY_HEX)) {
-  // Fail fast so deployments cannot run without a valid Discord public key.
-  throw new Error(
-    "DISCORD_INTERACTIONS_PUBLIC_KEY is missing or invalid (expected 64 hex chars); signature verification cannot proceed.",
-  )
-}
+const PUBLIC_KEY_VALID = /^[a-fA-F0-9]{64}$/.test(PUBLIC_KEY_HEX)
 const SITE_ORIGIN =
   (process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")) ||
   "https://vectobeat.uplytech.de"
@@ -19,7 +14,7 @@ const SITE_ORIGIN =
 let cachedDiscordKey: ReturnType<typeof createPublicKey> | null = null
 
 const getDiscordPublicKey = () => {
-  if (!PUBLIC_KEY_HEX) return null
+  if (!PUBLIC_KEY_VALID) return null
   if (cachedDiscordKey) return cachedDiscordKey
   try {
     cachedDiscordKey = createPublicKey({
@@ -70,7 +65,7 @@ const buildLoginUrl = (interaction: any) => {
 const unauthorizedResponse = () => NextResponse.json({ error: "invalid_signature" }, { status: 401 })
 
 export async function POST(request: NextRequest) {
-  if (!PUBLIC_KEY_HEX) {
+  if (!PUBLIC_KEY_VALID) {
     return NextResponse.json({ error: "interactions_not_configured" }, { status: 500 })
   }
 
