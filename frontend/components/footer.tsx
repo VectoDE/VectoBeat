@@ -2,7 +2,21 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Github, Mail, Twitter, Phone, MapPin, Clock, ShieldCheck } from "lucide-react"
+import {
+  Github,
+  Mail,
+  Twitter,
+  Phone,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  Twitch,
+  Instagram,
+  Music4,
+  Youtube,
+  Gitlab,
+  Linkedin,
+} from "lucide-react"
 import { useEffect, useState } from "react"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 
@@ -229,9 +243,14 @@ export default function Footer() {
             {/* Social Links */}
             <div className="flex gap-4">
               {[
+                { icon: Youtube, href: "https://youtube.com/@vectode", label: "YouTube" },
+                { icon: Twitch, href: "https://twitch.tv/VectoDE", label: "Twitch" },
+                { icon: Instagram, href: "https://www.instagram.com/vecto_de", label: "Instagram" },
+                { icon: Twitter, href: "https://x.com/vecto_de", label: "X (Twitter)" },
                 { icon: Github, href: "https://github.com/VectoDE", label: "GitHub" },
-                { icon: Twitter, href: "https://twitter.com/VectoDE", label: "Twitter" },
-                { icon: Mail, href: "mailto:timhauke@uplytech.de", label: "Email" },
+                { icon: Gitlab, href: "https://gitlab.com/timhauke99", label: "GitLab" },
+                { icon: Linkedin, href: "https://www.linkedin.com/in/tim-hauke-b3b24b2b5/", label: "LinkedIn" },
+                { icon: Mail, href: "mailto:timhauke@uplytech.de", label: "Discord (contact for access)" },
               ].map((social) => {
                 const Icon = social.icon
                 return (

@@ -119,6 +119,9 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
   const [metrics, setMetrics] = useState(initialMetrics)
   const localizedMetrics = useMemo(() => localizeMetrics(metrics), [metrics, localizeMetrics])
   const [state, setState] = useState<"connecting" | "connected" | "error">("connecting")
+  const [updatedLabel, setUpdatedLabel] = useState(() =>
+    new Date(initialMetrics.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  )
   const labels = {
     title: copy?.title ?? "",
     status: copy?.status ?? "Status",
@@ -142,6 +145,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
         const payload = (await response.json()) as HomeMetrics
         if (mounted && payload) {
           setMetrics(payload)
+          setUpdatedLabel(new Date(payload.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
         }
       } catch (error) {
         console.error("[VectoBeat] Home metrics polling failed:", error)
@@ -185,6 +189,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
           if (!mounted) return
           if (payload?.home) {
             setMetrics(payload.home)
+            setUpdatedLabel(new Date(payload.home.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
           }
         })
       } catch (error) {
@@ -213,12 +218,12 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
           <h2 className="text-2xl font-semibold">{labels.title}</h2>
-          <p className="text-xs text-foreground/60">
+          <p className="text-xs text-foreground/60" suppressHydrationWarning>
             {labels.status}:{" "}
             <span className={state === "connected" ? "text-primary" : "text-red-400"}>
               {state === "connected" ? labels.live : state === "connecting" ? labels.connecting : labels.offline}
             </span>{" "}
-            - {labels.updated} {new Date(localizedMetrics.updatedAt).toLocaleTimeString()}
+            - {labels.updated} {updatedLabel}
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
