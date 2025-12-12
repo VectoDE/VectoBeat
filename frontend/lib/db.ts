@@ -2029,6 +2029,97 @@ export const getLatestBotMetricSnapshot = async () => {
   }
 }
 
+export type BotUsageTotalsRecord = {
+  totalStreams: number
+  commandsTotal: number
+  incidentsTotal: number
+  updatedAt: string | null
+}
+
+type BotUsageTotalsInput = {
+  totalStreams?: number | null
+  commandsTotal?: number | null
+  incidentsTotal?: number | null
+}
+
+const USAGE_TOTALS_KEY = "usage_totals"
+
+const mapUsageTotals = (record: any): BotUsageTotalsRecord => ({
+  totalStreams: record?.totalStreams ?? 0,
+  commandsTotal: record?.commandsTotal ?? 0,
+  incidentsTotal: record?.incidentsTotal ?? 0,
+  updatedAt: record?.updatedAt?.toISOString?.() ?? null,
+})
+
+const normalizeUsageValue = (value: number | null | undefined) => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null
+  }
+  if (value < 0) {
+    return 0
+  }
+  return Math.trunc(value)
+}
+
+export const getBotUsageTotals = async (): Promise<BotUsageTotalsRecord> => {
+  try {
+    const db = getPool()
+    if (!db) {
+      return mapUsageTotals(null)
+    }
+    const record = await db.botUsageTotals.findUnique({ where: { key: USAGE_TOTALS_KEY } })
+    return mapUsageTotals(record)
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to load bot usage totals:", error)
+    return mapUsageTotals(null)
+  }
+}
+
+export const upsertBotUsageTotals = async (input: BotUsageTotalsInput): Promise<BotUsageTotalsRecord> => {
+  try {
+    const db = getPool()
+    if (!db) {
+      return mapUsageTotals(null)
+    }
+
+    const desiredStreams = normalizeUsageValue(input.totalStreams ?? null)
+    const desiredCommands = normalizeUsageValue(input.commandsTotal ?? null)
+    const desiredIncidents = normalizeUsageValue(input.incidentsTotal ?? null)
+
+    if (desiredStreams === null && desiredCommands === null && desiredIncidents === null) {
+      const existing = await db.botUsageTotals.findUnique({ where: { key: USAGE_TOTALS_KEY } })
+      return mapUsageTotals(existing)
+    }
+
+    const updateData: Prisma.BotUsageTotalsUpdateInput = {}
+    if (desiredStreams !== null) {
+      updateData.totalStreams = desiredStreams
+    }
+    if (desiredCommands !== null) {
+      updateData.commandsTotal = desiredCommands
+    }
+    if (desiredIncidents !== null) {
+      updateData.incidentsTotal = desiredIncidents
+    }
+
+    const record = await db.botUsageTotals.upsert({
+      where: { key: USAGE_TOTALS_KEY },
+      update: updateData,
+      create: {
+        key: USAGE_TOTALS_KEY,
+        totalStreams: desiredStreams ?? 0,
+        commandsTotal: desiredCommands ?? 0,
+        incidentsTotal: desiredIncidents ?? 0,
+      },
+    })
+
+    return mapUsageTotals(record)
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to upsert bot usage totals:", error)
+    return mapUsageTotals(null)
+  }
+}
+
 type BotActivityEventInput = {
   type: string
   name?: string | null
@@ -5077,6 +5168,40 @@ export const listForumThreads = async (categorySlug?: string): Promise<ForumThre
   } catch (error) {
     logDbError("[VectoBeat] Failed to list forum threads:", error)
     return []
+  }
+}
+
+export const updateForumThreadStatus = async (threadId: string, status: string): Promise<ForumThreadRecord | null> => {
+  const normalizedStatus = normalizeInput(status ?? "", 32)
+  if (!normalizedStatus) {
+    return null
+  }
+  try {
+    const db = getPool()
+    if (!db) return null
+    const updated = await db.forumThread.update({
+      where: { id: threadId },
+      data: { status: normalizedStatus },
+      include: { category: { select: { slug: true, title: true } } },
+    })
+    return {
+      id: updated.id,
+      categoryId: updated.categoryId,
+      categorySlug: updated.category?.slug ?? null,
+      categoryTitle: updated.category?.title ?? null,
+      title: updated.title,
+      summary: updated.summary ?? null,
+      status: updated.status,
+      authorId: updated.authorId ?? null,
+      authorName: updated.authorName ?? null,
+      tags: (updated.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      replies: updated.replies,
+      lastReplyAt: updated.lastReplyAt ? updated.lastReplyAt.toISOString() : null,
+      createdAt: updated.createdAt.toISOString(),
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to update forum thread status:", error)
+    return null
   }
 }
 

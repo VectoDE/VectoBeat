@@ -12,6 +12,7 @@ import {
   listForumEvents,
   type ForumStats,
   type ForumEventRecord,
+  getBotUsageTotals,
 } from "./db"
 import { getBotStatus } from "./bot-status"
 
@@ -23,6 +24,8 @@ type BaseTotals = {
   serverCount: number
   activeUsers: number
   totalStreams: number
+  commandsTotal: number
+  incidentsTotal: number
   uptimeSeconds: number
   uptimePercent: number
   responseTimeMs: number
@@ -54,6 +57,7 @@ export type HomeMetrics = {
     serverCount: number
     activeUsers: number
     totalStreams: number
+    commandsTotal: number
     uptimeValue: number
     uptimeLabel: string
     responseTimeMs: number
@@ -148,12 +152,13 @@ const formatUptimeLabel = (value: number) => {
 }
 
 const buildBaseMetrics = async (): Promise<BaseMetrics> => {
-  const [postsResult, botStatusResult, trafficResult, forumStatsResult, forumEventsResult] = await Promise.allSettled([
+  const [postsResult, botStatusResult, trafficResult, forumStatsResult, forumEventsResult, usageTotalsResult] = await Promise.allSettled([
     getBlogPosts(),
     getBotStatus(),
     getSiteTrafficSummary(),
     getForumStats(),
-    listForumEvents(25, { sinceHours: 72 }),
+    listForumEvents(100), // full span so Recent Forum Events always have data
+    getBotUsageTotals(),
   ])
   const posts = postsResult.status === "fulfilled" ? postsResult.value : []
   const botStatus = botStatusResult.status === "fulfilled" ? botStatusResult.value : null
@@ -194,6 +199,10 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     const history = await getBotMetricHistory(1)
     fallbackSnapshot = history.at(-1) ?? null
   }
+  const usageTotals =
+    usageTotalsResult.status === "fulfilled"
+      ? usageTotalsResult.value
+      : { totalStreams: 0, commandsTotal: 0, incidentsTotal: 0, updatedAt: null }
   const totalViews = posts.reduce((sum, post) => sum + (post.views ?? 0), 0)
   const featuredPosts = posts.filter((post) => post.featured).length
   const totalPosts = posts.length
@@ -237,9 +246,14 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       fallbackSnapshot?.activeListeners,
   )
   const activeUsers = normalizeNumber(botStatus?.listenerPeak24h ?? botStatus?.listeners24h ?? rawCurrentListeners)
-  const totalStreams = normalizeNumber(
-    botStatus?.totalStreams ?? botStatus?.streams ?? botStatus?.streamCount ?? fallbackSnapshot?.totalStreams,
-  )
+  const totalStreams =
+    typeof usageTotals.totalStreams === "number"
+      ? usageTotals.totalStreams
+      : normalizeNumber(
+          botStatus?.totalStreams ?? botStatus?.streams ?? botStatus?.streamCount ?? fallbackSnapshot?.totalStreams,
+        )
+  const commandsTotal = normalizeNumber(usageTotals.commandsTotal ?? 0)
+  const incidentsTotal = normalizeNumber(usageTotals.incidentsTotal ?? 0)
   const uptimeSeconds = normalizeNumber(botStatus?.uptimeSeconds ?? botStatus?.uptime ?? fallbackSnapshot?.uptimePercent)
   const uptimePercentTelemetry = normalizeNumber(
     botStatus?.uptimePercent ?? botStatus?.uptimePercentage ?? botStatus?.uptime_percent,
@@ -295,6 +309,8 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       serverCount,
       activeUsers,
       totalStreams,
+      commandsTotal,
+      incidentsTotal,
       uptimeSeconds,
       uptimePercent: uptimePercentBase,
       responseTimeMs,
@@ -415,6 +431,16 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       change: totals.activeUsers ? "Bot telemetry" : "No telemetry",
     },
     {
+      label: "Commands Executed",
+      value: shortNumber(totals.commandsTotal),
+      change: totals.commandsTotal ? "Lifetime slash/button events" : "No telemetry",
+    },
+    {
+      label: "Streams Processed",
+      value: shortNumber(totals.totalStreams),
+      change: totals.totalStreams ? "Playback telemetry" : "No telemetry",
+    },
+    {
       label: "Uptime",
       value: uptimeLabel,
       change: totals.responseTimeMs ? `Latency ${avgResponseLabel}` : "No telemetry",
@@ -495,7 +521,12 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
 
   const aggregated = !hasDbHosts || !hasDbPaths ? aggregateReferrers() : null
 
-  const referrerHosts: Array<{ host: string; views: number }> = []
+  const referrerHosts: Array<{ host: string; views: number }> = hasDbHosts
+    ? (traffic as { referrerHosts: Array<{ host: string; views: number }> }).referrerHosts.map((entry) => ({
+        host: entry.host || "direct",
+        views: entry.views,
+      }))
+    : aggregated?.hosts ?? []
 
   const referrerPaths = hasDbPaths
     ? (traffic as { referrerPaths: Array<{ host: string; path: string; views: number }> }).referrerPaths.map((entry) => ({
@@ -538,6 +569,12 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       value: shortNumber(totals.serverCount),
       change: totals.activeUsers ? `${shortNumber(totals.activeUsers)} listeners` : "Bot telemetry pending",
       detail: "Reported guilds",
+    },
+    {
+      label: "Commands Processed",
+      value: shortNumber(totals.commandsTotal),
+      change: totals.commandsTotal ? "Lifetime slash/button events" : "No telemetry yet",
+      detail: totals.commandsTotal ? "DB-backed counter" : "Usage API pending",
     },
     {
       label: "Streams Processed",

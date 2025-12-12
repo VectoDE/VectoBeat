@@ -174,6 +174,8 @@ status_event_token = (
     or status_key
     or os.getenv("BOT_STATUS_API_KEY")
 )
+status_usage = os.getenv("STATUS_API_USAGE_URL")
+status_usage_token = os.getenv("STATUS_API_USAGE_SECRET")
 status_control_start_cmd = os.getenv("STATUS_CONTROL_START_CMD")
 status_control_stop_cmd = os.getenv("STATUS_CONTROL_STOP_CMD")
 status_control_reload_cmd = os.getenv("STATUS_CONTROL_RELOAD_CMD")
@@ -190,6 +192,8 @@ if (
     or status_push_interval
     or status_event
     or status_event_token
+    or status_usage
+    or status_usage_token
     or status_control_start_cmd
     or status_control_stop_cmd
     or status_control_reload_cmd
@@ -208,6 +212,8 @@ if (
         push_interval_seconds=int(status_push_interval) if status_push_interval else CONFIG.status_api.push_interval_seconds,
         event_endpoint=status_event or CONFIG.status_api.event_endpoint,
         event_token=status_event_token or status_push_token or status_key or CONFIG.status_api.event_token,
+        usage_endpoint=status_usage or CONFIG.status_api.usage_endpoint,
+        usage_token=status_usage_token or status_event_token or status_push_token or status_key or CONFIG.status_api.usage_token,
         control_start_cmd=status_control_start_cmd or CONFIG.status_api.control_start_cmd,
         control_stop_cmd=status_control_stop_cmd or CONFIG.status_api.control_stop_cmd,
         control_reload_cmd=status_control_reload_cmd or CONFIG.status_api.control_reload_cmd,

@@ -43,6 +43,7 @@ export function ForumThreadBrowser({
   discordId,
   canPost,
   canComment,
+  canModerate,
   categories,
   initialThreads,
   initialPosts,
@@ -51,6 +52,7 @@ export function ForumThreadBrowser({
   discordId: string | null
   canPost: boolean
   canComment: boolean
+  canModerate: boolean
   categories: Category[]
   initialThreads: Thread[]
   initialPosts: Post[]
@@ -63,6 +65,9 @@ export function ForumThreadBrowser({
   const [loadingThreads, setLoadingThreads] = useState(false)
   const [loadingPosts, setLoadingPosts] = useState(false)
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({})
+  const [moderationMessage, setModerationMessage] = useState<string | null>(null)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const moderatorStatuses = ["open", "pinned", "archived", "locked", "resolved"]
 
   const threadsByCategory = useMemo(() => {
     const grouped: Record<string, Thread[]> = {}
@@ -131,12 +136,43 @@ export function ForumThreadBrowser({
   const safeCategorySlug = currentThread?.categorySlug ? safeSegment(currentThread.categorySlug) : ""
   const safeThreadId = currentThread?.id ? safeSegment(currentThread.id) : ""
   const threadHref = safeCategorySlug && safeThreadId ? `/forum/${safeCategorySlug}/${safeThreadId}` : "/forum"
+  const currentStatus = (currentThread?.status || "open").toLowerCase()
 
   const addReaction = (postId: string, emoji: string) => {
     setReactionCounts((prev) => {
       const key = `${postId}:${emoji}`
       return { ...prev, [key]: (prev[key] ?? 0) + 1 }
     })
+  }
+
+  const handleStatusChange = async (nextStatus: string) => {
+    if (!canModerate || !discordId || !currentThread?.id) {
+      return
+    }
+    setStatusUpdating(true)
+    setModerationMessage(null)
+    try {
+      const response = await fetch("/api/forum/threads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discordId, threadId: currentThread.id, status: nextStatus }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload?.error || "update_failed")
+      }
+      const updatedStatus = typeof payload.thread?.status === "string" ? payload.thread.status : nextStatus
+      setThreads((prev) =>
+        prev.map((thread) => (thread.id === currentThread.id ? { ...thread, status: updatedStatus } : thread)),
+      )
+      setModerationMessage("Status updated")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "update_failed"
+      setModerationMessage(message)
+    } finally {
+      setStatusUpdating(false)
+      setTimeout(() => setModerationMessage(null), 2500)
+    }
   }
 
   return (
@@ -197,24 +233,48 @@ export function ForumThreadBrowser({
       <div className="rounded-2xl border border-border/50 bg-card/40 p-4 space-y-4">
         {currentThread ? (
           <>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/60">{currentThread.categoryTitle || "Thread"}</p>
                 <h3 className="text-xl font-semibold text-foreground">{currentThread.title}</h3>
                 {currentThread.summary ? <p className="text-sm text-foreground/70">{currentThread.summary}</p> : null}
                 {currentThread.categorySlug ? (
                   <Link href={threadHref} className="text-xs text-primary hover:text-primary/80 inline-flex items-center gap-1 mt-2">
-                    Open full view →
+                    Open full view ?
                   </Link>
                 ) : null}
               </div>
-              <div className="flex items-center gap-2">
-                {canPost ? (
-                  <ForumTopicStarter discordId={discordId} threadId={currentThread.id} />
-                ) : null}
-                <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-3 py-1 border border-emerald-500/30">
-                  {currentThread.status || "Open"}
-                </span>
+              <div className="flex items-center gap-3 flex-wrap justify-end">
+                {canPost ? <ForumTopicStarter discordId={discordId} threadId={currentThread.id} /> : null}
+                {canModerate && discordId ? (
+                  <div className="flex flex-col items-end">
+                    <label className="text-[10px] uppercase tracking-[0.25em] text-foreground/50">Thread status</label>
+                    <select
+                      value={currentStatus}
+                      onChange={(event) => handleStatusChange(event.target.value)}
+                      disabled={statusUpdating}
+                      className="mt-1 rounded-lg border border-border/60 bg-background px-2 py-1 text-xs text-foreground/80"
+                    >
+                      {moderatorStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </option>
+                      ))}
+                      {!moderatorStatuses.includes(currentStatus) ? (
+                        <option value={currentStatus}>{currentStatus}</option>
+                      ) : null}
+                    </select>
+                    {moderationMessage ? (
+                      <span className="text-[10px] text-primary mt-1">{moderationMessage}</span>
+                    ) : (
+                      <span className="text-[10px] text-foreground/40 mt-1">Visible to admins/operators</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-3 py-1 border border-emerald-500/30">
+                    {currentThread.status || "Open"}
+                  </span>
+                )}
               </div>
             </div>
             <div className="space-y-3">
@@ -261,7 +321,9 @@ export function ForumThreadBrowser({
               />
             ) : (
               <div className="rounded-lg border border-border/60 bg-card/30 px-3 py-2 text-xs text-foreground/60">
-                Sign in to comment.
+                {discordId
+                  ? "Posting is limited to Pro+ members and the VectoBeat team. Upgrade to participate."
+                  : "Sign in with Discord to unlock Pro+ posting access."}
               </div>
             )}
           </>

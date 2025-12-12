@@ -691,6 +691,15 @@ class MusicControls(commands.Cog):
 
         requester = inter.user if isinstance(inter.user, discord.abc.User) else None
         tracks = self._tag_tracks(results.tracks, requester)
+        is_playlist = results.load_type == "PLAYLIST_LOADED"
+        playlist_name = None
+        if is_playlist:
+            playlist_info = getattr(results, "playlist_info", None)
+            playlist_name = getattr(playlist_info, "name", None)
+            selected_idx = getattr(playlist_info, "selectedTrack", -1)
+            if isinstance(selected_idx, int) and 0 <= selected_idx < len(tracks):
+                # Align order to the playlist selection while keeping the original sequence intact.
+                tracks = tracks[selected_idx:] + tracks[:selected_idx]
 
         policy_hint: Optional[str] = None
         original_track_count = len(tracks)
@@ -759,6 +768,8 @@ class MusicControls(commands.Cog):
 
         if len(selected) > 1:
             embed.add_field(name="Queue", value=f"Added **{len(selected)}** track(s).", inline=False)
+        if is_playlist and playlist_name:
+            embed.add_field(name="Playlist", value=playlist_name, inline=True)
         embed.add_field(name="Up Next", value=self._up_next_block(player), inline=False)
         if policy_hint:
             embed.add_field(name="Source Policy", value=policy_hint, inline=False)
@@ -969,10 +980,10 @@ class MusicControls(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
         self._log_dj_action(inter, "loop", details=mode.name)
 
-    @app_commands.command(name="jump", description="Jump within the current track (mm:ss).")
-    @app_commands.describe(position="Timestamp to jump to, e.g. 1:30")
-    async def jump(self, inter: discord.Interaction, position: str):
-        """Jump to a specific timestamp within the current track."""
+    @app_commands.command(name="timeshift", description="Shift the current track to a specific timestamp (mm:ss).")
+    @app_commands.describe(position="Timestamp to move to, e.g. 1:30")
+    async def timeshift(self, inter: discord.Interaction, position: str):
+        """Move to a timestamp within the current track without restarting playback."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if (error := self._require_dj(inter)) is not None:
             return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
@@ -991,14 +1002,14 @@ class MusicControls(commands.Cog):
 
         if target >= player.current.duration:
             return await inter.response.send_message(
-                embed=factory.warning("Jump position is beyond track duration."),
+                embed=factory.warning("Shift position is beyond track duration."),
                 ephemeral=True,
             )
 
         await player.seek(target)
-        embed = factory.primary("⏩ Jumped", f"Jumped to **{position}**")
+        embed = factory.primary("Timeshifted", f"Moved to **{position}**")
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "jump", details=position)
+        self._log_dj_action(inter, "timeshift", details=position)
 
     @app_commands.command(name="replay", description="Restart the current track from the beginning.")
     async def replay(self, inter: discord.Interaction):

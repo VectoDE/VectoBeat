@@ -2,8 +2,6 @@ import type { ComponentType } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import ReactMarkdown from "react-markdown"
-import Navigation from "@/components/navigation"
-import Footer from "@/components/footer"
 import {
   Youtube,
   Instagram,
@@ -19,19 +17,9 @@ import {
   SquareKanban,
   Link as LinkIcon,
 } from "lucide-react"
-
-const baseUrl =
-  process.env.NEXT_PUBLIC_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
-
-export { metadata } from "./metadata"
-
-type LinkedAccount = {
-  id: string
-  provider: string
-  handle: string
-  metadata?: Record<string, unknown> | null
-}
+import Navigation from "@/components/navigation"
+import Footer from "@/components/footer"
+import { buildProfilePageUrl, buildProfileSeoDescription, fetchPublicProfile, type LinkedAccount } from "./profile-utils"
 
 const providerMap: Record<
   string,
@@ -113,25 +101,9 @@ const resolveAccountUrl = (account: LinkedAccount) => {
   return null
 }
 
-const fetchProfile = async (slug: string) => {
-  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/api/profile/${slug}`, {
-    cache: "no-store",
-  })
-
-  if (response.status === 403) {
-    return { restricted: true }
-  }
-
-  if (!response.ok) {
-    return null
-  }
-
-  return response.json()
-}
-
 export default async function PublicProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const profile = await fetchProfile(slug)
+  const profile = await fetchPublicProfile(slug)
   if (!profile) {
     notFound()
   }
@@ -168,7 +140,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     )
   }
 
-  const profileUrl = `${baseUrl.replace(/\/$/, "")}/profile/${profile.handle}`
+  const profileUrl = buildProfilePageUrl(profile.handle)
 
   const totalServers = profile.totalGuildCount ?? profile.membershipCount ?? 0
   const botInstallations = profile.botGuildCount ?? profile.activeGuildCount ?? 0
@@ -194,10 +166,45 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const linkedWithUrls = linkedAccounts
     .map((account) => ({ account, href: resolveAccountUrl(account) }))
     .filter((item) => Boolean(item.href)) as Array<{ account: LinkedAccount; href: string }>
+  const seoDescription = buildProfileSeoDescription(profile)
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: profile.displayName,
+    alternateName: `@${profile.handle}`,
+    url: profileUrl,
+    description: seoDescription,
+    image: profile.avatarUrl || undefined,
+    jobTitle: profile.headline || undefined,
+    homeLocation: profile.location ? { "@type": "Place", name: profile.location } : undefined,
+    sameAs: linkedWithUrls.map(({ href }) => href),
+    interactionStatistic: [
+      botInstallations
+        ? {
+            "@type": "InteractionCounter",
+            interactionType: "https://schema.org/InstallAction",
+            userInteractionCount: botInstallations,
+          }
+        : null,
+      totalServers
+        ? {
+            "@type": "InteractionCounter",
+            interactionType: "https://schema.org/JoinAction",
+            userInteractionCount: totalServers,
+          }
+        : null,
+    ].filter((stat): stat is Record<string, unknown> => Boolean(stat)),
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        className="sr-only"
+        aria-hidden="true"
+      />
       <main className="flex-1 w-full px-4 py-24">
         <div className="max-w-3xl mx-auto space-y-8">
           <div className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl p-8 space-y-6">

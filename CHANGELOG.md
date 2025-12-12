@@ -6,13 +6,29 @@ We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format an
 ## [2.2.1] - 2025-12-09
 
 ### Highlights
-- Playback slash command `/jump` replaces `/seek` with the same in-track positioning behaviour and updated user-facing responses/telemetry.
-- Version metadata aligned to 2.2.1 across the frontend package, Stripe `appInfo`, and webhook runtime identifiers; docs updated to reflect the rename.
+- SEO overhaul across profiles, blog, and forum: dynamic metadata per profile, structured data for forum categories/threads, fully English blog copy, and richer OpenGraph/JSON-LD.
+- UX polish: unified hover styles on `/stats`, hidden scrollbars in Control Panel lists, mobile nav now mirrors desktop with profile dropdown.
+- Bot playlist handling upgraded: `/play` now loads full playlists in order (respecting selected track) and queues them sequentially.
+
+### Added
+- Dynamic profile SEO with per-creator metadata, keywords, and Person JSON-LD; profile pages emit structured stats.
+- Forum structured data (collection, breadcrumb, discussion postings) and enriched keywords for category/thread pages.
+- New stats summary card for live voice connections and “Top Referrer Paths” (later removed) plus referrer host ingestion.
 
 ### Changed
-- Renamed `/seek` to `/jump` in the bot command handler, embeds, and analytics logging.
-- Bumped frontend package version to `2.2.1` and refreshed Stripe app info/webhook version strings.
-- Updated README and command reference entries to surface the new command name.
+- Blog landing copy fully translated to English; removed “SEO” wording from UI text.
+- Forum metadata/title/keywords rewritten for stronger search targeting; forum pages switched to English strings and telemetry feed widened.
+- `/stats` cards now share the same gradient/hover styling as top metrics.
+- Control Panel lists (servers installed/needed, subscriptions) and container scroll areas hide native scrollbars while retaining scroll.
+- Home metrics fetch retries multiple local origins to avoid ECONNREFUSED during startup.
+- Changelog summary grid fits five cards on one row.
+- Home page live metrics omit “Commands Executed”/“Streams Processed” while keeping them in the API.
+
+### Fixed
+- Recent Forum Events now load reliably by fetching more history; location tracking prefers country codes to avoid “unknown.”
+- Playlist ordering for playlist links on `/play` preserves source order and surfaces playlist info in embeds.
+- Blog/profile metadata rendering errors resolved (duplicate exports, missing helper module).
+- Control Panel scrollbars removed/hidden in Overview and Settings while keeping scroll functionality.
 
 ## [2.2.0] - 2025-12-08
 
@@ -217,7 +233,7 @@ We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format an
   - Crossfade and gapless playback ship with tunable fade steps and base volume controls in `config.yml` (`crossfade.*`, `52cbbd9`).
   - Rich now-playing embeds add requester metadata, progress bars, and permission audits; Lavalink integration records requester IDs for telemetry (`src/commands/music_controls.py`, `4f95ad2`).
   - DJ permissions (`/dj add-role|remove-role|show|clear`) protect critical queue operations (`src/commands/dj_commands.py`).
-  - Core playback/voice commands from the prototype (`/play`, `/pause`, `/resume`, `/jump`, `/skip`, `/queue`, `/nowplaying`, `/volume`, `/connect`, `/disconnect`, `/voiceinfo`) anchor the UX (`src/commands/music_controls.py`, `src/commands/connection_commands.py`, `36e3c3e`).
+  - Core playback/voice commands from the prototype (`/play`, `/pause`, `/resume`, `/timeshift`, `/skip`, `/queue`, `/nowplaying`, `/volume`, `/connect`, `/disconnect`, `/voiceinfo`) anchor the UX (`src/commands/music_controls.py`, `src/commands/connection_commands.py`, `36e3c3e`).
 - **Infrastructure & Onboarding**
 - Production-grade Docker setup (multi-stage `Dockerfile`, `docker-compose.yml`, `docker-compose.local.yml`) plus Lavalink installation guide streamline deployments (`docs/INSTALL_LAVALINK.md`, `3b48611`).
   - GitHub Actions for build, deploy, docs, security, and releases create a complete automation pipeline (`.github/workflows/*.yml`, `3b48611`).

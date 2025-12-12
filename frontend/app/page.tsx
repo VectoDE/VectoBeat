@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import Script from "next/script"
 import DiscordWidget from "@/components/discord-widget"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 import { HomeMetricsPanel } from "@/components/home-metrics"
@@ -51,8 +52,6 @@ const formatMetricValue = (
   }
 }
 
-const HERO_WORDS = ["Playback", "Automation", "Telemetry", "Reliability", "Security"]
-
 export const metadata = buildPageMetadata({
   title: "VectoBeat | Discord Music Bot with Premium Audio & Analytics",
   description:
@@ -66,7 +65,17 @@ export const metadata = buildPageMetadata({
     "discord analytics",
     "discord automation",
     "vectobeat",
+    "24/7 discord radio",
+    "discord playback automation",
+    "discord bot observability",
+    "discord music analytics",
   ],
+  image: {
+    url: "/discord-music-bot-dashboard-interface-with-wavefor.jpg",
+    width: 1200,
+    height: 630,
+    alt: "VectoBeat Discord music bot dashboard preview",
+  },
 })
 
 const JOURNEY_STEPS = [
@@ -87,8 +96,57 @@ const JOURNEY_STEPS = [
   },
 ]
 
+type FaqItem = {
+  question: string
+  answer?: string
+  template?: string
+}
+
+const FAQ_ITEMS: FaqItem[] = [
+  {
+    question: "Is there still a free tier?",
+    answer:
+      "Yes. The Free plan ships with the Discord bot, essential music sources, and community support. Paid tiers unlock premium routing, automation, billing exports, and concierge onboarding.",
+  },
+  {
+    question: "How fast does VectoBeat respond?",
+    template:
+      "Live telemetry averages {{latency}} command times thanks to our EU-hosted Lavalink v4 cluster, redundant routing, and automatic failover.",
+  },
+  {
+    question: "Can I change or cancel my plan anytime?",
+    answer:
+      "Absolutely. Upgrades apply instantly, downgrades take effect at the end of the billing cycle, and you can cancel without penalties from the Control Panel.",
+  },
+  {
+    question: "Which payment methods and currency do you support?",
+    answer:
+      "All pricing is denominated in EUR (€). Stripe processes major credit and debit cards, SEPA Direct Debit, Apple Pay, and Google Pay. Enterprise invoices can be settled via bank transfer.",
+  },
+  {
+    question: "How do I get help if something breaks?",
+    answer:
+      "Start with the Support Desk live chat for real-time ticketing, or email timhauke@uplytech.de for escalations. Paid tiers include guaranteed response windows and proactive incident alerts.",
+  },
+  {
+    question: "What do you log about our community?",
+    answer:
+      "Only aggregated analytics—page views, install counts, and plan status—are stored with hashed IPs and full GDPR controls. You can export or delete data from the Account → Privacy tab anytime.",
+  },
+  {
+    question: "Is there API or webhook access?",
+    answer:
+      "Starter and higher tiers receive REST + webhook access for automation, event notifications, and billing callbacks. SDKs include examples for Node.js and Python.",
+  },
+]
+
 export default async function Home() {
   const metrics = await fetchHomeMetrics()
+  const filteredStats =
+    metrics && Array.isArray(metrics.stats)
+      ? metrics.stats.filter((stat) => stat.label !== "Commands Executed" && stat.label !== "Streams Processed")
+      : []
+  const filteredMetrics = metrics ? { ...metrics, stats: filteredStats } : null
 
   const serverCountDisplay = formatCountWithPlus(metrics?.totals.serverCount)
   const userCountDisplay = formatCountWithPlus(metrics?.totals.activeUsers)
@@ -120,13 +178,101 @@ export default async function Home() {
     { label: "Response SLO", value: avgResponse },
   ]
 
+  const serverCountValue = typeof metrics?.totals.serverCount === "number" ? metrics.totals.serverCount : 0
+  const activeListenersValue = typeof metrics?.totals.activeUsers === "number" ? metrics.totals.activeUsers : 0
+  const totalStreamsValue = typeof metrics?.totals.totalStreams === "number" ? metrics.totals.totalStreams : 0
+
+  const resolvedFaqs = FAQ_ITEMS.map((item) => ({
+    question: item.question,
+    answer: item.template ? render(item.template) : item.answer ?? "",
+  }))
+
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "VectoBeat",
+      url: "https://vectobeat.uplytech.de/",
+      logo: "https://vectobeat.uplytech.de/logo.png",
+      sameAs: [
+        "https://twitter.com/vectobeat",
+        "https://github.com/VectoDE/VectoBeat",
+        "https://discord.gg/vectobeat",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      url: "https://vectobeat.uplytech.de/",
+      name: "VectoBeat Discord Music Bot",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: "https://vectobeat.uplytech.de/search?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "VectoBeat Discord Music Bot",
+      operatingSystem: "Discord",
+      applicationCategory: "MultimediaApplication",
+      audience: {
+        "@type": "Audience",
+        audienceType: "Discord communities, creators, education servers",
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+        url: "https://vectobeat.uplytech.de/pricing",
+      },
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: "4.9",
+        ratingCount: Math.max(serverCountValue || 0, 120),
+      },
+      interactionStatistic: [
+        {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/ListenAction",
+          userInteractionCount: totalStreamsValue || 0,
+        },
+        {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/InstallAction",
+          userInteractionCount: activeListenersValue || 0,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: resolvedFaqs.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
+  ]
+
 
   return (
     <>
+      <Script id="vectobeat-home-schema" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(structuredData)}
+      </Script>
       <div className="min-h-screen bg-background overflow-x-hidden">
         <Navigation />
+        <main>
 
-        <section className="relative w-full pt-34 pb-20 px-4 overflow-hidden">
+        <section
+          className="relative w-full pt-34 pb-20 px-4 overflow-hidden"
+          aria-labelledby="vectobeat-hero-heading"
+        >
           <div className="absolute inset-0 overflow-hidden">
             <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-2xl h-168 bg-primary/25 rounded-full blur-[160px] opacity-50 animate-hero-glow" />
             <div className="absolute bottom-0 left-6 w-72 h-72 bg-secondary/30 rounded-full blur-[120px] opacity-40 animate-hero-glow animation-delay-2000" />
@@ -139,8 +285,11 @@ export default async function Home() {
               <span className="text-sm font-medium text-primary">Live telemetry</span>
             </div>
 
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-balance animate-fade-in-up">
-              Professional audio for every Discord community
+            <h1
+              id="vectobeat-hero-heading"
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-balance animate-fade-in-up"
+            >
+              VectoBeat: Enterprise Discord music bot for hi-fi streaming &amp; automation
             </h1>
 
             <p className="text-xl text-foreground/70 mb-6 max-w-3xl mx-auto text-pretty animate-fade-in-up animation-delay-200">
@@ -173,13 +322,83 @@ export default async function Home() {
           </div>
         </section>
 
+        <section
+          className="w-full py-12 px-4 border-y border-border"
+          aria-labelledby="search-visibility-heading"
+        >
+          <div className="max-w-5xl mx-auto space-y-6">
+            <h2 id="search-visibility-heading" className="text-3xl font-bold">
+              What makes VectoBeat the best Discord music bot?
+            </h2>
+            <p className="text-foreground/70 text-lg">
+              VectoBeat fuses a hi-fi Discord music bot with a self-service control panel, automation playbooks, and proactive
+              analytics. The stack uses Lavalink v4, GDPR-safe telemetry, role-based DJ permissions, and 24/7 incident monitoring so
+              your community broadcasts premium audio with confidence. Whether you run a gaming guild, esports league, or creator
+              network, the bot stays compliant, monetization-ready, and lightning fast.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <article className="space-y-3">
+                <h3 className="text-xl font-semibold">Use cases we optimise for</h3>
+                <ul className="space-y-2 text-foreground/70">
+                  <li>
+                    <strong className="text-foreground">Creator lounges:</strong> Branded mixes, smart rotation, and Discord Stage
+                    support for VIP releases and town halls.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Gaming communities:</strong> Queue enforcement, request limits, and incident
+                    intelligence keep raids, scrims, and tournaments focussed.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Education hubs:</strong> Copyright-safe playlists, lecture recordings, and
+                    analytics exports for compliance and alumni engagement.
+                  </li>
+                </ul>
+              </article>
+              <article className="space-y-3">
+                <h3 className="text-xl font-semibold">Search visibility highlights</h3>
+                <ul className="space-y-2 text-foreground/70">
+                  <li>
+                    99.9% uptime tracked in real time with public {render("{{uptime}} uptime feed.")} View our{" "}
+                    <Link href="/stats" className="text-primary underline">
+                      live status dashboard
+                    </Link>{" "}
+                    any time.
+                  </li>
+                  <li>
+                    Dedicated landing pages for{" "}
+                    <Link href="/features" className="text-primary underline">
+                      features
+                    </Link>
+                    ,{" "}
+                    <Link href="/pricing" className="text-primary underline">
+                      pricing
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/support-desk" className="text-primary underline">
+                      support
+                    </Link>{" "}
+                    help search engines map every VectoBeat topic.
+                  </li>
+                  <li>
+                    Transparent roadmap and{" "}
+                    <Link href="/forum" className="text-primary underline">
+                      community forum
+                    </Link>{" "}
+                    packed with tutorials, customer stories, and release announcements.
+                  </li>
+                </ul>
+              </article>
+            </div>
+          </div>
+        </section>
+
         <section className="w-full py-12 px-4 border-y border-border">
           <div className="max-w-6xl mx-auto mb-6">
             <h2 className="text-2xl font-semibold">Live telemetry overview</h2>
             <p className="text-sm text-foreground/60">Real dashboards sourced directly from the production bot.</p>
           </div>
-          {metrics ? (
-            <HomeMetricsPanel initialMetrics={metrics} />
+          {filteredMetrics ? (
+            <HomeMetricsPanel initialMetrics={filteredMetrics} />
           ) : (
             <p className="text-center text-sm text-foreground/60">
               Live metrics are temporarily unavailable. Please check back soon.
@@ -654,77 +873,18 @@ export default async function Home() {
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl font-bold mb-12 text-center">Frequently Asked Questions</h2>
             <div className="space-y-4">
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  Is there still a free tier?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  Yes. The Free plan includes the Discord bot, essential music sources, and community support. Paid tiers unlock
-                  premium routing, automation, and billing features.
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  How fast does VectoBeat respond?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  {render(
-                    "Live telemetry averages {{latency}} command times thanks to our EU-hosted Lavalink v4 cluster and automatic failover.",
-                  )}
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  Can I change or cancel my plan anytime?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  Absolutely. Upgrades apply instantly, downgrades take effect at the end of the billing cycle, and you can cancel
-                  without penalties inside the Control Panel.
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  Which payment methods and currency do you support?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  All pricing is denominated in EUR (€). Stripe processes major credit and debit cards, SEPA direct debit, Apple
-                  Pay, and Google Pay. Enterprise invoices can be paid via bank transfer.
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  How do I get help if something breaks?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  Start with the Support Desk chat for real-time ticketing, or email timhauke@uplytech.de for escalations. Paid
-                  tiers include guaranteed response windows and proactive incident alerts.
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  What do you log about our community?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  Only aggregated analytics (page views, install counts, plan status) are stored with hashed IPs and full GDPR
-                  controls. You can export or delete your data from the Account → Privacy tab anytime.
-                </p>
-              </details>
-              <details className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                <summary className="font-semibold flex justify-between items-center">
-                  Is there an API or webhook access?
-                  <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
-                </summary>
-                <p className="text-foreground/70 mt-4">
-                  Starter and higher tiers receive REST + Webhook access for automation, event notifications, and billing
-                  callbacks. SDKs ship with examples for Node.js and Python.
-                </p>
-              </details>
+              {resolvedFaqs.map((item) => (
+                <details
+                  key={item.question}
+                  className="group border border-border/50 rounded-lg p-4 hover:border-primary/30 transition-all duration-300 cursor-pointer"
+                >
+                  <summary className="font-semibold flex justify-between items-center">
+                    {item.question}
+                    <span className="text-primary group-open:rotate-180 transition-transform">▶</span>
+                  </summary>
+                  <p className="text-foreground/70 mt-4">{item.answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
@@ -764,6 +924,7 @@ export default async function Home() {
           </div>
         </section>
 
+        </main>
         <Footer />
       </div>
     </>

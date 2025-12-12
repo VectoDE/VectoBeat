@@ -45,6 +45,6 @@ export const resolveClientLocation = (request: NextRequest & { geo?: { city?: st
       headers.get("x-appengine-country"),
   )
 
-  const parts = [city, region, country].filter(Boolean)
-  return parts.length ? parts.join(", ") : null
+  // Prioritise country code for analytics grouping, with fallbacks to region/city.
+  return country || region || city || null
 }

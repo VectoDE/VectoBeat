@@ -1,0 +1,9 @@
+CREATE TABLE `bot_usage_totals` (
+  `key` VARCHAR(64) NOT NULL,
+  `total_streams` INT NOT NULL DEFAULT 0,
+  `commands_total` INT NOT NULL DEFAULT 0,
+  `incidents_total` INT NOT NULL DEFAULT 0,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`key`)
+);

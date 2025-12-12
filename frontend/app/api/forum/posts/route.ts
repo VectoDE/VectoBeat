@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { createForumPost, getUserSubscriptions } from "@/lib/db"
+import { createForumPost, getUserSubscriptions, getUserRole } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const parseBody = async (request: NextRequest) => {
@@ -30,13 +30,16 @@ export async function POST(request: NextRequest) {
   const subs = await getUserSubscriptions(discordId)
   const tiers = subs.map((sub) => normalizeTierId(sub.tier))
   const isPro = tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+  const roleName = await getUserRole(discordId)
+  const isTeam = ["admin", "operator"].includes(roleName)
+  const hasPostingRights = isTeam || isPro
 
   const threadId = typeof body?.threadId === "string" ? body.threadId : null
   const content = typeof body?.body === "string" ? body.body : null
-  const role = typeof body?.role === "string" ? body.role : "member"
+  const requestedRole = typeof body?.role === "string" ? body.role : "member"
   const authorName = auth.user?.username || body?.authorName || "Member"
 
-  if (role === "topic" && !isPro) {
+  if (!hasPostingRights) {
     return NextResponse.json({ error: "pro_required" }, { status: 403 })
   }
 
@@ -44,12 +47,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "threadId and body required" }, { status: 400 })
   }
 
+  const storedRole = isTeam ? roleName : requestedRole
   const post = await createForumPost({
     threadId,
     body: content,
     authorId: discordId,
     authorName,
-    role,
+    role: storedRole,
   })
 
   if (!post) {

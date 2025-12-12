@@ -42,7 +42,7 @@
 | `/resume` | Resume playback. | `bot/src/commands/music_controls.py::MusicControls.resume` |
 | `/scaling evaluate` | Force an immediate scaling evaluation. | `bot/src/commands/scaling_commands.py::ScalingCommands.evaluate` |
 | `/scaling status` | Show current scaling metrics and last signal. | `bot/src/commands/scaling_commands.py::ScalingCommands.status` |
-| `/jump` | Jump within the current track (mm:ss). | `bot/src/commands/music_controls.py::MusicControls.jump` |
+| `/timeshift` | Move to a timestamp within the current track (mm:ss). | `bot/src/commands/music_controls.py::MusicControls.timeshift` |
 | `/settings collaborative` | Enable or disable collaborative queueing. | `bot/src/commands/settings_commands.py::SettingsCommands.collaborative` |
 | `/settings queue-limit` | Update the maximum queue size (respects plan limits). | `bot/src/commands/settings_commands.py::SettingsCommands.queue_limit` |
 | `/shuffle` | Shuffle the queue. | `bot/src/commands/queue_commands.py::QueueCommands.shuffle` |

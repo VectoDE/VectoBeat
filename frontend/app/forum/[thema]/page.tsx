@@ -5,6 +5,7 @@ import Footer from "@/components/footer"
 import Navigation from "@/components/navigation"
 import { ForumComposer } from "@/components/forum-actions"
 import { listForumCategories, listForumThreads } from "@/lib/db"
+import { siteUrl } from "@/lib/seo"
 import { getForumViewerContext, resolveForumParams } from "../utils"
 
 type Params = { thema: string }
@@ -41,10 +42,43 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
     const safeId = safeSegment(id)
     return safeCategorySlug && safeId ? `/forum/${safeCategorySlug}/${safeId}` : safeCategoryPath
   }
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: `${category.title} | VectoBeat Forum`,
+      description:
+        category.description ||
+        `VectoBeat community category for automation playbooks, sound design, and reliability threads in ${category.title}.`,
+      url: `${siteUrl}${safeCategoryPath}`,
+      isPartOf: `${siteUrl}/forum`,
+      about: threads.map((thread) => ({
+        "@type": "DiscussionForumPosting",
+        headline: thread.title,
+        url: `${siteUrl}${buildThreadPath(thread.id)}`,
+        about: thread.tags?.join(", "),
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Forum", item: `${siteUrl}/forum` },
+        { "@type": "ListItem", position: 3, name: category.title, item: `${siteUrl}${safeCategoryPath}` },
+      ],
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        className="sr-only"
+        aria-hidden="true"
+      />
 
       <section className="w-full px-4 pt-24 pb-10 bg-linear-to-b from-primary/5 via-background to-background">
         <div className="max-w-6xl mx-auto flex flex-col gap-4">
@@ -66,7 +100,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
                 {category.threadCount} Threads
               </span>
               <span className="rounded-full bg-slate-500/10 text-slate-200 px-3 py-1 border border-slate-500/30">
-                Pro+ can post · everyone reads and learns
+                Pro+ & team can post · everyone else learns in read-only mode
               </span>
             </div>
           </div>
@@ -128,7 +162,7 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
             </div>
 
               <div className="rounded-2xl border border-border/60 bg-card/40 p-4">
-                <h3 className="text-lg font-semibold text-foreground mb-2">Andere Themen</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">More topics</h3>
                 <div className="flex flex-wrap gap-2">
                   {categories.map((cat) => (
                     (() => {
@@ -160,7 +194,8 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
               <div className="rounded-2xl border border-border/50 bg-card/40 p-5 space-y-3">
                 <h3 className="text-lg font-semibold text-foreground">Start your own threads</h3>
                 <p className="text-sm text-foreground/60">
-                  Sign in and upgrade to Pro+ to open threads directly in {safeCategoryPath}.
+                  Sign in and upgrade to Pro+ to open threads directly in {safeCategoryPath}. Admins/operators already have posting
+                  rights.
                 </p>
                 <div className="flex items-center gap-3 text-sm">
                   <Link href="/account" className="text-primary font-semibold hover:text-primary/80">
@@ -175,8 +210,8 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
             )}
             <div className="rounded-2xl border border-border/60 bg-card/30 p-4 space-y-2 text-sm text-foreground/70">
               <p>• All readers: read-only access</p>
-              <p>• Pro+: create threads and topics</p>
-              <p>• Team: curate and moderate</p>
+              <p>• Pro+ & team: create threads and topics</p>
+              <p>• Team: curate, moderate, and step in anytime</p>
             </div>
           </div>
         </div>

@@ -73,7 +73,7 @@ export function ForumComposer({
           <h3 className="text-xl font-semibold text-foreground">Share a playbook or ask a question</h3>
         </div>
         <span className="text-xs rounded-full bg-emerald-500/10 text-emerald-200 px-3 py-1 border border-emerald-500/30">
-          Pro+ poster
+          Pro+ / Team poster
         </span>
       </div>
       <div className="grid md:grid-cols-2 gap-4">

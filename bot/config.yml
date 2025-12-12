@@ -85,6 +85,8 @@ status_api:
   push_token: ""
   event_endpoint: "http://localhost:3050/api/bot/events"
   event_token: ""
+  usage_endpoint: "http://localhost:3050/api/bot/usage"
+  usage_token: ""
 
 control_panel_api:
   enabled: true

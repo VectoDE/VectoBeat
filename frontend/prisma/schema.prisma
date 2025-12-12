@@ -78,6 +78,17 @@ model BotMetricSnapshot {
   @@map("bot_metric_snapshots")
 }
 
+model BotUsageTotals {
+  key            String   @id @default("usage_totals")
+  totalStreams   Int      @default(0) @map("total_streams")
+  commandsTotal  Int      @default(0) @map("commands_total")
+  incidentsTotal Int      @default(0) @map("incidents_total")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("bot_usage_totals")
+}
+
 model AnalyticsSnapshot {
   id        String   @id @default(uuid())
   payload   Json

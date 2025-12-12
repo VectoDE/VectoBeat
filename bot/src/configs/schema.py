@@ -122,6 +122,8 @@ class StatusAPIConfig(BaseModel):
     push_interval_seconds: int = 30
     event_endpoint: Optional[str] = None
     event_token: Optional[str] = None
+    usage_endpoint: Optional[str] = None
+    usage_token: Optional[str] = None
     control_start_cmd: Optional[str] = None
     control_stop_cmd: Optional[str] = None
     control_reload_cmd: Optional[str] = None
