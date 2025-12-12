@@ -6,6 +6,7 @@ import Footer from "@/components/footer"
 import Navigation from "@/components/navigation"
 import { ForumThreadBrowser } from "@/components/forum-thread-browser"
 import { listForumCategories, listForumPosts, listForumThreads } from "@/lib/db"
+import { siteUrl } from "@/lib/seo"
 import { getForumViewerContext } from "./utils"
 
 const SUPPORT_DESK_LINK = "/support-desk"
@@ -36,10 +37,40 @@ export default async function ForumPage() {
     : allThreads
   const initialPosts = initialThreads[0] ? await listForumPosts(initialThreads[0].id) : []
   const latestThreads = allThreads.slice(0, 6)
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: "VectoBeat Forum",
+      description:
+        "Community discussions for VectoBeat users covering Discord music automation, telemetry, reliability, and support.",
+      url: `${siteUrl}/forum`,
+      about: categories.map((cat) => ({
+        "@type": "Thing",
+        name: cat.title,
+        description: cat.description ?? `${cat.threadCount} threads in ${cat.title}`,
+        url: `${siteUrl}/forum/${cat.slug}`,
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Forum", item: `${siteUrl}/forum` },
+      ],
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        className="sr-only"
+        aria-hidden="true"
+      />
 
       <section className="relative w-full pt-28 pb-12 px-4 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
@@ -52,8 +83,8 @@ export default async function ForumPage() {
             <h1 className="text-4xl md:text-5xl font-bold">VectoBeat community hub</h1>
             <p className="text-foreground/70 text-lg">
               Share playbooks for mixes, queue automations, and reliability fixes with the VectoBeat community. Browse topics,
-              learn from the team, and post your own setups or feedback. Everyone can read; Pro+ members start threads and new
-              topics.
+              learn from the team, and post your own setups or feedback. Everyone can read; Pro+ members and VectoBeat admins/operators
+              can open threads and new topics.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
@@ -81,11 +112,11 @@ export default async function ForumPage() {
               <ul className="space-y-2 text-sm text-foreground/70">
                 <li className="flex items-center gap-2">• Topic spaces for automations, sound design, and reliability</li>
                 <li className="flex items-center gap-2">• Threads curated by the team with playbooks and fixes</li>
-                <li className="flex items-center gap-2">• Pro+ can start threads and topics; everyone can read</li>
+                <li className="flex items-center gap-2">• Pro+ & VectoBeat team post; guests & members read-only</li>
                 <li className="flex items-center gap-2">• Moderated to keep guidance VectoBeat-focused and current</li>
               </ul>
               <div className="mt-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
-                Current state: public read access, Pro+ posting, and team-moderated categories tailored to VectoBeat use cases.
+                Current state: public read access, Pro+/team posting, and team-moderated categories tailored to VectoBeat use cases.
               </div>
             </div>
           </div>
@@ -205,8 +236,8 @@ export default async function ForumPage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-primary/60">Browse & open instantly</p>
                 <h3 className="text-2xl font-semibold text-foreground">Direct access per category</h3>
                 <p className="text-sm text-foreground/60">
-                  Pick a category, jump into a thread, and follow along with the latest fixes and playbooks. Pro+ can post, everyone
-                  else reads.
+                  Pick a category, jump into a thread, and follow along with the latest fixes and playbooks. Posting stays exclusive to
+                  Pro+ members and the VectoBeat team; everyone else enjoys read-only access.
                 </p>
               </div>
               <Link href={SUPPORT_DESK_LINK} className="text-sm font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-2">
@@ -218,6 +249,7 @@ export default async function ForumPage() {
               discordId={viewer.discordId}
               canPost={viewer.canPost}
               canComment={viewer.canComment}
+              canModerate={viewer.canModerate}
               categories={categories.map((cat) => ({ slug: cat.slug, title: cat.title }))}
               initialThreads={initialThreads}
               initialPosts={initialPosts}

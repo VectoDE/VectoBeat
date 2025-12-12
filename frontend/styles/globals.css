@@ -127,10 +127,30 @@
 .muted-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scrollbar-color: transparent transparent;
 }
 
 .muted-scrollbar::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+.control-panel-root,
+.control-panel-root * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.control-panel-root::-webkit-scrollbar,
+.control-panel-root *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
 }

@@ -2,12 +2,14 @@ export const dynamic = "force-dynamic"
 
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
+import Link from "next/link"
+import Script from "next/script"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
 import { HomePlanCarousel } from "@/components/home-plan-carousel"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
-import { buildPageMetadata } from "@/lib/seo"
+import { buildPageMetadata, siteUrl } from "@/lib/seo"
 
 const formatTemplate = (template?: string, vars: Record<string, string | number> = {}) => {
   if (!template) return ""
@@ -22,8 +24,56 @@ export const metadata = buildPageMetadata({
   description:
     "Compare VectoBeat plans for Discord: premium audio streaming, automation, analytics, and support tiers for every community size.",
   path: "/pricing",
-  keywords: ["vectobeat pricing", "discord music bot pricing", "discord analytics pricing", "premium discord bot"],
+  keywords: [
+    "vectobeat pricing",
+    "discord music bot pricing",
+    "discord analytics pricing",
+    "premium discord bot",
+    "discord server monetization",
+    "discord automation pricing",
+    "lavalink v4 pricing",
+    "discord music subscription",
+  ],
+  image: {
+    url: "/discord-music-bot-dashboard-interface-with-wavefor.jpg",
+    width: 1200,
+    height: 630,
+    alt: "VectoBeat pricing dashboard with Discord music analytics",
+  },
 })
+
+const PRICING_FAQ = [
+  {
+    question: "Is there still a free tier?",
+    answer:
+      "Yes. The Free plan includes the Discord bot, essential music sources, and community support. Paid tiers unlock premium routing, automation, billing exports, and concierge onboarding.",
+  },
+  {
+    question: "How fast does VectoBeat respond?",
+    answer:
+      "Live telemetry averages {{latency}} command times thanks to our EU-hosted Lavalink v4 cluster, redundant routing, and automatic failover.",
+  },
+  {
+    question: "Can I change or cancel my plan anytime?",
+    answer:
+      "Absolutely. Upgrades apply instantly, downgrades take effect at the end of the billing cycle, and you can cancel without penalties inside the Control Panel.",
+  },
+  {
+    question: "Which payment methods and currency do you support?",
+    answer:
+      "All pricing is denominated in EUR (€). Stripe processes major credit and debit cards, SEPA Direct Debit, Apple Pay, and Google Pay. Enterprise invoices can be settled via bank transfer.",
+  },
+  {
+    question: "How do I get help if something breaks?",
+    answer:
+      "Start with the Support Desk live chat for real-time ticketing, or email timhauke@uplytech.de for escalations. Paid tiers include guaranteed response windows and proactive incident alerts.",
+  },
+  {
+    question: "Is there an API or webhook access?",
+    answer:
+      "Starter and higher tiers receive REST + webhook access for automation, event notifications, and billing callbacks. SDKs ship with examples for Node.js and Python.",
+  },
+]
 
 export default async function PricingPage() {
   const metrics = await fetchHomeMetrics()
@@ -52,9 +102,67 @@ export default async function PricingPage() {
   const pricingCurrency = (process.env.NEXT_PUBLIC_PRICING_CURRENCY || "EUR").toUpperCase()
   const formatPrice = (amount: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: pricingCurrency }).format(amount)
+  const tierEntries = Object.entries(MEMBERSHIP_TIERS)
+  const resolvedFaqs = PRICING_FAQ.map((faq) => ({
+    question: faq.question,
+    answer: render(faq.answer),
+  }))
+  const planOffers = tierEntries.map(([tierKey, tier]) => ({
+    "@type": "Offer",
+    name: `${tier.name} Plan`,
+    price: String(tier.monthlyPrice ?? 0),
+    priceCurrency: pricingCurrency,
+    description: tier.description,
+    availability: "https://schema.org/InStock",
+    url: `${siteUrl}/pricing#${tierKey}`,
+  }))
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: "VectoBeat Discord Music Bot Plans",
+      description:
+        "Premium Discord music bot subscriptions with hi-fi streaming, automation, analytics, and 24/7 incident coverage.",
+      url: `${siteUrl}/pricing`,
+      offers: planOffers,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: resolvedFaqs.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    },
+  ]
+  const comparisonRows = [
+    {
+      label: "Lossless Discord playback",
+      tiers: { free: "Basic quality", starter: "Enhanced", pro: "Lossless", growth: "Lossless", scale: "Lossless", enterprise: "Lossless + regional routing" },
+    },
+    {
+      label: "Automation toolkit & queue AI",
+      tiers: { free: "Manual", starter: "Preset flows", pro: "Full toolkit", growth: "Full toolkit", scale: "Advanced", enterprise: "Custom playbooks" },
+    },
+    {
+      label: "Analytics & exports",
+      tiers: { free: "Community stats", starter: "Guild insights", pro: "CSV/JSON export", growth: "API + exports", scale: "BI-ready", enterprise: "Custom data feeds" },
+    },
+    {
+      label: "Support coverage",
+      tiers: { free: "Community", starter: "Standard", pro: "Priority", growth: "Priority", scale: "Priority+", enterprise: "Concierge 24/7" },
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
+      <Script id="vectobeat-pricing-schema" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(structuredData)}
+      </Script>
       <Navigation />
 
       <section className="relative w-full pt-32 pb-16 px-4 border-b border-border overflow-hidden">
@@ -104,6 +212,50 @@ export default async function PricingPage() {
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-16 px-4 border-b border-border bg-card/10">
+        <div className="max-w-6xl mx-auto space-y-6">
+          <h2 className="text-3xl font-bold text-center">Feature comparison at a glance</h2>
+          <p className="text-center text-foreground/60 max-w-3xl mx-auto">
+            Scan the controls unlocked at every tier. Each column lines up with the pricing cards above so you can verify hi-fi audio,
+            automation, analytics, and support coverage in seconds.
+          </p>
+          <div className="overflow-x-auto rounded-2xl border border-border/50 bg-background/70">
+            <table className="min-w-[720px] w-full text-sm">
+              <thead className="bg-card/60">
+                <tr>
+                  <th scope="col" className="text-left px-4 py-3 font-semibold text-foreground/70">
+                    Capability
+                  </th>
+                  {tierEntries.map(([tierKey, tier]) => (
+                    <th key={tierKey} scope="col" className="px-4 py-3 text-left font-semibold text-foreground">
+                      {tier.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {comparisonRows.map((row) => (
+                  <tr key={row.label} className="border-t border-border/40">
+                    <th scope="row" className="text-left px-4 py-3 font-semibold text-foreground">
+                      {row.label}
+                    </th>
+                    {tierEntries.map(([tierKey, tier]) => {
+                      const detail = row.tiers[tierKey as keyof typeof row.tiers] ?? "—"
+                      const highlight = tier.highlighted ? "text-primary font-semibold" : "text-foreground/70"
+                      return (
+                        <td key={`${row.label}-${tierKey}`} className={`px-4 py-3 ${highlight}`}>
+                          {detail}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -257,41 +409,10 @@ export default async function PricingPage() {
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold mb-12 text-center">Frequently asked questions</h2>
           <div className="space-y-6">
-            {[
-              {
-                question: "Is there still a free tier?",
-                answer:
-                  "Yes. The Free plan includes the Discord bot, essential music sources, and community support. Paid tiers unlock premium routing, automation, and billing features.",
-              },
-              {
-                question: "How fast does VectoBeat respond?",
-                answer:
-                  "Live telemetry averages {{latency}} command times thanks to our EU-hosted Lavalink v4 cluster and automatic failover.",
-              },
-              {
-                question: "Can I change or cancel my plan anytime?",
-                answer:
-                  "Absolutely. Upgrades apply instantly, downgrades take effect at the end of the billing cycle, and you can cancel without penalties inside the Control Panel.",
-              },
-              {
-                question: "Which payment methods and currency do you support?",
-                answer:
-                  "All pricing is denominated in EUR (€). Stripe processes major credit and debit cards, SEPA direct debit, Apple Pay, and Google Pay. Enterprise invoices can be paid via bank transfer.",
-              },
-              {
-                question: "How do I get help if something breaks?",
-                answer:
-                  "Start with the Support Desk chat for real-time ticketing, or email timhauke@uplytech.de for escalations. Paid tiers include guaranteed response windows and proactive incident alerts.",
-              },
-              {
-                question: "Is there an API or webhook access?",
-                answer:
-                  "Starter and higher tiers receive REST + Webhook access for automation, event notifications, and billing callbacks. SDKs ship with examples for Node.js and Python.",
-              },
-            ].map((faq, index) => (
+            {resolvedFaqs.map((faq, index) => (
               <div key={`${faq.question}-${index}`} className="p-6 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
                 <h3 className="font-semibold text-lg mb-3">{faq.question}</h3>
-                <p className="text-foreground/70">{render(faq.answer)}</p>
+                <p className="text-foreground/70">{faq.answer}</p>
               </div>
             ))}
           </div>

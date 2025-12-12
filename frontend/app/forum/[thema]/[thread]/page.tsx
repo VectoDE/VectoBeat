@@ -6,13 +6,14 @@ import Navigation from "@/components/navigation"
 import { ForumReplyBox } from "@/components/forum-actions"
 import { ForumTopicStarter } from "@/components/forum-topic-starter"
 import { listForumCategories, listForumPosts, listForumThreads } from "@/lib/db"
+import { siteUrl } from "@/lib/seo"
 import { getForumViewerContext, resolveForumParams } from "../../utils"
 
 type Params = { thema: string; thread: string }
 
 const formatDate = (value: string) => {
   try {
-    return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
+    return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
   } catch {
     return value
   }
@@ -60,10 +61,44 @@ export default async function ForumThreadPage({ params }: { params: Promise<Para
     const safeId = safeSegment(id)
     return safeCategorySlug && safeId ? `/forum/${safeCategorySlug}/${safeId}` : safeCategoryPath
   }
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "DiscussionForumPosting",
+      headline: currentThread.title,
+      articleBody: currentThread.summary || `${currentThread.replies} replies in this VectoBeat discussion.`,
+      url: `${siteUrl}${safeThreadPath}`,
+      about: currentThread.tags?.join(", "),
+      isPartOf: `${siteUrl}${safeCategoryPath}`,
+      interactionStatistic: [
+        {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/CommentAction",
+          userInteractionCount: currentThread.replies,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Forum", item: `${siteUrl}/forum` },
+        { "@type": "ListItem", position: 3, name: category.title, item: `${siteUrl}${safeCategoryPath}` },
+        { "@type": "ListItem", position: 4, name: currentThread.title, item: `${siteUrl}${safeThreadPath}` },
+      ],
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        className="sr-only"
+        aria-hidden="true"
+      />
 
       <section className="w-full px-4 pt-24 pb-10 bg-linear-to-b from-primary/5 via-background to-background">
         <div className="max-w-6xl mx-auto space-y-3">
@@ -142,7 +177,9 @@ export default async function ForumThreadPage({ params }: { params: Promise<Para
                 </div>
               ) : (
                 <div className="rounded-lg border border-border/60 bg-card/30 px-3 py-2 text-xs text-foreground/60 mt-4">
-                  Sign in to reply.
+                  {viewer.discordId
+                    ? "Replies are limited to Pro+ members and operators/admins."
+                    : "Sign in with Discord and upgrade to Pro+ to reply."}
                 </div>
               )}
             </div>
@@ -173,7 +210,7 @@ export default async function ForumThreadPage({ params }: { params: Promise<Para
             </div>
             <div className="rounded-2xl border border-border/60 bg-card/30 p-4 text-sm text-foreground/70 space-y-2">
               <p>• Public readers see everything; replies require sign-in.</p>
-              <p>• Pro+ can start topics; the team moderates for VectoBeat quality and safety.</p>
+              <p>• Pro+ & VectoBeat team can start topics; the team moderates for VectoBeat quality and safety.</p>
               <p>• Every reply lives at /forum/{category.slug}/{currentThread.id} so you can link discussions easily.</p>
             </div>
           </aside>

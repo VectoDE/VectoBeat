@@ -1,13 +1,51 @@
 export const dynamic = "force-dynamic"
 
+export const metadata = buildPageMetadata({
+  title: "Blog | VectoBeat Guides, Release Notes & Discord Automation News",
+  description:
+    "Read VectoBeat changelogs, telemetry deep dives, and Discord music automation tips. Fresh guides connect features, pricing, and support resources.",
+  path: "/blog",
+  keywords: [
+    "vectobeat blog",
+    "discord music bot news",
+    "lavalink changelog",
+    "discord automation guides",
+    "vectobeat updates",
+  ],
+})
+
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
-import { Calendar, Clock, Eye } from "lucide-react"
+import { Calendar, Clock, Eye, BarChart3, Link2 } from "lucide-react"
 import Link from "next/link"
 import { headers } from "next/headers"
 import { getBlogPosts } from "@/lib/db"
 import { NewsletterSignup } from "@/components/newsletter-signup"
-import { buildPageMetadata } from "@/lib/seo"
+import { buildPageMetadata, siteUrl } from "@/lib/seo"
+import Script from "next/script"
+
+const BLOG_FAQ = [
+  {
+    question: "Which topics does the VectoBeat blog cover?",
+    answer:
+      "Guides about Discord music automation, release updates, telemetry best practices, and moderation playbooks?each post links back to live product context.",
+  },
+  {
+    question: "How often do you publish new articles?",
+    answer:
+      "After every major release we post a changelog plus a tactical article. Smaller fixes get quick updates, and once a quarter we package deeper lessons.",
+  },
+  {
+    question: "Can readers reuse the tutorials?",
+    answer:
+      "Absolutely. Please credit the source; most posts include automation and moderation templates you can adapt for your own servers.",
+  },
+  {
+    question: "How do I stay informed?",
+    answer:
+      "Subscribe to the newsletter at the bottom of this page or join the community forum. Every article links to the relevant feature, pricing, and support resources.",
+  },
+]
 
 const getBaseUrl = (runtimeOrigin?: string | null) => {
   const candidates = [
@@ -58,8 +96,54 @@ export default async function BlogPage() {
     console.error("[VectoBeat] Failed to load blog posts via API:", error)
   }
 
+  const totalViews = posts.reduce((sum, post) => sum + (post.views ?? 0), 0)
+  const categories = Array.from(new Set(posts.map((post) => post.category).filter((cat): cat is string => Boolean(cat))))
+  const latestPost = posts[0]
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Blog",
+      headline: "VectoBeat Blog",
+      description:
+        "Articles, changelogs, and Discord automation playbooks for hi-fi streaming, telemetry, and control panels.",
+      url: `${siteUrl}/blog`,
+      inLanguage: "en",
+      blogPost: posts.slice(0, 6).map((post) => ({
+        "@type": "BlogPosting",
+        headline: post.title,
+        datePublished: post.publishedAt,
+        author: post.author,
+        url: `${siteUrl}/blog/${post.slug}`,
+        description: post.excerpt,
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Blog", item: `${siteUrl}/blog` },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: BLOG_FAQ.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
+      <Script id="vectobeat-blog-schema" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(structuredData)}
+      </Script>
       <Navigation />
 
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden">
@@ -68,10 +152,87 @@ export default async function BlogPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">Blog</h1>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6">VectoBeat Blog &amp; Release Notes</h1>
           <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
-            Latest news, guides, and insights about VectoBeat and the world of Discord music automation.
+            Fresh news, playbooks, and VectoBeat-backed Discord music automation guides. {posts.length} posts connect release updates,
+            roadmap signals, and support insights.
           </p>
+          {latestPost ? (
+            <p className="text-sm text-foreground/60 mt-4">
+              Latest post:{" "}
+              <Link href={`/blog/${latestPost.slug}`} className="text-primary font-semibold hover:text-primary/80">
+                {latestPost.title}
+              </Link>{" "}
+              by {latestPost.author}
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="w-full py-12 px-4 border-b border-border bg-card/10">
+        <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-3">
+          <div className="p-5 rounded-2xl border border-border/40 bg-background/80">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">Posts</p>
+            <h3 className="text-3xl font-bold text-foreground">{posts.length}</h3>
+            <p className="text-sm text-foreground/60">Curated articles on observability, automation, and community insights.</p>
+          </div>
+          <div className="p-5 rounded-2xl border border-border/40 bg-background/80">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">Views</p>
+            <h3 className="text-3xl font-bold text-foreground">{totalViews.toLocaleString()}</h3>
+            <p className="text-sm text-foreground/60">Total page views across release notes and deep dives.</p>
+          </div>
+          <div className="p-5 rounded-2xl border border-border/40 bg-background/80">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">Categories</p>
+            <h3 className="text-3xl font-bold text-foreground">{categories.length || 1}</h3>
+            <p className="text-sm text-foreground/60">From changelog to community—every story links to features and support.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-16 px-4 border-b border-border bg-background/70">
+        <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-[1.2fr_0.8fr] items-center">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-primary/70 mb-3">Why read?</p>
+            <h2 className="text-3xl font-bold mb-4">VectoBeat stories anchored in telemetry</h2>
+            <p className="text-foreground/70 mb-4">
+              Each publication references real SLOs, automations, and forum threads so readers get product-proof insights—always linked
+              to <Link href="/features" className="text-primary underline">Features</Link>,{" "}
+              <Link href="/pricing" className="text-primary underline">Pricing</Link>,{" "}
+              <Link href="/support-desk" className="text-primary underline">Support</Link>, and{" "}
+              <Link href="/forum" className="text-primary underline">Forum</Link>.
+            </p>
+            <ul className="space-y-2 text-sm text-foreground/70">
+              <li className="flex items-center gap-3">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                Release breakdowns with live metrics for latency, streams, and shards.
+              </li>
+              <li className="flex items-center gap-3">
+                <Link2 className="w-5 h-5 text-primary" />
+                Crosslinks to docs, API reference, and community threads strengthen every topic cluster.
+              </li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-border/40 bg-card/30 p-6 space-y-3">
+            <p className="text-sm text-foreground/60">Popular categories</p>
+            <div className="flex flex-wrap gap-2">
+              {(categories.length ? categories : ["Changelog", "Automation"]).map((cat) => (
+                <span key={cat} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                  {cat}
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-foreground/60">
+              Want a topic covered? Open a thread in the{" "}
+              <Link href="/forum" className="text-primary underline">
+                forum
+              </Link>{" "}
+              or share feedback on the{" "}
+              <Link href="/roadmap" className="text-primary underline">
+                roadmap
+              </Link>
+              board.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -134,6 +295,26 @@ export default async function BlogPage() {
               </p>
             </div>
           )}
+        </div>
+      </section>
+
+      <section className="w-full py-20 px-4 bg-card/30 border-y border-border">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-4xl font-bold mb-12 text-center">Blog FAQs</h2>
+          <div className="space-y-4">
+            {BLOG_FAQ.map((faq) => (
+              <details
+                key={faq.question}
+                className="group border border-border/60 rounded-xl p-4 bg-background/80 transition-colors hover:border-primary/30"
+              >
+                <summary className="flex items-center justify-between cursor-pointer font-semibold text-lg">
+                  {faq.question}
+                  <span className="text-primary group-open:rotate-180 transition-transform">⌄</span>
+                </summary>
+                <p className="text-sm text-foreground/70 mt-3">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 

@@ -32,7 +32,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> | P
       title: `${currentThread.title} | ${category.title} | VectoBeat Forum`,
       description,
       path: `/forum/${categorySlug}/${threadId}`,
-      keywords: ["vectobeat forum", category.title, currentThread.title, "discord music bot community", "vectobeat tips"],
+      keywords: [
+        "vectobeat forum",
+        `${category.title} thread`,
+        currentThread.title,
+        "discord music bot community",
+        "vectobeat automation tips",
+        "vectobeat reliability fixes",
+      ],
     })
   } catch {
     return FALLBACK

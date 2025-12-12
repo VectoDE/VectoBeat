@@ -4148,7 +4148,7 @@ Target: ${dnsRecord}`}
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col muted-scrollbar">
+    <div className="control-panel-root min-h-screen bg-background flex flex-col muted-scrollbar">
       <a href={skipHref} className="skip-link">
         Skip to control panel content
       </a>
@@ -4287,7 +4287,7 @@ Target: ${dnsRecord}`}
                       <p className="font-semibold text-2xl">{guildsWithBot.length}</p>
                     </div>
                   </div>
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1 muted-scrollbar">
+                  <div className="space-y-3 max-h-60 overflow-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {guildsWithBot.map((guild) => (
                       <div key={guild.id} className="flex items-center justify-between border-b border-border/30 pb-3 last:border-b-0">
                         <div>
@@ -4317,7 +4317,7 @@ Target: ${dnsRecord}`}
                       <p className="font-semibold text-2xl">{guildsWithoutBot.length}</p>
                     </div>
                   </div>
-                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1 muted-scrollbar">
+                  <div className="space-y-3 max-h-60 overflow-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {guildsWithoutBot.map((guild) => (
                       <div key={guild.id} className="flex items-center justify-between border-b border-border/30 pb-3 last:border-b-0">
                         <div>
@@ -4431,7 +4431,7 @@ Target: ${dnsRecord}`}
                       Manage in Account
                     </Link>
                   </div>
-                  <div className="space-y-3 max-h-64 overflow-y-auto pr-1 muted-scrollbar">
+                  <div className="space-y-3 max-h-64 overflow-auto pr-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {topSubscriptions.length > 0 ? (
                       topSubscriptions.map((sub) => (
                         <div

@@ -112,12 +112,12 @@ export default async function ChangelogPage() {
         </div>
       </section>
 
-        <section className="w-full py-12 px-4 border-b border-border">
+      <section className="w-full py-12 px-4 border-b border-border">
         <div className="max-w-6xl mx-auto changelog-summary">
           {summaryCards.length ? (
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6">
               {summaryCards.map((item, i) => (
-                <div key={i} className="text-center p-4">
+                <div key={i} className="text-center p-4 rounded-xl border border-border/50 bg-card/40">
                   <div className="text-3xl font-bold text-primary mb-1">{item.value}</div>
                   <p className="text-foreground/60 text-sm">{item.label}</p>
                 </div>

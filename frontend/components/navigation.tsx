@@ -257,42 +257,93 @@ export default function Navigation() {
                   {link.label}
                 </Link>
               ))}
-              {isLoggedIn && (
-                <>
-                  <Link
-                    href="/control-panel"
-                    onClick={() => setIsOpen(false)}
-                    className="block text-foreground/70 hover:text-primary transition-colors py-2 animate-slide-in-right animation-delay-200"
-                  >
-                    Control Panel
-                  </Link>
-                  {user?.role && (user.role === "admin" || user.role === "operator") && (
-                    <Link
-                      href="/control-panel/admin"
-                      onClick={() => setIsOpen(false)}
-                      className="block text-foreground/70 hover:text-primary transition-colors py-2 animate-slide-in-right animation-delay-225"
+
+              {isLoggedIn && user ? (
+                <div className="pt-2">
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setProfileMenuOpen((prev) => !prev)}
+                      className="w-full flex items-center gap-3 px-3 py-2 border border-border/60 rounded-xl bg-card/80 hover:border-primary/60 transition-colors"
                     >
-                      Admin
-                    </Link>
-                  )}
-                  <Link
-                    href="/account"
-                    onClick={() => setIsOpen(false)}
-                    className="block text-foreground/70 hover:text-primary transition-colors py-2 animate-slide-in-right animation-delay-250"
-                  >
-                    Account
-                  </Link>
-                  <button
-                    onClick={() => {
-                      handleLogout()
-                      setIsOpen(false)
-                    }}
-                    className="w-full text-left text-destructive hover:text-destructive/80 transition-colors py-2 animate-slide-in-right animation-delay-300"
-                  >
-                    Logout
-                  </button>
-                </>
-              )}
+                      <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
+                        {user.avatarUrl ? (
+                          <Image
+                            src={user.avatarUrl}
+                            alt={user.username}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <span className="text-sm font-semibold text-primary">
+                            {user.username?.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-xs text-foreground/60">Signed in</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {user.displayName || user.username}
+                        </span>
+                      </div>
+                    </button>
+                    {profileMenuOpen && (
+                      <div className="absolute left-0 right-0 mt-2 rounded-lg border border-border/60 bg-card/95 backdrop-blur shadow-xl z-50">
+                        <div className="px-4 py-2 border-b border-border/50">
+                          <p className="text-sm font-semibold text-foreground truncate">{user.username}</p>
+                          <p className="text-xs text-foreground/60 truncate">{user.email || "No email connected"}</p>
+                        </div>
+                        <div className="py-1 text-sm text-foreground/80">
+                          {(user.role === "admin" || user.role === "operator") && (
+                            <Link
+                              href="/control-panel/admin"
+                              className="block px-4 py-2 hover:bg-primary/10 transition-colors"
+                              onClick={() => {
+                                setProfileMenuOpen(false)
+                                setIsOpen(false)
+                              }}
+                            >
+                              Admin
+                            </Link>
+                          )}
+                          <Link
+                            href="/control-panel"
+                            className="block px-4 py-2 hover:bg-primary/10 transition-colors"
+                            onClick={() => {
+                              setProfileMenuOpen(false)
+                              setIsOpen(false)
+                            }}
+                          >
+                            Control Panel
+                          </Link>
+                          <Link
+                            href="/account"
+                            className="block px-4 py-2 hover:bg-primary/10 transition-colors"
+                            onClick={() => {
+                              setProfileMenuOpen(false)
+                              setIsOpen(false)
+                            }}
+                          >
+                            Account
+                          </Link>
+                          <button
+                            onClick={() => {
+                              handleLogout()
+                              setProfileMenuOpen(false)
+                              setIsOpen(false)
+                            }}
+                            className="w-full text-left px-4 py-2 hover:bg-destructive/20 text-destructive transition-colors"
+                          >
+                            Logout
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="pt-3 border-t border-border space-y-2">
                 <a
                   href="https://github.com/VectoDE/VectoBeat"

@@ -42,6 +42,9 @@ const tooltipStyles = {
 
 const tooltipLabelStyle = { color: "#f8fafc" }
 const tooltipItemStyle = { color: "#f8fafc" }
+const CARD_HOVER =
+  "hover:bg-card/50 hover:border-primary/30 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.01]"
+const PANEL_BG = "bg-linear-to-br from-primary/10 via-background to-background"
 
 export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
   const [data, setData] = useState(initialData)
@@ -135,8 +138,12 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
 
   const topRoutes = data.topPages.slice(0, 5)
   const geoSample = data.geoDistribution.slice(0, 10)
-  const referrerHosts: { host: string; views: number }[] = []
-  const referrerPaths: { host: string; path: string; views: number }[] = []
+  const referrerHosts: { host: string; views: number }[] = Array.isArray(data.referrerHosts)
+    ? data.referrerHosts.slice(0, 6)
+    : []
+  const referrerPaths: { host: string; path: string; views: number }[] = Array.isArray(data.referrerPaths)
+    ? data.referrerPaths.slice(0, 8)
+    : []
   const botSummary = data.botSummary ?? []
   const botHistory = data.botHistory ?? []
   const forumStats = data.forumStats ?? {
@@ -163,6 +170,15 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
     views: entry.views,
   }))
   const activeVoiceConnections = Array.isArray(data.activeVoiceConnections) ? data.activeVoiceConnections : []
+  const summaryCards = [
+    ...data.summaryCards,
+    {
+      label: "Voice Connections",
+      value: formatNumber(activeVoiceConnections.length),
+      change: activeVoiceConnections.length ? "Live listeners by channel" : "No active voice channels",
+      detail: undefined,
+    },
+  ]
   return (
     <>
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden" data-animate-on-scroll="off">
@@ -195,10 +211,10 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
       <section className="w-full py-20 px-4">
         <div className="max-w-6xl mx-auto space-y-12">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {data.summaryCards.map((stat, i) => (
+            {summaryCards.map((stat, i) => (
               <div
                 key={`${stat.label}-${i}`}
-                className="p-6 rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 hover:border-primary/30 transition-all duration-300 transform hover:-translate-y-2 hover:scale-105 animate-slide-up-fade group animate-smooth-glow"
+                className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} hover:bg-card/50 hover:border-primary/30 transition-all duration-300 transform hover:-translate-y-2 hover:scale-105 animate-slide-up-fade group animate-smooth-glow`}
                 style={{ animationDelay: `${i * 75}ms` }}
               >
                 <p className="text-foreground/60 text-sm font-medium mb-2">{stat.label}</p>
@@ -218,7 +234,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
               { label: "Events (24h)", value: forumStats.events24h, detail: `${forumStats.activePosters24h} active posters` },
               { label: "Categories", value: forumStats.categories, detail: "Top categories below" },
             ].map((card) => (
-              <div key={card.label} className="p-5 rounded-lg border border-border/50 bg-card/40">
+              <div key={card.label} className={`p-5 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
                 <p className="text-sm text-foreground/60">{card.label}</p>
                 <p className="text-3xl font-bold mt-2">{formatNumber(card.value)}</p>
                 <p className="text-xs text-foreground/50 mt-1">{card.detail}</p>
@@ -227,7 +243,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="p-5 rounded-lg border border-border/50 bg-card/40">
+            <div className={`p-5 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-foreground">Top Categories</h3>
                 <span className="text-xs text-foreground/50">Forum telemetry</span>
@@ -257,7 +273,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
               </div>
             </div>
 
-            <div className="p-5 rounded-lg border border-border/50 bg-card/40">
+            <div className={`p-5 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-foreground">Recent Forum Events</h3>
                 <span className="text-xs text-foreground/50">
@@ -292,7 +308,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
 
           {activeVoiceConnections.length ? (
             <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
-              <div className="p-6 rounded-lg border border-border/50 bg-card/40">
+              <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
                 <h3 className="text-xl font-bold mb-4">Active Voice Connections</h3>
                 <div className="space-y-2">
                   {activeVoiceConnections.slice(0, 12).map((entry, index) => (
@@ -320,7 +336,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
                 {botSummary.map((stat, index) => (
                   <div
                     key={`${stat.label}-${index}`}
-                    className="p-4 rounded-xl border border-border/40 bg-card/30 hover:border-primary/30 transition-all duration-300"
+                    className={`p-4 rounded-xl border border-border/40 ${PANEL_BG} ${CARD_HOVER}`}
                     style={{ animationDelay: `${index * 60}ms` }}
                   >
                     <p className="text-xs uppercase tracking-[0.3em] text-foreground/40 mb-1">{stat.label}</p>
@@ -329,7 +345,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
                   </div>
                 ))}
               </div>
-              <div className="p-6 rounded-xl border border-border/40 bg-background/60">
+              <div className={`p-6 rounded-xl border border-border/40 ${PANEL_BG} ${CARD_HOVER}`}>
                 <h3 className="text-lg font-semibold mb-4">Bot Telemetry (last {botHistoryChart.length} samples)</h3>
                 {botHistoryChart.length ? (
                   <ResponsiveContainer width="100%" height={260}>
@@ -370,22 +386,22 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           )}
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-xl border border-border/50 bg-linear-to-br from-primary/10 via-background to-background">
+            <div className={`p-6 rounded-xl border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <p className="text-sm text-foreground/60 mb-2">Page Views (24h)</p>
               <p className="text-3xl font-bold">{formatNumber(data.pageViews24h)}</p>
               <p className="text-xs text-foreground/50">From consented site telemetry</p>
             </div>
-            <div className="p-6 rounded-xl border border-border/50 bg-linear-to-br from-secondary/10 via-background to-background">
+            <div className={`p-6 rounded-xl border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <p className="text-sm text-foreground/60 mb-2">Unique Visitors (24h)</p>
               <p className="text-3xl font-bold">{formatNumber(data.uniqueVisitors24h)}</p>
               <p className="text-xs text-foreground/50">Hashed IP + user-agent fingerprint</p>
             </div>
-            <div className="p-6 rounded-xl border border-border/50 bg-card/30">
+            <div className={`p-6 rounded-xl border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <p className="text-sm text-foreground/60 mb-2">Tracked Routes</p>
               <p className="text-3xl font-bold">{formatNumber(data.topPages.length)}</p>
               <p className="text-xs text-foreground/50">Unique paths actively monitored</p>
             </div>
-            <div className="p-6 rounded-xl border border-border/50 bg-card/30">
+            <div className={`p-6 rounded-xl border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <p className="text-sm text-foreground/60 mb-2">Data Freshness</p>
               <p className="text-3xl font-bold">{connectionState === "connected" ? "Live" : "Cached"}</p>
               <p className="text-xs text-foreground/50">Socket feed every 30 seconds</p>
@@ -397,7 +413,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
       {/* Charts Section */}
       <section className="w-full py-20 px-4 space-y-12">
         <div className="max-w-6xl mx-auto space-y-12">
-          <div className="p-6 rounded-lg border border-border/50 bg-card/30 animate-fade-in-blur">
+          <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} animate-fade-in-blur ${CARD_HOVER}`}>
             <h2 className="text-2xl font-bold mb-6 animate-slide-up-fade">Monthly Traffic Overview</h2>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.userGrowthData}>
@@ -419,7 +435,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
             </ResponsiveContainer>
           </div>
 
-          <div className="p-6 rounded-lg border border-border/50 bg-card/30 animate-fade-in-blur animation-delay-200">
+          <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} animate-fade-in-blur animation-delay-200 ${CARD_HOVER}`}>
             <h2 className="text-2xl font-bold mb-6 animate-slide-up-fade">Daily Traffic &amp; Visitors</h2>
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={data.streamsData}>
@@ -434,7 +450,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-lg border border-border/50 bg-card/30 animate-fade-in-blur animation-delay-400">
+            <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} animate-fade-in-blur animation-delay-400 ${CARD_HOVER}`}>
               <h2 className="text-2xl font-bold mb-6 animate-slide-up-fade">Top Routes (share)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -453,7 +469,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
               </ResponsiveContainer>
             </div>
 
-            <div className="p-6 rounded-lg border border-border/50 bg-card/30 animate-fade-in-blur animation-delay-400">
+            <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} animate-fade-in-blur animation-delay-400 ${CARD_HOVER}`}>
               <h2 className="text-2xl font-bold mb-6 animate-slide-up-fade">Route Performance (last 14 days)</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={data.streamsData.slice(-14)}>
@@ -473,10 +489,10 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
       <section className="w-full py-20 px-4 bg-card/20 border-y border-border">
         <div className="max-w-6xl mx-auto space-y-12">
           <div>
-            <h2 className="text-4xl font-bold mb-12 text-center">Top Routes (lifetime)</h2>
+            <h2 className="text-4xl font-bold mb-12 text-center">Performance Summary</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {data.performanceMetrics.map((metric) => (
-                <div key={metric.metric} className="p-6 rounded-lg border border-border/60 bg-background/50">
+                <div key={metric.metric} className={`p-6 rounded-lg border border-border/60 ${PANEL_BG} ${CARD_HOVER}`}>
                   <p className="text-sm text-foreground/60 mb-2">{metric.metric}</p>
                   <p className="text-3xl font-bold text-primary mb-2">{metric.value}</p>
                   <p className="text-foreground/60 text-sm">{metric.detail}</p>
@@ -486,7 +502,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            <div className="p-6 rounded-lg border border-border/60 bg-background/40">
+            <div className={`p-6 rounded-lg border border-border/60 ${PANEL_BG} ${CARD_HOVER}`}>
               <h3 className="text-xl font-semibold mb-4">Top Routes (lifetime)</h3>
               <div className="space-y-4">
                 {topRoutes.map((page) => (
@@ -502,7 +518,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
               </div>
             </div>
 
-            <div className="p-6 rounded-lg border border-border/60 bg-background/40">
+            <div className={`p-6 rounded-lg border border-border/60 ${PANEL_BG} ${CARD_HOVER}`}>
               <h3 className="text-xl font-semibold mb-4">Geo Distribution (Top 10)</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={geoSample}>
@@ -516,26 +532,8 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 rounded-lg border border-border/50 bg-background/50">
-              <h3 className="text-xl font-semibold mb-4">Route Leaders</h3>
-              <div className="space-y-3">
-                {topRoutes.length ? (
-                  topRoutes.map((entry) => (
-                    <div key={entry.path} className="flex items-center justify-between border border-border/40 rounded-lg px-4 py-3">
-                      <div>
-                        <p className="font-semibold">{entry.path || "/"}</p>
-                        <p className="text-xs text-foreground/60">All-time impressions</p>
-                      </div>
-                      <span className="text-primary font-semibold">{entry.views.toLocaleString()}</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-foreground/60">No route data recorded yet.</p>
-                )}
-              </div>
-            </div>
-            <div className="p-6 rounded-lg border border-border/50 bg-background/50">
+          <div className="grid md:grid-cols-1 gap-6">
+            <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
               <h3 className="text-xl font-semibold mb-4">Engagement Snapshot</h3>
               <div className="space-y-3">
                 {data.engagementMetrics.slice(0, 3).map((metric) => (
@@ -561,7 +559,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           <h2 className="text-4xl font-bold mb-12 text-center">Engagement Insights</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {data.engagementMetrics.map((metric) => (
-              <div key={metric.metric} className="p-6 rounded-lg border border-border/60 bg-card/40">
+              <div key={metric.metric} className={`p-6 rounded-lg border border-border/60 ${PANEL_BG} ${CARD_HOVER}`}>
                 <p className="text-sm text-foreground/60 mb-2">{metric.metric}</p>
                 <p className="text-3xl font-bold text-primary mb-2">{metric.value}</p>
                 <p className="text-foreground/60 text-sm">{metric.detail}</p>

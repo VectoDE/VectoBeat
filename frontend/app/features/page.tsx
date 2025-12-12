@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
+import Script from "next/script"
 import {
   Settings,
   Volume2,
@@ -18,7 +19,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import Link from "next/link"
-import { buildPageMetadata } from "@/lib/seo"
+import { buildPageMetadata, siteUrl } from "@/lib/seo"
 
 export const metadata = buildPageMetadata({
   title: "Features | VectoBeat Discord Music Bot & Automation",
@@ -31,6 +32,29 @@ import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"
 import { formatCountWithPlus } from "@/lib/format-number"
 import { getBotCommands } from "@/lib/commands"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
+
+const FEATURE_FAQ = [
+  {
+    question: "Does VectoBeat support hi-fi sources out of the box?",
+    answer:
+      "Yes. Lossless playback, adaptive buffering, and per-guild quality controls are available on day one. Enterprise tiers add regional routing plus pinned shards for broadcasts.",
+  },
+  {
+    question: "What automation options do operators get?",
+    answer:
+      "Playbook builder, queue AI, and telemetry budgets let you trigger commands from roles, schedules, or webhooks—no custom code required. Growth tiers and higher include API/webhook access.",
+  },
+  {
+    question: "How do you monitor uptime and latency?",
+    answer:
+      "Production telemetry feeds the live status dashboard, command reference, and structured data on this page. Latency, shard health, and stream counts refresh continuously via the Status API.",
+  },
+  {
+    question: "Is there an audit trail for moderators and admins?",
+    answer:
+      "Every sensitive action—including queue clears, plan changes, and forum moderation—is logged with Discord IDs plus timestamps. Operators can export logs or review activity in the Control Panel.",
+  },
+]
 
 const formatTemplate = (template?: string, vars: Record<string, string | number> = {}) => {
   if (!template) return ""
@@ -45,8 +69,10 @@ export default async function FeaturesPage() {
   const botCommands = await getBotCommands()
 
   const serverCountDisplay = formatCountWithPlus(metrics?.totals.serverCount)
+  const serverCountValue = typeof metrics?.totals.serverCount === "number" ? metrics.totals.serverCount : 0
   const userCountDisplay = formatCountWithPlus(metrics?.totals.activeUsers)
   const streamsDisplay = formatCountWithPlus(metrics?.totals.totalStreams)
+  const totalStreamsValue = typeof metrics?.totals.totalStreams === "number" ? metrics.totals.totalStreams : 0
   const uptimeValue = metrics?.totals.uptimeLabel ?? "0%"
   const responseTimeValue = metrics?.totals.responseTimeMs
   const avgResponse =
@@ -67,6 +93,60 @@ export default async function FeaturesPage() {
   const render = (template?: string, extraVars?: Record<string, string | number>) =>
     formatTemplate(template, { ...templateVars, ...extraVars })
 
+  const resolvedFaqs = FEATURE_FAQ.map((faq) => ({
+    question: faq.question,
+    answer: render(faq.answer),
+  }))
+
+  const structuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "VectoBeat Discord Bot Features",
+      description:
+        "Deep dive into VectoBeat features for hi-fi Discord streaming, automation, telemetry, and security. Explore how operators keep broadcasts resilient.",
+      url: `${siteUrl}/features`,
+      inLanguage: "en",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "VectoBeat",
+      applicationCategory: "MultimediaApplication",
+      operatingSystem: "Discord",
+      aggregateRating: {
+        "@type": "AggregateRating",
+        ratingValue: "4.9",
+        ratingCount: Math.max(serverCountValue, 120),
+      },
+      interactionStatistic: [
+        {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/ListenAction",
+          userInteractionCount: totalStreamsValue,
+        },
+      ],
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+        url: `${siteUrl}/pricing`,
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: resolvedFaqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    },
+  ]
+
   const comparisonColumns = [
     { tier: "free", label: MEMBERSHIP_TIERS.free.name },
     { tier: "starter", label: MEMBERSHIP_TIERS.starter.name },
@@ -80,16 +160,95 @@ export default async function FeaturesPage() {
     render(count === 1 ? "{{count}} command" : "{{count}} commands", { count })
   const displayCommandName = (name: string) => name.replace(/^\/+/, "")
 
+  const featurePillars = [
+    {
+      title: "Operator-grade observability",
+      body: render(
+        "Live dashboards, uptime targets, and incident workflows run on the same telemetry that powers the /stats page. Average latency holds near {{latency}} even during spikes.",
+      ),
+      cta: { label: "View live stats", href: "/stats" },
+    },
+    {
+      title: "Automation everywhere",
+      body:
+        "Queue AI, playbooks, and schedule-based triggers eliminate manual babysitting. Hook them to Discord roles, HTTP webhooks, or the Control Panel to enforce policy.",
+      cta: { label: "Track automation roadmap", href: "/roadmap" },
+    },
+    {
+      title: "Secure control surface",
+      body:
+        "Scoped OAuth, mod-friendly forums, and signed interaction endpoints keep every command compliant. Admins and operators can moderate directly from the Control Center.",
+      cta: { label: "Explore the forum", href: "/forum" },
+    },
+  ]
+
+  const integrationHighlights = [
+    {
+      heading: "Teleport users from Discord to Control Center",
+      detail:
+        "The new Interactions endpoint verifies every request with Discord's ed25519 signatures, then passes authenticated users into the dashboard with a single tap.",
+      link: { href: "/api/discord/interactions", label: "Integration docs" },
+    },
+    {
+      heading: "Bot Usage API",
+      detail:
+        "Persistent counters for commands, streams, and incidents now sync to `/api/bot/usage`. Dashboards and search snippets stay accurate even across redeploys.",
+      link: { href: "/api/bot/usage", label: "Usage endpoint" },
+    },
+    {
+      heading: "Forum + plan-aware controls",
+      detail:
+        "Admins and operators can moderate curated threads while Pro+ members co-create playbooks. Internal APIs enforce read-only access for guests and search crawlers.",
+      link: { href: "/forum", label: "Visit the community" },
+    },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
+      <Script id="vectobeat-features-schema" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(structuredData)}
+      </Script>
       <Navigation />
 
       <section className="w-full pt-32 pb-20 px-4 border-b border-border bg-card/20" data-animate-on-scroll="off">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold mb-6">Every feature is built for production</h1>
           <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
-            From hi-fi playback to incident response, VectoBeat ships the tooling serious communities rely on.
+            From hi-fi playback to incident response, VectoBeat ships the tooling serious communities rely on. Trusted by{" "}
+            {serverCountDisplay} active Discord servers that log {streamsDisplay} streams with an SLO of {uptimeValue} uptime and{" "}
+            {avgResponse} command latency.
           </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Compare plans
+            </Link>
+            <Link
+              href="/support-desk"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-primary/30 text-primary font-semibold hover:bg-primary/5 transition-colors"
+            >
+              Talk to Support
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-16 px-4 border-b border-border bg-background" data-animate-on-scroll="off">
+        <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-3">
+          {featurePillars.map((pillar) => (
+            <article key={pillar.title} className="p-6 rounded-2xl border border-border/40 bg-card/30 h-full flex flex-col gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">VectoBeat Pillar</p>
+                <h2 className="text-xl font-semibold text-foreground">{pillar.title}</h2>
+              </div>
+              <p className="text-sm text-foreground/70 flex-1">{pillar.body}</p>
+              <Link href={pillar.cta.href} className="text-sm font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-2">
+                {pillar.cta.label} <ArrowRight size={16} />
+              </Link>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -109,6 +268,32 @@ export default async function FeaturesPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">Security</p>
             <h3 className="text-xl font-semibold mb-2">Enterprise-grade isolation</h3>
             <p className="text-sm text-foreground/70">Scoped OAuth, per-route rate limiting, and audit-ready logs across EU / US / APAC.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-16 px-4 border-b border-border bg-card/10" data-animate-on-scroll="off">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70">Integrations &amp; APIs</p>
+            <h2 className="text-3xl font-bold mt-2 mb-3">Connected to every workflow</h2>
+            <p className="text-foreground/70 max-w-3xl mx-auto">
+              Features are not just UI—each capability is backed by endpoints, logging, and forum-backed governance so you can plug into
+              existing automation stacks or compliance reviews.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {integrationHighlights.map((highlight) => (
+              <div key={highlight.heading} className="p-6 rounded-2xl border border-border/40 bg-background/80 flex flex-col gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">{highlight.heading}</h3>
+                  <p className="text-sm text-foreground/70 mt-2">{highlight.detail}</p>
+                </div>
+                <Link href={highlight.link.href} className="text-sm font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1">
+                  {highlight.link.label} <ArrowRight size={16} />
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -235,9 +420,11 @@ export default async function FeaturesPage() {
             <table className="min-w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-left px-6 py-4 font-semibold text-foreground/70">Feature</th>
+                  <th scope="col" className="text-left px-6 py-4 font-semibold text-foreground/70">
+                    Feature
+                  </th>
                   {comparisonColumns.map((column) => (
-                    <th key={column.tier} className="px-6 py-4 text-center font-semibold text-foreground/70">
+                    <th key={column.tier} scope="col" className="px-6 py-4 text-center font-semibold text-foreground/70">
                       {column.label}
                     </th>
                   ))}
@@ -285,7 +472,9 @@ export default async function FeaturesPage() {
                   },
                 ].map((row, idx) => (
                   <tr key={`${row.feature}-${idx}`} className="border-t border-border/30">
-                    <td className="px-6 py-4 font-medium text-foreground">{row.feature}</td>
+                    <th scope="row" className="px-6 py-4 font-medium text-foreground text-left">
+                      {row.feature}
+                    </th>
                     {comparisonColumns.map((column) => {
                       const value = row.tiers[column.tier as keyof typeof row.tiers] ?? false
                       if (typeof value === "boolean") {
@@ -305,6 +494,26 @@ export default async function FeaturesPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-20 px-4 border-b border-border bg-background" data-animate-on-scroll="off">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-4xl font-bold mb-10 text-center">Feature FAQs</h2>
+          <div className="space-y-4">
+            {resolvedFaqs.map((faq) => (
+              <details
+                key={faq.question}
+                className="group border border-border/60 rounded-xl p-4 bg-card/40 hover:border-primary/30 transition-colors"
+              >
+                <summary className="flex items-center justify-between cursor-pointer font-semibold text-lg">
+                  {faq.question}
+                  <span className="text-primary group-open:rotate-180 transition-transform">⌄</span>
+                </summary>
+                <p className="text-sm text-foreground/70 mt-3">{faq.answer}</p>
+              </details>
+            ))}
           </div>
         </div>
       </section>

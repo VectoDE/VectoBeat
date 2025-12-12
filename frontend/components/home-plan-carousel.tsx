@@ -8,9 +8,9 @@ import { DISCORD_BOT_INVITE_URL, buildDiscordLoginUrl } from "@/lib/config"
 const PLAN_COPY = {
   monthlyLabel: "Monthly",
   yearlyLabel: "Yearly",
-  instructions: "Slides advance every 5 seconds. Hover to pause, drag or swipe horizontally to explore plans—no scrollbar needed.",
+  instructions: "Slides advance every 5 seconds. Hover to pause, drag, or swipe horizontally to explore plans; no scrollbar needed.",
   emailPlaceholder: "Billing email (required for checkout)",
-  emailHint: "Discord did not share an email—please enter one manually.",
+  emailHint: "Discord did not share an email - please enter one manually.",
   guildSelectHint: "Select which server should receive this plan.",
   noGuildHint: "Invite VectoBeat to a server first so we can attach the subscription to it.",
   inviteHint: "You need to own or manage at least one Discord server to assign the subscription.",
@@ -54,6 +54,10 @@ export function HomePlanCarousel() {
   const [error, setError] = useState<string | null>(null)
   const [billingEmail, setBillingEmail] = useState("")
   const [selectedGuildId, setSelectedGuildId] = useState<string>("")
+  const [prefersTouch, setPrefersTouch] = useState(false)
+  const [supportsPointerEvents, setSupportsPointerEvents] = useState<boolean>(
+    typeof window === "undefined" ? true : "PointerEvent" in window,
+  )
   const pricingCurrency = (process.env.NEXT_PUBLIC_PRICING_CURRENCY || "EUR").toUpperCase()
   const locale = "en-US"
   const priceFormatter = useMemo(
@@ -71,14 +75,37 @@ export function HomePlanCarousel() {
   }, [])
 
   useEffect(() => {
-    if (isPaused || totalSlides <= 1) {
+    if (typeof window !== "undefined") {
+      setSupportsPointerEvents("PointerEvent" in window)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return
+    }
+    const query = window.matchMedia("(pointer: coarse)")
+    const update = (event?: MediaQueryListEvent) => {
+      setPrefersTouch(event ? event.matches : query.matches)
+    }
+    update()
+    if (typeof query.addEventListener === "function") {
+      query.addEventListener("change", update)
+      return () => query.removeEventListener("change", update)
+    }
+    query.addListener(update)
+    return () => query.removeListener(update)
+  }, [])
+
+  useEffect(() => {
+    if (isPaused || totalSlides <= 1 || prefersTouch) {
       return
     }
     const id = window.setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % totalSlides)
     }, 5000)
     return () => window.clearInterval(id)
-  }, [isPaused, totalSlides])
+  }, [isPaused, totalSlides, prefersTouch])
 
   useEffect(() => {
     const updateMetrics = () => {
@@ -105,6 +132,15 @@ export function HomePlanCarousel() {
   }, [totalSlides, activeSlide])
 
   const sliderStep = slideMetrics.width ? slideMetrics.width + slideMetrics.gap : 340
+  const enablePointerDrag = supportsPointerEvents && !prefersTouch
+  const enableTouchFallback = !supportsPointerEvents && !prefersTouch
+
+  useEffect(() => {
+    if (prefersTouch && dragStartX !== null) {
+      setDragStartX(null)
+      setDragOffset(0)
+    }
+  }, [prefersTouch, dragStartX])
 
   useEffect(() => {
     if (session?.email) {
@@ -167,28 +203,19 @@ export function HomePlanCarousel() {
     return Boolean(target.closest("button, a, input, select, textarea, [role='button'], [data-slider-interactive='true']"))
   }
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (shouldSkipDrag(event.target)) {
-      return
-    }
-    if (!sliderRef.current) return
-    event.preventDefault()
-    sliderRef.current.setPointerCapture(event.pointerId)
-    setDragStartX(event.clientX)
+  const startDrag = (clientX: number) => {
+    setDragStartX(clientX)
     setIsPaused(true)
   }
 
-  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const updateDrag = (clientX: number) => {
     if (dragStartX === null) return
-    setDragOffset(event.clientX - dragStartX)
+    setDragOffset(clientX - dragStartX)
   }
 
-  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (sliderRef.current?.hasPointerCapture(event.pointerId)) {
-      sliderRef.current.releasePointerCapture(event.pointerId)
-    }
+  const finishDrag = (clientX: number) => {
     if (dragStartX === null) return
-    const delta = event.clientX - dragStartX
+    const delta = clientX - dragStartX
     const threshold = 60
     if (delta > threshold) {
       goToPrev()
@@ -200,10 +227,63 @@ export function HomePlanCarousel() {
     setTimeout(() => setIsPaused(false), 200)
   }
 
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (shouldSkipDrag(event.target)) {
+      return
+    }
+    if (!sliderRef.current) return
+    if (event.pointerType !== "touch") {
+      event.preventDefault()
+    }
+    sliderRef.current.setPointerCapture(event.pointerId)
+    startDrag(event.clientX)
+  }
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartX === null) {
+      return
+    }
+    updateDrag(event.clientX)
+  }
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (sliderRef.current?.hasPointerCapture(event.pointerId)) {
+      sliderRef.current.releasePointerCapture(event.pointerId)
+    }
+    finishDrag(event.clientX)
+  }
+
   const cancelDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
     if (event && sliderRef.current?.hasPointerCapture(event.pointerId)) {
       sliderRef.current.releasePointerCapture(event.pointerId)
     }
+    setDragStartX(null)
+    setDragOffset(0)
+    setTimeout(() => setIsPaused(false), 200)
+  }
+
+  const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (shouldSkipDrag(event.target)) {
+      return
+    }
+    const touch = event.touches[0]
+    if (!touch) return
+    startDrag(touch.clientX)
+  }
+
+  const handleTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (dragStartX === null) return
+    const touch = event.touches[0]
+    if (!touch) return
+    updateDrag(touch.clientX)
+  }
+
+  const handleTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.changedTouches[0]
+    finishDrag(touch?.clientX ?? dragStartX ?? 0)
+  }
+
+  const handleTouchCancel = () => {
     setDragStartX(null)
     setDragOffset(0)
     setTimeout(() => setIsPaused(false), 200)
@@ -357,7 +437,7 @@ export function HomePlanCarousel() {
       )}
 
       <div
-        className="relative overflow-hidden rounded-3xl border border-border/40 bg-card/30 py-8 px-4"
+        className="relative rounded-3xl border border-border/40 bg-card/30 py-8 px-4 md:overflow-hidden"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => {
           if (dragStartX === null) setIsPaused(false)
@@ -365,17 +445,34 @@ export function HomePlanCarousel() {
       >
         <div
           ref={sliderRef}
-          className={`flex gap-6 items-stretch ${dragStartX === null ? "transition-transform duration-500" : ""}`}
-          style={{ transform: `translateX(${-(sliderStep * activeSlide) + dragOffset}px)` }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={(event) => cancelDrag(event)}
-          onPointerLeave={(event) => {
-            if (dragStartX !== null) {
-              handlePointerUp(event)
-            }
-          }}
+          className={`flex gap-6 items-stretch ${
+            !prefersTouch && dragStartX === null ? "transition-transform duration-500" : ""
+          } ${prefersTouch ? "overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-4" : ""}`}
+          style={
+            enablePointerDrag
+              ? {
+                  transform: `translateX(${-(sliderStep * activeSlide) + dragOffset}px)`,
+                  touchAction: dragStartX !== null ? "none" : "pan-x pan-y",
+                }
+              : undefined
+          }
+          onPointerDown={enablePointerDrag ? handlePointerDown : undefined}
+          onPointerMove={enablePointerDrag ? handlePointerMove : undefined}
+          onPointerUp={enablePointerDrag ? handlePointerUp : undefined}
+          onPointerCancel={enablePointerDrag ? (event) => cancelDrag(event) : undefined}
+          onPointerLeave={
+            enablePointerDrag
+              ? (event) => {
+                  if (dragStartX !== null) {
+                    handlePointerUp(event)
+                  }
+                }
+              : undefined
+          }
+          onTouchStart={enableTouchFallback ? handleTouchStart : undefined}
+          onTouchMove={enableTouchFallback ? handleTouchMove : undefined}
+          onTouchEnd={enableTouchFallback ? handleTouchEnd : undefined}
+          onTouchCancel={enableTouchFallback ? handleTouchCancel : undefined}
         >
           {tierEntries.map(([tierKey, tier]) => {
             const displayedPrice = billingCycle === "monthly" ? tier.monthlyPrice : tier.yearlyPrice
@@ -398,7 +495,7 @@ export function HomePlanCarousel() {
                   tier.highlighted
                     ? "bg-linear-to-b from-primary/20 to-secondary/10 border-primary/50 shadow-lg hover:scale-[1.02]"
                     : "bg-card/50 border-border/50 hover:border-primary/30"
-                }`}
+                } ${prefersTouch ? "snap-center" : ""}`}
               >
                 {tier.highlighted && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 bg-primary rounded-full text-sm font-semibold text-primary-foreground">

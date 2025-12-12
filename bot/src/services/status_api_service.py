@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import asyncio.subprocess
+import json
 import logging
 from collections import deque
 import statistics
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import math
@@ -44,6 +46,8 @@ class StatusAPIService:
         self._listener_events: deque[Tuple[float, int]] = deque()
         self._commands_total = 0
         self._incidents_total = 0
+        self._usage_storage_path = Path(__file__).resolve().parents[2] / "data" / "bot_usage_totals.json"
+        self._last_usage_persist = 0.0
         control_panel_base = getattr(CONFIG, "control_panel_api", None)
         cp_base_url = getattr(control_panel_base, "base_url", None)
         cp_api_key = getattr(control_panel_base, "api_key", None)
@@ -52,10 +56,15 @@ class StatusAPIService:
         self._push_interval = max(10, int(getattr(config, "push_interval_seconds", 30)))
         self._event_endpoint = config.event_endpoint or (f"{cp_base_url.rstrip('/')}/api/bot/events" if cp_base_url else None)
         self._event_token = config.event_token or config.push_token or config.api_key or cp_api_key
+        self._usage_endpoint = config.usage_endpoint or (f"{cp_base_url.rstrip('/')}/api/bot/usage" if cp_base_url else None)
+        self._usage_token = config.usage_token or config.event_token or config.push_token or config.api_key or cp_api_key
         self._push_task: Optional[asyncio.Task] = None
         self._event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
         self._event_worker: Optional[asyncio.Task] = None
         self._http_session: Optional[ClientSession] = None
+        self._usage_sync_task: Optional[asyncio.Task] = None
+        self._usage_sync_inflight = False
+        self._usage_sync_pending = False
         self._online_since = datetime.now(timezone.utc).isoformat()
 
     # ------------------------------------------------------------------ lifecycle
@@ -78,9 +87,16 @@ class StatusAPIService:
         self._site = web.TCPSite(self._runner, host=self.config.host, port=self.config.port)
         await self._site.start()
         self.logger.info("Status API listening on %s:%s", self.config.host, self.config.port)
-        if self._push_endpoint or self._event_endpoint:
+        usage_bootstrapped = False
+        if self._push_endpoint or self._event_endpoint or self._usage_endpoint:
             self._http_session = ClientSession()
+            if self._usage_endpoint:
+                usage_bootstrapped = await self._load_usage_totals()
+            if not usage_bootstrapped:
+                self._restore_usage_from_disk()
             await self._bootstrap_counters()
+        else:
+            self._restore_usage_from_disk()
         if self._push_endpoint:
             self._push_task = asyncio.create_task(self._push_loop())
         if self._event_endpoint:
@@ -101,6 +117,18 @@ class StatusAPIService:
             except asyncio.CancelledError:
                 pass
             self._event_worker = None
+        if self._usage_sync_task:
+            self._usage_sync_task.cancel()
+            try:
+                await self._usage_sync_task
+            except asyncio.CancelledError:
+                pass
+            self._usage_sync_task = None
+        if self._usage_endpoint and self._http_session:
+            try:
+                await self._send_usage_totals()
+            except Exception:
+                pass
         if self._http_session:
             await self._http_session.close()
             self._http_session = None
@@ -110,6 +138,7 @@ class StatusAPIService:
         if self._runner:
             await self._runner.cleanup()
             self._runner = None
+        self._persist_usage()
         self._app = None
 
     # ------------------------------------------------------------------ lavalink hooks
@@ -295,7 +324,8 @@ class StatusAPIService:
         self._commands_total += 1
         self._prune_events(now)
         if not success:
-            self.record_incident(reason="command_error", timestamp=now)
+            self.record_incident(reason="command_error", timestamp=now, persist=False)
+        self._trigger_usage_sync()
 
     def record_command_event(
         self,
@@ -319,13 +349,17 @@ class StatusAPIService:
             }
         )
 
-    def record_incident(self, *, reason: Optional[str] = None, timestamp: Optional[float] = None) -> None:
+    def record_incident(
+        self, *, reason: Optional[str] = None, timestamp: Optional[float] = None, persist: bool = True
+    ) -> None:
         if not self.enabled:
             return
         now = timestamp or time.time()
         self._incident_events.append(now)
         self._incidents_total += 1
         self._prune_events(now)
+        if persist:
+            self._trigger_usage_sync()
         self._queue_event(
             {
                 "type": "incident",
@@ -341,6 +375,7 @@ class StatusAPIService:
         track: Optional[Dict[str, Any]] = None,
     ) -> None:
         self._streams_total += 1
+        self._trigger_usage_sync()
         self._queue_event(
             {
                 "type": "stream",
@@ -360,6 +395,88 @@ class StatusAPIService:
             self._incident_events.popleft()
         while self._listener_events and self._listener_events[0][0] < cutoff:
             self._listener_events.popleft()
+
+    def _trigger_usage_sync(self) -> None:
+        if not self._usage_endpoint or not self._http_session:
+            self._persist_usage()
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        if self._usage_sync_inflight:
+            self._usage_sync_pending = True
+            return
+        self._usage_sync_inflight = True
+        self._usage_sync_task = loop.create_task(self._push_usage_totals())
+
+    async def _push_usage_totals(self) -> None:
+        try:
+            await self._send_usage_totals()
+        finally:
+            self._usage_sync_inflight = False
+            if self._usage_sync_pending:
+                self._usage_sync_pending = False
+                self._trigger_usage_sync()
+
+    async def _send_usage_totals(self) -> None:
+        if not self._usage_endpoint or not self._http_session:
+            self._persist_usage()
+            return
+        headers = {"Content-Type": "application/json"}
+        if self._usage_token:
+            headers["Authorization"] = f"Bearer {self._usage_token}"
+        payload = {
+            "totalStreams": self._streams_total,
+            "commandsTotal": self._commands_total,
+            "incidentsTotal": self._incidents_total,
+        }
+        try:
+            async with self._http_session.post(self._usage_endpoint, json=payload, headers=headers, timeout=5) as resp:
+                if resp.status >= 400:
+                    text = await resp.text()
+                    self.logger.warning("Bot usage totals push failed (%s): %s", resp.status, text[:200])
+                else:
+                    self._persist_usage(force=True)
+        except Exception as exc:
+            self.logger.warning("Bot usage totals transport error: %s", exc)
+
+    async def _load_usage_totals(self) -> bool:
+        if not self._usage_endpoint or not self._http_session:
+            return False
+        headers = {"Accept": "application/json"}
+        if self._usage_token:
+            headers["Authorization"] = f"Bearer {self._usage_token}"
+        try:
+            async with self._http_session.get(self._usage_endpoint, headers=headers, timeout=5) as resp:
+                if resp.status >= 400:
+                    text = await resp.text()
+                    self.logger.debug("Failed to load usage totals (%s): %s", resp.status, text[:200])
+                    return False
+                payload = await resp.json()
+        except Exception as exc:
+            self.logger.debug("Usage totals bootstrap failed: %s", exc)
+            return False
+
+        totals = payload.get("totals") if isinstance(payload, dict) else None
+        if not isinstance(totals, dict):
+            totals = payload if isinstance(payload, dict) else None
+        if not isinstance(totals, dict):
+            return False
+        streams = totals.get("totalStreams")
+        commands_total = totals.get("commandsTotal")
+        incidents_total = totals.get("incidentsTotal")
+        try:
+            if isinstance(streams, (int, float)) and streams > self._streams_total:
+                self._streams_total = int(streams)
+            if isinstance(commands_total, (int, float)) and commands_total > self._commands_total:
+                self._commands_total = int(commands_total)
+            if isinstance(incidents_total, (int, float)) and incidents_total > self._incidents_total:
+                self._incidents_total = int(incidents_total)
+        except Exception:
+            return False
+        self._persist_usage(force=True)
+        return True
 
     def _queue_event(self, payload: Dict[str, Any]) -> None:
         if not self._event_endpoint or not self._http_session:
@@ -401,12 +518,24 @@ class StatusAPIService:
         if not isinstance(snapshot, dict):
             return
         streams = snapshot.get("totalStreams")
-        commands_24h = snapshot.get("commands24h") or snapshot.get("commands")
+        commands_total = snapshot.get("commandsTotal")
+        incidents_total = snapshot.get("incidentsTotal")
+        updated = False
         try:
             if isinstance(streams, (int, float)) and streams > self._streams_total:
                 self._streams_total = int(streams)
-            if isinstance(commands_24h, (int, float)) and commands_24h > self._commands_total:
-                self._commands_total = int(commands_24h)
+                updated = True
+            if isinstance(commands_total, (int, float)) and commands_total > self._commands_total:
+                self._commands_total = int(commands_total)
+                updated = True
+            elif commands_total is None:
+                legacy_commands = snapshot.get("commands24h") or snapshot.get("commands")
+                if isinstance(legacy_commands, (int, float)) and legacy_commands > self._commands_total:
+                    self._commands_total = int(legacy_commands)
+                    updated = True
+            if isinstance(incidents_total, (int, float)) and incidents_total > self._incidents_total:
+                self._incidents_total = int(incidents_total)
+                updated = True
         except Exception:
             return
 
@@ -877,3 +1006,51 @@ class StatusAPIService:
         peak = max(count for _, count in self._listener_events)
         total = sum(count for _, count in self._listener_events)
         return peak, total
+
+    def _restore_usage_from_disk(self) -> bool:
+        path = self._usage_storage_path
+        if not path:
+            return False
+        try:
+            if not path.exists():
+                return False
+            content = path.read_text(encoding="utf-8").strip()
+            if not content:
+                return False
+            payload = json.loads(content)
+        except Exception:
+            return False
+        updated = False
+        streams = payload.get("totalStreams")
+        commands_total = payload.get("commandsTotal")
+        incidents_total = payload.get("incidentsTotal")
+        if isinstance(streams, (int, float)) and streams > self._streams_total:
+            self._streams_total = int(streams)
+            updated = True
+        if isinstance(commands_total, (int, float)) and commands_total > self._commands_total:
+            self._commands_total = int(commands_total)
+            updated = True
+        if isinstance(incidents_total, (int, float)) and incidents_total > self._incidents_total:
+            self._incidents_total = int(incidents_total)
+            updated = True
+        return updated
+
+    def _persist_usage(self, force: bool = False) -> None:
+        path = self._usage_storage_path
+        if not path:
+            return
+        now = time.time()
+        if not force and (now - self._last_usage_persist) < 5.0:
+            return
+        self._last_usage_persist = now
+        payload = {
+            "totalStreams": int(self._streams_total),
+            "commandsTotal": int(self._commands_total),
+            "incidentsTotal": int(self._incidents_total),
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(payload), encoding="utf-8")
+        except Exception:
+            pass
