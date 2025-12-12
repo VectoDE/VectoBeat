@@ -71,7 +71,7 @@ export const metadata = buildPageMetadata({
     "discord music analytics",
   ],
   image: {
-    url: "/discord-music-bot-dashboard-interface-with-wavefor.jpg",
+    url: "/logo.png",
     width: 1200,
     height: 630,
     alt: "VectoBeat Discord music bot dashboard preview",
