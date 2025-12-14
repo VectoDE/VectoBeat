@@ -39,6 +39,8 @@ services:
     build:
       context: .
       dockerfile: bot/Dockerfile
+    depends_on:
+      - Redis
     env_file:
       - ./.env
     environment:
