@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import lavalink
@@ -22,12 +23,19 @@ class PlaylistService:
     def __init__(self, config, *, logger=None):
         self.config = config
         self.logger = logger
+        ssl_enabled = bool(getattr(config, "ca_path", None))
+        ssl_kwargs = (
+            {"ssl": True, "ssl_ca_certs": config.ca_path, "ssl_cert_reqs": ssl.CERT_REQUIRED}
+            if ssl_enabled
+            else {}
+        )
         self._redis = redis.Redis(
             host=config.host,
             port=config.port,
             password=config.password or None,
             db=config.db,
             decode_responses=True,
+            **ssl_kwargs,
         )
 
     # ------------------------------------------------------------------ helpers
