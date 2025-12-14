@@ -96,6 +96,12 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
             await self.lavalink.player_manager.destroy(self.guild_id)
         except lavalink.ClientError:
             pass
+        except aiohttp.ContentTypeError as exc:
+            self.logger.warning(
+                "Ignoring Lavalink response while destroying player %s: %s",
+                self.guild_id,
+                exc,
+            )
 
 
 class LavalinkManager:
@@ -109,6 +115,7 @@ class LavalinkManager:
         self.logger = logging.getLogger("VectoBeat.Lavalink")
         self._node_handles: Dict[str, lavalink.Node] = {}
         self._nodes_by_region: Dict[str, List[str]] = defaultdict(list)
+        self._node_priority = {cfg.name: idx for idx, cfg in enumerate(self.nodes)}
 
     async def connect(self):
         if not hasattr(self.bot, "lavalink"):
@@ -204,6 +211,16 @@ class LavalinkManager:
                 self.logger.error("Error closing Lavalink: %s", exc)
 
     async def route_player(self, player: VectoPlayer, region: str) -> None:
+        cooldown_until = player.fetch("migration_cooldown_until")
+        now = asyncio.get_running_loop().time()
+        if isinstance(cooldown_until, (int, float)) and cooldown_until > now:
+            remaining = cooldown_until - now
+            self.logger.debug(
+                "Skipping routing for guild %s; migration cooldown active for %.1fs.",
+                player.guild_id,
+                remaining,
+            )
+            return
         target = self._pick_node(region)
         if not target:
             return
@@ -217,6 +234,23 @@ class LavalinkManager:
                 player.guild_id,
                 target.name,
                 region,
+            )
+            player.store("migration_cooldown_until", None)
+        except (aiohttp.ClientResponseError, aiohttp.ContentTypeError) as exc:
+            status = getattr(exc, "status", None)
+            if status == 429 or isinstance(exc, aiohttp.ContentTypeError):
+                retry_in = 30.0
+                player.store("migration_cooldown_until", now + retry_in)
+                self.logger.warning(
+                    "Rate limited moving guild %s to node %s (status=%s); backing off for %.0fs.",
+                    player.guild_id,
+                    target.name,
+                    status or "n/a",
+                    retry_in,
+                )
+                return
+            self.logger.warning(
+                "Failed to move guild %s to node %s: %s", player.guild_id, target.name, exc
             )
         except Exception as exc:
             self.logger.warning(
@@ -234,3 +268,7 @@ class LavalinkManager:
             if handle and handle.available:
                 return handle
         return None
+
+    def priority(self, node_name: str) -> int:
+        """Return the configured priority (lower is preferred)."""
+        return self._node_priority.get(node_name, len(self._node_priority))
