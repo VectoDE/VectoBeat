@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import time
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import lavalink
 
 from src.configs.schema import CacheConfig
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -26,6 +29,27 @@ class SearchCacheService:
         self.max_entries = max(10, config.search_max_entries)
         self._store: Dict[str, Tuple[float, str, List[CachedTrack]]] = {}
 
+    @staticmethod
+    def _coerce_info(track: Any) -> Optional[Dict[str, Any]]:
+        """Attempt to extract a dict payload from a Lavalink track-like object."""
+
+        def to_dict(payload: Any) -> Optional[Dict[str, Any]]:
+            if isinstance(payload, dict):
+                return dict(payload)
+            if hasattr(payload, "__dict__"):
+                return dict(payload.__dict__)
+            return None
+
+        info = to_dict(getattr(track, "info", None))
+        if info:
+            return info
+
+        raw = getattr(track, "raw", None)
+        raw_dict = to_dict(raw)
+        if raw_dict:
+            return raw_dict.get("info") if isinstance(raw_dict.get("info"), dict) else raw_dict
+        return None
+
     def _clean_expired(self) -> None:
         now = time.monotonic()
         expired = [key for key, (ts, _, _) in self._store.items() if now - ts > self.ttl]
@@ -41,7 +65,23 @@ class SearchCacheService:
         if not entry:
             return None
         _, load_type, tracks = entry
-        reconstructed = [lavalink.AudioTrack(item.track, item.info) for item in tracks]
+        reconstructed: List[lavalink.AudioTrack] = []
+        for item in tracks:
+            info = item.info
+            if not isinstance(info, dict):
+                logger.debug(
+                    "Dropping cached track for query '%s' due to invalid info type: %s",
+                    key,
+                    type(info).__name__,
+                )
+                continue
+            try:
+                reconstructed.append(lavalink.AudioTrack(item.track, info))
+            except Exception as exc:  # pragma: no cover - defensive
+                logger.debug("Failed to rebuild cached track for query '%s': %s", key, exc)
+        if not reconstructed:
+            self._store.pop(key, None)
+            return None
         return load_type, reconstructed
 
     def set(self, query: str, result: Any) -> None:
@@ -51,7 +91,7 @@ class SearchCacheService:
         tracks: List[CachedTrack] = []
         for track in result.tracks:
             identifier = getattr(track, "track", None)
-            info = getattr(track, "info", None) or getattr(track, "raw", None)
+            info = self._coerce_info(track)
             if not identifier or not info:
                 continue
             tracks.append(CachedTrack(track=identifier, info=info))

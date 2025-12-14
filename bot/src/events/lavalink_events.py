@@ -7,8 +7,10 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import time
 from typing import List, Optional
 
+import aiohttp
 import lavalink
 import discord
 from discord.ext import commands
@@ -27,17 +29,25 @@ class LavalinkNodeEvents(commands.Cog):
         if hasattr(bot, "lavalink"):
             bot.lavalink.add_event_hooks(self)
 
+        self._rate_limit_cooldown = 30.0
+        self._skip_notice_interval = 5.0
+        self._last_skip_notice = {}
+
     # ------------------------------------------------------------------ helpers
     def _available_nodes(self, *, exclude=None) -> List:
         client = getattr(self.bot, "lavalink", None)
         if not client:
             return []
+        manager = getattr(self.bot, "lavalink_manager", None)
         nodes = [
             node
             for node in client.node_manager.nodes
             if node.available and node is not exclude
         ]
-        nodes.sort(key=self._node_load)
+        if manager and hasattr(manager, "priority"):
+            nodes.sort(key=lambda n: (manager.priority(getattr(n, "name", "")), self._node_load(n)))
+        else:
+            nodes.sort(key=self._node_load)
         return nodes
 
     @staticmethod
@@ -95,6 +105,14 @@ class LavalinkNodeEvents(commands.Cog):
                 return node
         return None
 
+    @staticmethod
+    def _player_cooldown_remaining(player) -> float:
+        cooldown_until = player.fetch("migration_cooldown_until")
+        now = time.monotonic()
+        if isinstance(cooldown_until, (int, float)) and cooldown_until > now:
+            return cooldown_until - now
+        return 0.0
+
     async def _migrate_players(self, failed_node) -> None:
         client = getattr(self.bot, "lavalink", None)
         if not client:
@@ -120,11 +138,18 @@ class LavalinkNodeEvents(commands.Cog):
             )
             return
 
-        target = candidates[0]
         for player in players:
             current_track = getattr(player, "current", None)
             current_position = int(getattr(player, "position", 0) or 0)
             was_paused = bool(getattr(player, "paused", False))
+            remaining = self._player_cooldown_remaining(player)
+            if remaining > 0:
+                logger.info(
+                    "Skipping migration for guild %s; waiting %.1fs to retry after rate limit.",
+                    player.guild_id,
+                    remaining,
+                )
+                continue
             target = await self._pick_target_node(failed_node, player, candidates)
             if not target:
                 logger.warning(
@@ -173,6 +198,20 @@ class LavalinkNodeEvents(commands.Cog):
                             {"from": getattr(failed_node, "name", None), "to": target.name},
                         )
                     )
+                player.store("migration_cooldown_until", None)
+            except (aiohttp.ClientResponseError, aiohttp.ContentTypeError) as exc:
+                status = getattr(exc, "status", None)
+                if status == 429 or isinstance(exc, aiohttp.ContentTypeError):
+                    retry_in = self._rate_limit_cooldown
+                    player.store("migration_cooldown_until", time.monotonic() + retry_in)
+                    logger.warning(
+                        "Rate limited migrating player %s (status=%s). Backing off for %.0fs before retry.",
+                        player.guild_id,
+                        status or "n/a",
+                        retry_in,
+                    )
+                    continue
+                logger.error("Failed to migrate player %s: %s", player.guild_id, exc)
             except Exception as exc:  # pragma: no cover - network and lavalink behaviour
                 logger.error("Failed to migrate player %s: %s", player.guild_id, exc)
 
@@ -206,12 +245,14 @@ class LavalinkNodeEvents(commands.Cog):
             return
         client = getattr(self.bot, "lavalink", None)
         attached_players = 0
+        players = []
         if client:
-            attached_players = sum(
-                1
+            players = [
+                player
                 for player in client.player_manager.players.values()
                 if getattr(player, "node", None) is node
-            )
+            ]
+            attached_players = len(players)
 
         log_fn = logger.warning if attached_players else logger.info
         log_fn(
@@ -219,6 +260,18 @@ class LavalinkNodeEvents(commands.Cog):
             node.name,
             attached_players,
         )
+        if players:
+            actionable = [p for p in players if self._player_cooldown_remaining(p) <= 0]
+            if not actionable:
+                now = time.monotonic()
+                last = self._last_skip_notice.get(node.name, 0)
+                if now - last >= self._skip_notice_interval:
+                    logger.info(
+                        "All players on node '%s' are cooling down after rate limit; deferring migration.",
+                        node.name,
+                    )
+                    self._last_skip_notice[node.name] = now
+                return
         asyncio.create_task(self._migrate_players(node))
         manager = getattr(self.bot, "lavalink_manager", None)
         if manager:
