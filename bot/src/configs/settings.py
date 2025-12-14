@@ -136,12 +136,14 @@ redis_host = os.getenv("REDIS_HOST")
 redis_port = os.getenv("REDIS_PORT")
 redis_pwd = os.getenv("REDIS_PASSWORD")
 redis_db = os.getenv("REDIS_DB")
-if redis_host or redis_port or redis_pwd or redis_db:
+redis_ca_path = os.getenv("REDIS_CA_PATH")
+if redis_host or redis_port or redis_pwd or redis_db or redis_ca_path:
     CONFIG.redis = RedisConfig(
         host=redis_host or CONFIG.redis.host,
         port=int(redis_port) if redis_port else CONFIG.redis.port,
         password=redis_pwd or CONFIG.redis.password,
         db=int(redis_db) if redis_db else CONFIG.redis.db,
+        ca_path=redis_ca_path or CONFIG.redis.ca_path,
     )
 
 autoplay_limit = os.getenv("AUTOPLAY_DISCOVERY_LIMIT")

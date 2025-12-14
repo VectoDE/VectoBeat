@@ -68,6 +68,7 @@ redis:
   port: 32768
   password: ""
   db: 0
+  ca_path: ""
 
 metrics:
   enabled: true

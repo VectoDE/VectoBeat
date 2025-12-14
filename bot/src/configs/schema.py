@@ -97,6 +97,7 @@ class RedisConfig(BaseModel):
     port: int = 6379
     password: Optional[str] = None
     db: int = 0
+    ca_path: Optional[str] = None
 
 
 class MetricsConfig(BaseModel):
