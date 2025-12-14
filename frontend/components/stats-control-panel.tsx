@@ -311,20 +311,30 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
               <div className={`p-6 rounded-lg border border-border/50 ${PANEL_BG} ${CARD_HOVER}`}>
                 <h3 className="text-xl font-bold mb-4">Active Voice Connections</h3>
                 <div className="space-y-2">
-                  {activeVoiceConnections.slice(0, 12).map((entry, index) => (
-                    <div
-                      key={`${entry.guildId}-${entry.channelId}-${index}`}
-                      className="flex items-center justify-between rounded-md border border-border/40 bg-background/60 px-3 py-2 text-sm"
-                    >
+                  {activeVoiceConnections.slice(0, 12).map((entry, index) => {
+                    const inviteUrl = entry.guildId ? `https://discord.com/channels/${entry.guildId}/${entry.channelId || ""}` : null
+                    return (
+                      <a
+                        key={`${entry.guildId}-${entry.channelId}-${index}`}
+                        href={inviteUrl || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between rounded-md border border-border/40 bg-background/60 px-3 py-2 text-sm transition hover:border-primary/50 hover:bg-card/50"
+                      >
                       <div className="truncate">
-                        <p className="font-semibold">Guild {entry.guildId || "Unknown"}</p>
-                        <p className="text-foreground/60 text-xs">Channel {entry.channelId || "Unknown"}</p>
+                        <p className="font-semibold">
+                          Guild {entry.guildName ? `${entry.guildName} (${entry.guildId || "Unknown"})` : entry.guildId || "Unknown"}
+                        </p>
+                        <p className="text-foreground/60 text-xs">
+                          Channel {entry.channelName ? `${entry.channelName} (${entry.channelId || "Unknown"})` : entry.channelId || "Unknown"}
+                        </p>
                       </div>
                       <span className="text-xs font-semibold px-2 py-1 rounded-full bg-primary/10 text-primary">
                         {entry.listeners} listeners
                       </span>
-                    </div>
-                  ))}
+                      </a>
+                    )
+                  })}
                 </div>
               </div>
             </div>

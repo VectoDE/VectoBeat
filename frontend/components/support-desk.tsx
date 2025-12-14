@@ -26,9 +26,12 @@ type AttachmentPreview = {
   warnings?: string[]
 }
 
-const CATEGORY_OPTIONS = ["General", "Billing", "Incident", "Feature Request"]
+const CATEGORY_OPTIONS = ["General", "Billing", "Incident", "Feature Request", "Partner"]
 const PRIORITY_OPTIONS = ["normal", "high", "urgent"]
 const STATUS_OPTIONS = [
+  { value: "waiting", label: "Waiting" },
+  { value: "accepted", label: "Accepted" },
+  { value: "declined", label: "Declined" },
   { value: "open", label: "Open" },
   { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
@@ -39,6 +42,12 @@ const USER_STATUS_VALUES = new Set(USER_STATUS_OPTIONS.map((option) => option.va
 
 const statusBadgeClass = (status: string) => {
   switch (status) {
+    case "waiting":
+      return "bg-amber-500/20 text-amber-300"
+    case "accepted":
+      return "bg-emerald-500/20 text-emerald-300"
+    case "declined":
+      return "bg-rose-500/20 text-rose-300"
     case "open":
       return "bg-amber-500/20 text-amber-300"
     case "resolved":
@@ -723,7 +732,7 @@ export function SupportDeskPanel() {
             <label className="space-y-1 text-sm font-medium text-foreground/80">
               <span>Reason</span>
               <select
-                className="mt-1 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-border/70 bg-card/70 px-3 py-2 text-sm shadow-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 required
@@ -741,7 +750,7 @@ export function SupportDeskPanel() {
             <label className="space-y-1 text-sm font-medium text-foreground/80">
               <span>Priority</span>
               <select
-                className="mt-1 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-lg border border-border/70 bg-card/70 px-3 py-2 text-sm shadow-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
                 required
@@ -1084,7 +1093,7 @@ export function SupportDeskPanel() {
                         <select
                           value={selectedMacroId}
                           onChange={(e) => setSelectedMacroId(e.target.value)}
-                          className="rounded-md border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/80"
+                          className="rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-xs font-semibold text-foreground/80 shadow-sm focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition"
                         >
                           <option value="">Select a macro</option>
                           {toolkitMacros.map((macro) => (
@@ -1145,7 +1154,7 @@ export function SupportDeskPanel() {
                       <select
                         value={replyStatus}
                         onChange={(event) => setReplyStatus(event.target.value)}
-                        className="rounded-md border border-border/60 bg-background/80 px-3 py-1 text-xs font-semibold text-foreground/70 focus:border-primary/60"
+                        className="rounded-md border border-border/70 bg-card/70 px-3 py-1.5 text-xs font-semibold text-foreground/80 shadow-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition"
                       >
                         {USER_STATUS_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>

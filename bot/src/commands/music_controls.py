@@ -15,6 +15,7 @@ from discord.ext import commands
 from src.services.lavalink_service import LavalinkVoiceClient
 from src.services.server_settings_service import QueueCapacity
 from src.utils.embeds import EmbedFactory
+from lavalink.errors import ClientError
 
 URL_REGEX = re.compile(r"https?://", re.IGNORECASE)
 VOICE_PERMISSIONS = ("connect", "speak", "view_channel")
@@ -65,6 +66,40 @@ class MusicControls(commands.Cog):
 
     def _queue_copilot_service(self):
         return getattr(self.bot, "queue_copilot", None)
+
+    async def _send_ephemeral(self, inter: discord.Interaction, embed: discord.Embed) -> None:
+        """Reply ephemerally regardless of the interaction's current response state."""
+        if inter.response.is_done():
+            await inter.followup.send(embed=embed, ephemeral=True)
+        else:
+            await inter.response.send_message(embed=embed, ephemeral=True)
+
+    async def _ensure_lavalink_available(
+        self, inter: discord.Interaction, factory: EmbedFactory
+    ) -> bool:
+        """Make sure at least one Lavalink node is reachable before connecting."""
+        manager = getattr(self.bot, "lavalink_manager", None)
+        try:
+            if manager:
+                await manager.ensure_ready()
+        except Exception as exc:  # pragma: no cover - defensive
+            if getattr(self.bot, "logger", None):
+                self.bot.logger.debug("Failed to ensure Lavalink readiness: %s", exc)
+
+        client = getattr(self.bot, "lavalink", None)
+        available_nodes = []
+        if client and getattr(client, "node_manager", None):
+            available_nodes = getattr(client.node_manager, "available_nodes", [])  # type: ignore[attr-defined]
+
+        if available_nodes:
+            return True
+
+        message = factory.error(
+            "Playback is temporarily unavailable because no Lavalink node is reachable. "
+            "Please check the node configuration or try again shortly."
+        )
+        await self._send_ephemeral(inter, message)
+        return False
 
     async def _publish_queue_state(
         self,
@@ -635,7 +670,28 @@ class MusicControls(commands.Cog):
                     ephemeral=True,
                 )
                 return None
-            await channel.connect(cls=LavalinkVoiceClient)  # type: ignore[arg-type]
+            if not await self._ensure_lavalink_available(inter, factory):
+                return None
+            try:
+                await channel.connect(cls=LavalinkVoiceClient)  # type: ignore[arg-type]
+            except ClientError as exc:
+                if getattr(self.bot, "logger", None):
+                    self.bot.logger.warning("Lavalink not available for guild %s: %s", inter.guild.id, exc)
+                await self._send_ephemeral(
+                    inter,
+                    factory.error(
+                        "No Lavalink node is currently available. Please ensure the server is running and reachable."
+                    ),
+                )
+                return None
+            except Exception as exc:  # pragma: no cover - network/Discord behaviour
+                if getattr(self.bot, "logger", None):
+                    self.bot.logger.error("Voice connection failed for guild %s: %s", inter.guild.id, exc)
+                await self._send_ephemeral(
+                    inter,
+                    factory.error("Unable to join the voice channel right now. Please try again in a moment."),
+                )
+                return None
             player = self.bot.lavalink.player_manager.get(inter.guild.id)
 
         if not player:

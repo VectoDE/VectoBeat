@@ -7,6 +7,7 @@ import {
   getContactMessageById,
   recordBotActivityEvent,
   getUserSubscriptions,
+  setUserRole,
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 import { sendTicketEventEmail } from "@/lib/email-notifications"
@@ -93,6 +94,10 @@ export async function POST(
   if (!ticket) {
     return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
   }
+  const isPartnerTicket =
+    ticket.topic?.toLowerCase().includes("partner") ||
+    ticket.subject?.toLowerCase().includes("partner") ||
+    ticket.status?.toLowerCase() === "waiting"
   const attachments: Array<{ name: string; type: string; size: number; content: string }> = []
 
   for (const [key, value] of body.entries()) {
@@ -143,6 +148,17 @@ export async function POST(
 
   if (statusUpdate) {
     await updateContactMessage(ticketId, { status: statusUpdate })
+    if (isPartnerTicket && statusUpdate === "accepted") {
+      try {
+        const fullTicket = await getContactMessageThread(ticketId)
+        const requester = fullTicket?.messages?.find((msg: any) => msg.role === "member" && msg.authorId)?.authorId
+        if (requester) {
+          await setUserRole(requester, "partner")
+        }
+      } catch (error) {
+        console.error("[VectoBeat] Failed to assign partner role:", error)
+      }
+    }
     if (ticket.email && statusUpdate !== ticket.status) {
       void sendTicketEventEmail({
         to: ticket.email,

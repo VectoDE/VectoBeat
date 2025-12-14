@@ -69,23 +69,33 @@ const mapDiscordGuilds = (raw: any[]): Array<{ id: string; name: string; hasBot:
     .filter(Boolean) as Array<{ id: string; name: string; hasBot: boolean; isAdmin: boolean }>
 }
 
-const resolveGuilds = async (verification: any) => {
-  const existing = Array.isArray(verification.user?.guilds) ? verification.user.guilds : null
-  if (existing && existing.length) {
-    return existing
-  }
+type ResolvedGuild = { id: string; name: string; hasBot: boolean; isAdmin: boolean }
+
+const resolveGuilds = async (verification: any): Promise<ResolvedGuild[]> => {
+  const existing = Array.isArray(verification.user?.guilds)
+    ? (verification.user.guilds as ResolvedGuild[])
+    : []
   const token = verification.token
-  if (!token) return []
+  const existingById = new Map(existing.map((g: any) => [g.id, g]))
+  if (!token) return existing
   try {
     const resp = await fetch("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     })
-    if (!resp.ok) return existing || []
+    if (!resp.ok) return existing
     const data = await resp.json()
-    if (!Array.isArray(data)) return existing || []
-    return mapDiscordGuilds(data)
+    if (!Array.isArray(data)) return existing
+    const fresh = mapDiscordGuilds(data).map((guild) => {
+      const prior = existingById.get(guild.id)
+      return {
+        ...guild,
+        // preserve bot presence flag if we already tracked it for this guild id
+        hasBot: typeof prior?.hasBot === "boolean" ? prior.hasBot : guild.hasBot,
+      }
+    })
+    return fresh
   } catch {
-    return existing || []
+    return existing
   }
 }

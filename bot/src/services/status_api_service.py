@@ -977,23 +977,28 @@ class StatusAPIService:
         voice_clients: List[discord.VoiceClient] = list(getattr(self.bot, "voice_clients", []))
         connections = len(voice_clients)
         listener_total = 0
-        detail: List[Dict[str, Any]] = []
+        detail_map: Dict[Tuple[int, int], Dict[str, Any]] = {}
+
         for vc in voice_clients:
             channel = getattr(vc, "channel", None)
             if not channel:
                 continue
             guild = channel.guild
             members = getattr(channel, "members", []) or []
-            listeners = sum(1 for member in members if not getattr(member, "bot", False) and member.id != getattr(self.bot.user, "id", None))
-            listener_total += listeners
-            detail.append(
-                {
-                    "guildId": str(guild.id),
-                    "channelId": str(getattr(channel, "id", "")),
-                    "listeners": self._safe_int(listeners),
-                }
+            listeners = sum(
+                1 for member in members if not getattr(member, "bot", False) and member.id != getattr(self.bot.user, "id", None)
             )
-        return connections, listener_total, detail
+            listener_total += listeners
+            key = (int(guild.id), int(getattr(channel, "id", 0)))
+            detail_map[key] = {
+                "guildId": str(guild.id),
+                "guildName": getattr(guild, "name", None),
+                "channelId": str(getattr(channel, "id", "")),
+                "channelName": getattr(channel, "name", None),
+                "listeners": self._safe_int(listeners),
+            }
+
+        return connections, listener_total, list(detail_map.values())
 
     def _record_listener_sample(self, count: int) -> None:
         now = time.time()

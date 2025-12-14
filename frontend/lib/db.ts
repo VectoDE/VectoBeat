@@ -112,6 +112,8 @@ export const verifyUserApiKey = (apiKey: string | null | undefined, expectedDisc
 
 const normalizeApiKeyType = (value: string) => value.trim().toLowerCase()
 const hashSecretValue = (value: string) => crypto.createHash("sha256").update(value).digest("hex")
+const API_CREDENTIAL_ACTIVE = "active" as const
+const API_CREDENTIAL_DISABLED = "disabled" as const
 
 const packSecretValue = (value: string) => {
   const encrypted = encryptText(value)
@@ -184,7 +186,7 @@ interface UserProfilePayload {
   apiKey?: string
 }
 
-export type UserRole = "member" | "admin" | "operator"
+export type UserRole = "member" | "admin" | "operator" | "partner"
 const DEFAULT_ROLE: UserRole = "member"
 export type AdminUserSummary = {
   id: string
@@ -198,7 +200,80 @@ export type AdminUserSummary = {
   role: UserRole
   twoFactorEnabled: boolean
   handle: string | null
+  profileName: string | null
+  headline: string | null
+  bio: string | null
+  location: string | null
+  website: string | null
   profilePublic: boolean
+  profileCreatedAt?: string | null
+  profileUpdatedAt?: string | null
+  welcomeSentAt?: string | null
+  contactCreatedAt?: string | null
+  contactUpdatedAt?: string | null
+  stripeCustomerId?: string | null
+  preferences?: {
+    emailUpdates: boolean
+    productUpdates: boolean
+    weeklyDigest: boolean
+    smsAlerts: boolean
+    preferredLanguage: string
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  notifications?: {
+    maintenanceAlerts: boolean
+    downtimeAlerts: boolean
+    releaseNotes: boolean
+    securityNotifications: boolean
+    betaProgram: boolean
+    communityEvents: boolean
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  privacy?: {
+    profilePublic: boolean
+    searchVisibility: boolean
+    analyticsOptIn: boolean
+    dataSharing: boolean
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  security?: {
+    twoFactorEnabled: boolean
+    loginAlerts: boolean
+    backupCodesRemaining: number
+    activeSessions: number
+    lastPasswordChange?: string | null
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  botSettings?: {
+    autoJoinVoice: boolean
+    announceTracks: boolean
+    djMode: boolean
+    normalizeVolume: boolean
+    defaultVolume: number
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  roleCreatedAt?: string | null
+  roleUpdatedAt?: string | null
+  sessionInfo?: {
+    count: number
+    lastActive?: string | null
+    lastLocation?: string | null
+    lastUserAgent?: string | null
+    lastIp?: string | null
+  }
+  lastLogin?: {
+    createdAt: string
+    ipAddress?: string | null
+    userAgent?: string | null
+    location?: string | null
+    notified: boolean
+  } | null
+  linkedAccounts?: Array<{ provider: string; handle: string; createdAt: string }>
 }
 
 export const persistUserProfile = async (payload: UserProfilePayload) => {
@@ -381,7 +456,7 @@ const getDecryptedProfilePayload = async (discordId: string) => {
   }
 }
 
-const allowedRoles: UserRole[] = ["member", "admin", "operator"]
+const allowedRoles: UserRole[] = ["member", "admin", "operator", "partner"]
 
 const normalizeRole = (role?: string | null): UserRole => {
   if (!role) return DEFAULT_ROLE
@@ -447,6 +522,13 @@ export const listAdminUsers = async (): Promise<AdminUserSummary[]> => {
         avatarUrl: true,
         guildCount: true,
         lastSeen: true,
+        welcomeSentAt: true,
+        profileSettings: {
+          select: {
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
     })
 
@@ -454,34 +536,153 @@ export const listAdminUsers = async (): Promise<AdminUserSummary[]> => {
 
     const ids = profiles.map((profile) => profile.discordId)
 
-    const [contacts, roles, security, settings, privacy] = await Promise.all([
+    const [contacts, roles, security, settings, privacy, preferences, notifications, botSettings, sessions, loginEvents, linkedAccounts] = await Promise.all([
       db.userContact.findMany({
         where: { discordId: { in: ids } },
-        select: { discordId: true, email: true, phone: true },
+        select: { discordId: true, email: true, phone: true, stripeCustomerId: true, createdAt: true, updatedAt: true },
       }),
       db.userRole.findMany({
         where: { discordId: { in: ids } },
-        select: { discordId: true, role: true },
+        select: { discordId: true, role: true, createdAt: true, updatedAt: true },
       }),
       db.userSecurity.findMany({
         where: { discordId: { in: ids } },
-        select: { discordId: true, twoFactorEnabled: true },
+        select: {
+          discordId: true,
+          twoFactorEnabled: true,
+          loginAlerts: true,
+          backupCodesRemaining: true,
+          activeSessions: true,
+          lastPasswordChange: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       db.userProfileSetting.findMany({
         where: { discordId: { in: ids } },
-        select: { discordId: true, handle: true },
+        select: {
+          discordId: true,
+          handle: true,
+          profileName: true,
+          headline: true,
+          bio: true,
+          location: true,
+          website: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       db.userPrivacy.findMany({
         where: { discordId: { in: ids } },
-        select: { discordId: true, profilePublic: true },
+        select: {
+          discordId: true,
+          profilePublic: true,
+          searchVisibility: true,
+          analyticsOptIn: true,
+          dataSharing: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      db.userPreference.findMany({
+        where: { discordId: { in: ids } },
+        select: {
+          discordId: true,
+          emailUpdates: true,
+          productUpdates: true,
+          weeklyDigest: true,
+          smsAlerts: true,
+          preferredLanguage: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      db.userNotification.findMany({
+        where: { discordId: { in: ids } },
+        select: {
+          discordId: true,
+          maintenanceAlerts: true,
+          downtimeAlerts: true,
+          releaseNotes: true,
+          securityNotifications: true,
+          betaProgram: true,
+          communityEvents: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      db.userBotSetting.findMany({
+        where: { discordId: { in: ids } },
+        select: {
+          discordId: true,
+          autoJoinVoice: true,
+          announceTracks: true,
+          djMode: true,
+          normalizeVolume: true,
+          defaultVolume: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      db.userSession.findMany({
+        where: { discordId: { in: ids } },
+        orderBy: { lastActive: "desc" },
+        select: {
+          discordId: true,
+          userAgent: true,
+          ipAddress: true,
+          location: true,
+          createdAt: true,
+          lastActive: true,
+        },
+      }),
+      db.userLoginEvent.findMany({
+        where: { discordId: { in: ids } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          discordId: true,
+          ipAddress: true,
+          userAgent: true,
+          location: true,
+          notified: true,
+          createdAt: true,
+        },
+      }),
+      db.userLinkedAccount.findMany({
+        where: { discordId: { in: ids } },
+        select: { discordId: true, provider: true, handle: true, createdAt: true },
       }),
     ])
 
     const contactMap = new Map(contacts.map((contact) => [contact.discordId, contact]))
     const roleMap = new Map(roles.map((role) => [role.discordId, role.role as UserRole]))
-    const securityMap = new Map(security.map((record) => [record.discordId, record.twoFactorEnabled]))
-    const handleMap = new Map(settings.map((row) => [row.discordId, row.handle]))
-    const privacyMap = new Map(privacy.map((row) => [row.discordId, row.profilePublic]))
+    const securityMap = new Map(security.map((record) => [record.discordId, record]))
+    const settingsMap = new Map(settings.map((row) => [row.discordId, row]))
+    const privacyMap = new Map(privacy.map((row) => [row.discordId, row]))
+    const preferenceMap = new Map(preferences.map((row) => [row.discordId, row]))
+    const notificationMap = new Map(notifications.map((row) => [row.discordId, row]))
+    const botSettingsMap = new Map(botSettings.map((row) => [row.discordId, row]))
+    const sessionMap = new Map<string, { count: number; last?: (typeof sessions)[number] }>()
+    sessions.forEach((session) => {
+      const existing = sessionMap.get(session.discordId)
+      if (!existing) {
+        sessionMap.set(session.discordId, { count: 1, last: session })
+      } else {
+        sessionMap.set(session.discordId, { count: existing.count + 1, last: existing.last ?? session })
+      }
+    })
+    const loginEventMap = new Map<string, (typeof loginEvents)[number] | undefined>()
+    loginEvents.forEach((event) => {
+      if (!loginEventMap.has(event.discordId)) {
+        loginEventMap.set(event.discordId, event)
+      }
+    })
+    const linkedAccountMap = new Map<string, Array<{ provider: string; handle: string; createdAt: Date }>>()
+    linkedAccounts.forEach((row) => {
+      const current = linkedAccountMap.get(row.discordId) ?? []
+      current.push({ provider: row.provider, handle: row.handle, createdAt: row.createdAt })
+      linkedAccountMap.set(row.discordId, current)
+    })
 
     return profiles.map((profile) => ({
       id: profile.discordId,
@@ -493,9 +694,114 @@ export const listAdminUsers = async (): Promise<AdminUserSummary[]> => {
       guildCount: profile.guildCount,
       lastSeen: profile.lastSeen.toISOString(),
       role: roleMap.get(profile.discordId) ?? DEFAULT_ROLE,
-      twoFactorEnabled: Boolean(securityMap.get(profile.discordId)),
-      handle: handleMap.get(profile.discordId) ?? null,
-      profilePublic: Boolean(privacyMap.get(profile.discordId)),
+      roleCreatedAt: roles.find((r) => r.discordId === profile.discordId)?.createdAt?.toISOString() ?? null,
+      roleUpdatedAt: roles.find((r) => r.discordId === profile.discordId)?.updatedAt?.toISOString() ?? null,
+      twoFactorEnabled: Boolean(securityMap.get(profile.discordId)?.twoFactorEnabled),
+      handle: settingsMap.get(profile.discordId)?.handle ?? null,
+      profileName: settingsMap.get(profile.discordId)?.profileName ?? null,
+      headline: settingsMap.get(profile.discordId)?.headline ?? null,
+      bio: settingsMap.get(profile.discordId)?.bio ?? null,
+      location: settingsMap.get(profile.discordId)?.location ?? null,
+      website: settingsMap.get(profile.discordId)?.website ?? null,
+      profilePublic: Boolean(privacyMap.get(profile.discordId)?.profilePublic),
+      profileCreatedAt: settingsMap.get(profile.discordId)?.createdAt?.toISOString() ?? null,
+      profileUpdatedAt: settingsMap.get(profile.discordId)?.updatedAt?.toISOString() ?? null,
+      welcomeSentAt: profile.welcomeSentAt ? profile.welcomeSentAt.toISOString() : null,
+      contactCreatedAt: contactMap.get(profile.discordId)?.createdAt?.toISOString() ?? null,
+      contactUpdatedAt: contactMap.get(profile.discordId)?.updatedAt?.toISOString() ?? null,
+      stripeCustomerId: contactMap.get(profile.discordId)?.stripeCustomerId ?? null,
+      preferences: (() => {
+        const pref = preferenceMap.get(profile.discordId)
+        if (!pref) return undefined
+        return {
+          emailUpdates: pref.emailUpdates,
+          productUpdates: pref.productUpdates,
+          weeklyDigest: pref.weeklyDigest,
+          smsAlerts: pref.smsAlerts,
+          preferredLanguage: pref.preferredLanguage,
+          createdAt: pref.createdAt?.toISOString() ?? null,
+          updatedAt: pref.updatedAt?.toISOString() ?? null,
+        }
+      })(),
+      notifications: (() => {
+        const note = notificationMap.get(profile.discordId)
+        if (!note) return undefined
+        return {
+          maintenanceAlerts: note.maintenanceAlerts,
+          downtimeAlerts: note.downtimeAlerts,
+          releaseNotes: note.releaseNotes,
+          securityNotifications: note.securityNotifications,
+          betaProgram: note.betaProgram,
+          communityEvents: note.communityEvents,
+          createdAt: note.createdAt?.toISOString() ?? null,
+          updatedAt: note.updatedAt?.toISOString() ?? null,
+        }
+      })(),
+      privacy: (() => {
+        const priv = privacyMap.get(profile.discordId)
+        if (!priv) return undefined
+        return {
+          profilePublic: priv.profilePublic,
+          searchVisibility: priv.searchVisibility,
+          analyticsOptIn: priv.analyticsOptIn,
+          dataSharing: priv.dataSharing,
+          createdAt: priv.createdAt?.toISOString() ?? null,
+          updatedAt: priv.updatedAt?.toISOString() ?? null,
+        }
+      })(),
+      security: (() => {
+        const sec = securityMap.get(profile.discordId)
+        if (!sec) return undefined
+        return {
+          twoFactorEnabled: sec.twoFactorEnabled,
+          loginAlerts: sec.loginAlerts,
+          backupCodesRemaining: sec.backupCodesRemaining,
+          activeSessions: sec.activeSessions,
+          lastPasswordChange: sec.lastPasswordChange?.toISOString() ?? null,
+          createdAt: sec.createdAt?.toISOString() ?? null,
+          updatedAt: sec.updatedAt?.toISOString() ?? null,
+        }
+      })(),
+      botSettings: (() => {
+        const bot = botSettingsMap.get(profile.discordId)
+        if (!bot) return undefined
+        return {
+          autoJoinVoice: bot.autoJoinVoice,
+          announceTracks: bot.announceTracks,
+          djMode: bot.djMode,
+          normalizeVolume: bot.normalizeVolume,
+          defaultVolume: bot.defaultVolume,
+          createdAt: bot.createdAt?.toISOString() ?? null,
+          updatedAt: bot.updatedAt?.toISOString() ?? null,
+        }
+      })(),
+      sessionInfo: (() => {
+        const session = sessionMap.get(profile.discordId)
+        if (!session) return undefined
+        return {
+          count: session.count,
+          lastActive: session.last?.lastActive?.toISOString() ?? null,
+          lastLocation: session.last?.location ?? null,
+          lastUserAgent: session.last?.userAgent ?? null,
+          lastIp: session.last?.ipAddress ?? null,
+        }
+      })(),
+      lastLogin: (() => {
+        const event = loginEventMap.get(profile.discordId)
+        if (!event) return null
+        return {
+          createdAt: event.createdAt.toISOString(),
+          ipAddress: event.ipAddress ?? null,
+          userAgent: event.userAgent ?? null,
+          location: event.location ?? null,
+          notified: event.notified,
+        }
+      })(),
+      linkedAccounts:
+        linkedAccountMap
+          .get(profile.discordId)
+          ?.map((row) => ({ provider: row.provider, handle: row.handle, createdAt: row.createdAt.toISOString() })) ??
+        [],
     }))
   } catch (error) {
     logDbError("[VectoBeat] Failed to list admin users:", error)
@@ -1140,6 +1446,14 @@ export interface UserPreferences {
   weeklyDigest: boolean
   smsAlerts: boolean
   preferredLanguage: string
+  fullName?: string | null
+  birthDate?: string | null
+  addressCountry?: string | null
+  addressState?: string | null
+  addressCity?: string | null
+  addressStreet?: string | null
+  addressHouseNumber?: string | null
+  addressPostalCode?: string | null
 }
 
 const mapPreferences = (row: any): UserPreferences => ({
@@ -1148,6 +1462,14 @@ const mapPreferences = (row: any): UserPreferences => ({
   weeklyDigest: row.weeklyDigest ?? false,
   smsAlerts: row.smsAlerts ?? false,
   preferredLanguage: row.preferredLanguage || "en",
+  fullName: row.fullName ?? row.full_name ?? null,
+  birthDate: row.birthDate ?? row.birth_date ?? null,
+  addressCountry: row.addressCountry ?? row.address_country ?? null,
+  addressState: row.addressState ?? row.address_state ?? null,
+  addressCity: row.addressCity ?? row.address_city ?? null,
+  addressStreet: row.addressStreet ?? row.address_street ?? null,
+  addressHouseNumber: row.addressHouseNumber ?? row.address_house_number ?? null,
+  addressPostalCode: row.addressPostalCode ?? row.address_postal_code ?? null,
 })
 
 export const getUserPreferences = async (discordId: string): Promise<UserPreferences> => {
@@ -1157,6 +1479,14 @@ export const getUserPreferences = async (discordId: string): Promise<UserPrefere
     weeklyDigest: false,
     smsAlerts: false,
     preferredLanguage: "en",
+    fullName: null,
+    birthDate: null,
+    addressCountry: null,
+    addressState: null,
+    addressCity: null,
+    addressStreet: null,
+    addressHouseNumber: null,
+    addressPostalCode: null,
   }
 
   try {
@@ -1200,6 +1530,14 @@ export const updateUserPreferences = async (
         weeklyDigest: merged.weeklyDigest,
         smsAlerts: merged.smsAlerts,
         preferredLanguage: merged.preferredLanguage,
+        fullName: merged.fullName,
+        birthDate: merged.birthDate,
+        addressCountry: merged.addressCountry,
+        addressState: merged.addressState,
+        addressCity: merged.addressCity,
+        addressStreet: merged.addressStreet,
+        addressHouseNumber: merged.addressHouseNumber,
+        addressPostalCode: merged.addressPostalCode,
       },
       create: {
         discordId,
@@ -1208,6 +1546,14 @@ export const updateUserPreferences = async (
         weeklyDigest: merged.weeklyDigest,
         smsAlerts: merged.smsAlerts,
         preferredLanguage: merged.preferredLanguage,
+        fullName: merged.fullName,
+        birthDate: merged.birthDate,
+        addressCountry: merged.addressCountry,
+        addressState: merged.addressState,
+        addressCity: merged.addressCity,
+        addressStreet: merged.addressStreet,
+        addressHouseNumber: merged.addressHouseNumber,
+        addressPostalCode: merged.addressPostalCode,
       },
     })
   } catch (error) {
@@ -1880,6 +2226,7 @@ export const getPublicProfileBySlug = async (slug: string) => {
   return {
     discordId: targetDiscordId,
     handle: settings.handle,
+    role: await getUserRole(targetDiscordId),
     username: base.username,
     displayName: settings.profileName || base.displayName || base.username || "Community Member",
     headline: settings.headline,
@@ -3340,7 +3687,7 @@ export const isApiCredentialActive = async (value: string, types?: string[]): Pr
     const row = await db.apiCredential.findFirst({
       where: {
         valueHash: hash,
-        status: Prisma.ApiCredentialStatus.active,
+        status: API_CREDENTIAL_ACTIVE,
         ...(normalized && normalized.length ? { type: { in: normalized } } : {}),
       },
     })
@@ -3372,8 +3719,8 @@ export const rotateApiCredential = async (payload: {
 
     const record = await db.$transaction(async (tx) => {
       await tx.apiCredential.updateMany({
-        where: { type, status: Prisma.ApiCredentialStatus.active },
-        data: { status: Prisma.ApiCredentialStatus.disabled, deactivatedAt: new Date() },
+        where: { type, status: API_CREDENTIAL_ACTIVE },
+        data: { status: API_CREDENTIAL_DISABLED, deactivatedAt: new Date() },
       })
       return tx.apiCredential.create({
         data: {
@@ -3383,7 +3730,7 @@ export const rotateApiCredential = async (payload: {
           encryptedValue: packed.encryptedValue,
           iv: packed.iv,
           authTag: packed.authTag,
-          status: Prisma.ApiCredentialStatus.active,
+          status: API_CREDENTIAL_ACTIVE,
           createdBy: payload.createdBy ?? null,
           metadata: payload.metadata as Prisma.JsonObject | undefined,
         },
@@ -4642,6 +4989,14 @@ const mapContactMessage = (row: ContactMessageRecord) => ({
 const buildContactCategoryWhere = (
   scope?: "contact" | "ticket",
 ): Prisma.ContactMessageWhereInput | undefined => {
+  const partnerPredicate: Prisma.ContactMessageWhereInput = {
+    OR: [
+      { topic: { contains: "partner" } },
+      { subject: { contains: "partner" } },
+      { status: { in: ["waiting", "accepted", "declined"] } },
+    ],
+  }
+
   if (!scope) return undefined
   if (scope === "ticket") {
     return {
@@ -4649,6 +5004,7 @@ const buildContactCategoryWhere = (
         { conversation: { some: {} } },
         { subject: { contains: "Ticket" } },
         { subject: { contains: "ticket" } },
+        partnerPredicate,
       ],
     }
   }
@@ -4660,6 +5016,7 @@ const buildContactCategoryWhere = (
           OR: [
             { subject: { contains: "Ticket" } },
             { subject: { contains: "ticket" } },
+            partnerPredicate,
           ],
         },
       },
@@ -4686,6 +5043,7 @@ export const createContactMessage = async ({
   priority,
   subject,
   message,
+  status,
 }: {
   name: string
   email: string
@@ -4694,10 +5052,19 @@ export const createContactMessage = async ({
   priority?: string | null
   subject?: string | null
   message: string
+  status?: string | null
 }) => {
   try {
     const db = getPool()
     if (!db) return null
+
+    const clampText = (value: string, limit: number) => {
+      const text = value || ""
+      return text.length > limit ? text.slice(0, limit) : text
+    }
+    // Reduce lengths to fit varchar columns in the current schema.
+    const MAX_MESSAGE_LENGTH = 180
+    const MAX_SUBJECT_LENGTH = 180
 
     const result = await db.contactMessage.create({
       data: {
@@ -4706,9 +5073,9 @@ export const createContactMessage = async ({
         company: company?.trim() || null,
         topic: topic?.trim() || null,
         priority: priority?.trim() || "normal",
-        subject: subject || null,
-        message,
-        status: "open",
+        subject: clampText(subject || "", MAX_SUBJECT_LENGTH) || null,
+        message: clampText(message, MAX_MESSAGE_LENGTH),
+        status: status?.trim() || "open",
       },
     })
 
@@ -4772,13 +5139,14 @@ export const listContactMessages = async (options?: { scope?: "contact" | "ticke
     const db = getPool()
     if (!db) return []
 
-    const scopeFilter = buildContactCategoryWhere(options?.scope)
-    const openWhere: Prisma.ContactMessageWhereInput = scopeFilter
-      ? { AND: [scopeFilter, { status: "open" }] }
-      : { status: "open" }
-    const otherWhere: Prisma.ContactMessageWhereInput = scopeFilter
-      ? { AND: [scopeFilter, { NOT: { status: "open" } }] }
-      : { NOT: { status: "open" } }
+  const scopeFilter = buildContactCategoryWhere(options?.scope)
+  const openStatuses = ["open", "waiting"]
+  const openWhere: Prisma.ContactMessageWhereInput = scopeFilter
+    ? { AND: [scopeFilter, { status: { in: openStatuses } }] }
+    : { status: { in: openStatuses } }
+  const otherWhere: Prisma.ContactMessageWhereInput = scopeFilter
+    ? { AND: [scopeFilter, { NOT: { status: { in: openStatuses } } }] }
+    : { NOT: { status: { in: openStatuses } } }
 
     const [openMessages, otherMessages] = await Promise.all([
       db.contactMessage.findMany({
@@ -4968,13 +5336,19 @@ export const appendContactMessageThread = async ({
     const db = getPool()
     if (!db) return null
 
+    const clampText = (value: string, limit: number) => {
+      const text = value || ""
+      return text.length > limit ? text.slice(0, limit) : text
+    }
+    const MAX_BODY_LENGTH = 180
+
     const created = await db.contactMessageThread.create({
       data: {
         ticketId,
         authorId: authorId || null,
         authorName: authorName || null,
         role,
-        body,
+        body: clampText(body, MAX_BODY_LENGTH),
         attachments: attachments ?? Prisma.JsonNull,
       },
     })
@@ -5226,6 +5600,32 @@ export const listForumPosts = async (threadId: string): Promise<ForumPostRecord[
   } catch (error) {
     logDbError("[VectoBeat] Failed to list forum posts:", error)
     return []
+  }
+}
+
+export const deleteForumThread = async (threadId: string) => {
+  try {
+    const db = getPool()
+    if (!db) return false
+
+    await db.forumPost.deleteMany({ where: { threadId } })
+    await db.forumThread.delete({ where: { id: threadId } })
+    return true
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to delete forum thread:", error)
+    return false
+  }
+}
+
+export const deleteForumPost = async (postId: string) => {
+  try {
+    const db = getPool()
+    if (!db) return false
+    await db.forumPost.delete({ where: { id: postId } })
+    return true
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to delete forum post:", error)
+    return false
   }
 }
 
@@ -5500,8 +5900,8 @@ export const createForumPost = async (payload: {
       action: "post_created",
       entityType: "post",
       entityId: record.id,
-      actorId,
-      actorName,
+      actorId: authorId,
+      actorName: authorName,
       actorRole: role,
       categorySlug: thread.category?.slug ?? null,
       threadId: record.threadId,

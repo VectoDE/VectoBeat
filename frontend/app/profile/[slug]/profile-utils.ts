@@ -16,6 +16,7 @@ export type PublicProfile = {
   handle: string
   displayName: string
   username?: string | null
+  role?: string | null
   headline?: string | null
   bio?: string | null
   location?: string | null

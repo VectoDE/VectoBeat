@@ -45,7 +45,7 @@ export default function NotFound() {
           {[
             { label: "Features", href: "/features" },
             { label: "Pricing", href: "/pricing" },
-            { label: "Stats Control Panel", href: "/stats" },
+            { label: "Statistics", href: "/stats" },
           ].map((link) => (
             <Link
               key={link.href}

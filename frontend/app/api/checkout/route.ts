@@ -3,25 +3,18 @@ import { stripe } from "@/lib/stripe"
 import { resolveStripePrice } from "@/lib/stripe-prices"
 import { type NextRequest, NextResponse } from "next/server"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
-import { upsertUserContact } from "@/lib/db"
+import { upsertUserContact, getUserPreferences } from "@/lib/db"
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 const normalizedAppUrl = appUrl.replace(/\/$/, "")
 
-const normalizeAddressInput = (input?: any): Stripe.AddressParam | undefined => {
-  if (!input || typeof input !== "object") return undefined
-  const { line1, line2, city, state, postalCode, postal_code, country } = input
-  const sanitized: Stripe.AddressParam = {}
-  if (typeof line1 === "string" && line1.trim()) sanitized.line1 = line1.trim()
-  if (typeof line2 === "string" && line2.trim()) sanitized.line2 = line2.trim()
-  if (typeof city === "string" && city.trim()) sanitized.city = city.trim()
-  if (typeof state === "string" && state.trim()) sanitized.state = state.trim()
-  const postal = typeof postalCode === "string" ? postalCode : typeof postal_code === "string" ? postal_code : undefined
-  if (postal && postal.trim()) sanitized.postal_code = postal.trim()
-  if (typeof country === "string" && country.trim()) sanitized.country = country.trim().toUpperCase()
-  return Object.keys(sanitized).length ? sanitized : undefined
+const normalizeCountry = (value?: string | null): string | undefined => {
+  if (!value || typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+  return trimmed.toUpperCase().slice(0, 2)
 }
 
 const getOrCreateCustomer = async (
@@ -109,12 +102,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unable to determine plan price" }, { status: 400 })
     }
 
-    const normalizedAddress = normalizeAddressInput(billingAddress)
+    const normalizedCountry = normalizeCountry(billingAddress?.country as string | undefined)
+    const normalizedAddress: Stripe.AddressParam | undefined = billingAddress
+      ? {
+          country: normalizedCountry,
+          state: typeof billingAddress.state === "string" ? billingAddress.state.trim() : undefined,
+          city: typeof billingAddress.city === "string" ? billingAddress.city.trim() : undefined,
+          line1: typeof billingAddress.line1 === "string" ? billingAddress.line1.trim() : undefined,
+          line2: typeof (billingAddress as any).line2 === "string" ? (billingAddress as any).line2.trim() : undefined,
+          postal_code:
+            typeof (billingAddress as any).postalCode === "string"
+              ? (billingAddress as any).postalCode.trim()
+              : typeof (billingAddress as any).postal_code === "string"
+                ? (billingAddress as any).postal_code.trim()
+                : undefined,
+        }
+      : undefined
+
+    const preferences = discordId ? await getUserPreferences(discordId) : null
+    const preferenceCountry = normalizeCountry(preferences?.addressCountry || null)
+    const preferenceAddress: Stripe.AddressParam | undefined =
+      preferenceCountry
+        ? {
+            country: preferenceCountry,
+            state: preferences?.addressState || undefined,
+            city: preferences?.addressCity || undefined,
+            line1: preferences?.addressStreet
+              ? `${preferences.addressStreet}${preferences.addressHouseNumber ? " " + preferences.addressHouseNumber : ""}`
+              : undefined,
+            postal_code: preferences?.addressPostalCode || undefined,
+          }
+        : undefined
+
+    const resolvedAddress = normalizedAddress || preferenceAddress
     const customer = await getOrCreateCustomer(customerEmail, {
       discordId,
-      name: typeof customerName === "string" ? customerName : null,
+      name:
+        typeof customerName === "string" && customerName.trim()
+          ? customerName
+          : preferences?.fullName?.trim()
+            ? preferences.fullName.trim()
+            : null,
       phone: typeof customerPhone === "string" ? customerPhone : null,
-      address: normalizedAddress,
+      address: resolvedAddress,
     })
     const targetGuildId = typeof guildId === "string" && guildId.length > 0 ? guildId : discordId || ""
     const billingInterval: "month" | "year" = billingCycle === "monthly" ? "month" : "year"
@@ -214,9 +244,9 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       customer: customer.id,
       customer_update: {
-        address: "auto",
+        address: resolvedAddress ? "auto" : undefined,
         name: "auto",
-        shipping: "auto",
+        shipping: resolvedAddress ? "auto" : undefined,
       },
       line_items: [lineItem],
       subscription_data: {
@@ -232,7 +262,7 @@ export async function POST(request: NextRequest) {
       locale: locale as Stripe.Checkout.SessionCreateParams.Locale,
       allow_promotion_codes: true,
       automatic_tax: {
-        enabled: true,
+        enabled: Boolean(resolvedAddress?.country),
       },
       tax_id_collection: {
         enabled: true,

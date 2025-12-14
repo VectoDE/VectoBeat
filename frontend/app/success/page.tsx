@@ -46,11 +46,14 @@ function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const sessionId = searchParams?.get("session_id") ?? null
+  const isDonation = searchParams?.get("donation") === "1"
   const [summary, setSummary] = useState<CheckoutSummary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!isDonation)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isDonation) return
+
     if (!sessionId) {
       router.replace("/pricing?checkout=required")
       return
@@ -80,7 +83,7 @@ function SuccessContent() {
     return () => {
       cancelled = true
     }
-  }, [sessionId, router])
+  }, [sessionId, router, isDonation])
 
   const planPerks = useMemo(
     () => [
@@ -91,6 +94,33 @@ function SuccessContent() {
     ],
     [],
   )
+
+  if (isDonation) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navigation />
+        <div className="flex-1 flex items-center justify-center px-4 py-20">
+          <div className="max-w-xl text-center space-y-4">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
+            <h1 className="text-3xl font-bold">Thanks for your donation!</h1>
+            <p className="text-foreground/70 text-sm">
+              Your payment was marked as a donation in Stripe. We use it to keep infrastructure, moderation, and new
+              VectoBeat features running.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/pricing" className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                View memberships <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="/stats" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:border-primary/70 hover:text-primary transition-colors">
+                Status & telemetry
+              </Link>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
 
   if (!sessionId) {
     return (

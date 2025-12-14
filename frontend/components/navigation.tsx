@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 import { MenuIcon, CloseIcon } from "./icons"
+import { RoleBadge } from "./role-badge"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -195,6 +196,9 @@ export default function Navigation() {
                     <div className="px-4 py-2 border-b border-border/50">
                       <p className="text-sm font-semibold text-foreground truncate">{user.username}</p>
                       <p className="text-xs text-foreground/60 truncate">{user.email || "No email connected"}</p>
+                      <div className="mt-2">
+                        <RoleBadge role={user.role} />
+                      </div>
                     </div>
                     <div className="py-2 text-sm text-foreground/70">
                       {(user.role === "admin" || user.role === "operator") && (

@@ -3,6 +3,19 @@
 All notable changes to **VectoBeat** are tracked in this document.
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2025-12-14
+
+### Highlights
+- Repository-wide line-ending normalisation to CRLF for consistent cross-platform diffs; no functional or dependency changes introduced.
+- Frontend version identifiers bumped to `2.3.0`, ensuring package metadata and Stripe app info match the new release tag.
+
+### Maintenance
+- Normalised line endings across CI/workflow metadata (`.github/ISSUE_TEMPLATE/custom.md`, `.github/workflows/codeql.yml`), preventing spurious diffs on Windows checkouts.
+- Bot codebase (commands, lifecycle events, services) converted to CRLF line endings without altering logic or behaviour.
+- Frontend API routes, pages, shared components, and library helpers updated to CRLF line endings while keeping implementation identical.
+- Documentation and repository collateral (`README.md`, `docs/command_reference.md`, docker/compose configs) aligned to CRLF line endings for consistent formatting.
+- Frontend package metadata (`frontend/package.json`, `frontend/package-lock.json`) and Stripe app info (`frontend/lib/stripe.ts`, `frontend/app/api/stripe/webhook/route.ts`) now report version `2.3.0`.
+
 ## [2.2.1] - 2025-12-09
 
 ### Highlights

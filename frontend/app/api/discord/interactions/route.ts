@@ -5,7 +5,11 @@ import { buildDiscordLoginUrl } from "@/lib/config"
 export const runtime = "nodejs"
 
 const PUBLIC_KEY_PREFIX = Buffer.from("302a300506032b6570032100", "hex")
-const PUBLIC_KEY_HEX = (process.env.DISCORD_INTERACTIONS_PUBLIC_KEY || "").trim()
+const PUBLIC_KEY_HEX =
+  (process.env.DISCORD_INTERACTIONS_PUBLIC_KEY ||
+    process.env.DISCORD_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_DISCORD_PUBLIC_KEY ||
+    "").trim()
 const PUBLIC_KEY_VALID = /^[a-fA-F0-9]{64}$/.test(PUBLIC_KEY_HEX)
 const SITE_ORIGIN =
   (process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")) ||
@@ -35,7 +39,13 @@ const isRequestVerified = (body: string, signature: string | null, timestamp: st
     return false
   }
   try {
-    return verifySignature(null, Buffer.from(timestamp + body), key, Buffer.from(signature, "hex"))
+    // Discord signs the raw request body with the Ed25519 public key. The timestamp is prepended.
+    return verifySignature(
+      "ed25519",
+      Buffer.from(timestamp + body),
+      key,
+      Buffer.from(signature, "hex")
+    )
   } catch (error) {
     console.warn("[VectoBeat] Discord interaction signature validation failed:", error)
     return false

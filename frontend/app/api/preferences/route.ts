@@ -19,7 +19,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "discordId is required" }, { status: 400 })
     }
 
-    const allowedKeys = ["emailUpdates", "productUpdates", "weeklyDigest", "smsAlerts", "preferredLanguage"]
+    const allowedKeys = [
+      "emailUpdates",
+      "productUpdates",
+      "weeklyDigest",
+      "smsAlerts",
+      "preferredLanguage",
+      "fullName",
+      "birthDate",
+      "addressCountry",
+      "addressState",
+      "addressCity",
+      "addressStreet",
+      "addressHouseNumber",
+      "addressPostalCode",
+    ]
     const sanitizedUpdates: Record<string, any> = {}
 
     for (const key of allowedKeys) {

@@ -20,6 +20,13 @@ import {
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { buildProfilePageUrl, buildProfileSeoDescription, fetchPublicProfile, type LinkedAccount } from "./profile-utils"
+import { RoleBadge } from "@/components/role-badge"
+
+type InteractionCounter = {
+  "@type": "InteractionCounter"
+  interactionType: string
+  userInteractionCount: number
+}
 
 const providerMap: Record<
   string,
@@ -167,6 +174,22 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     .map((account) => ({ account, href: resolveAccountUrl(account) }))
     .filter((item) => Boolean(item.href)) as Array<{ account: LinkedAccount; href: string }>
   const seoDescription = buildProfileSeoDescription(profile)
+  const interactionStatistic: InteractionCounter[] = [
+    botInstallations
+      ? {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/InstallAction",
+          userInteractionCount: botInstallations,
+        }
+      : null,
+    totalServers
+      ? {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/JoinAction",
+          userInteractionCount: totalServers,
+        }
+      : null,
+  ].filter((stat): stat is InteractionCounter => Boolean(stat))
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Person",
@@ -178,22 +201,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     jobTitle: profile.headline || undefined,
     homeLocation: profile.location ? { "@type": "Place", name: profile.location } : undefined,
     sameAs: linkedWithUrls.map(({ href }) => href),
-    interactionStatistic: [
-      botInstallations
-        ? {
-            "@type": "InteractionCounter",
-            interactionType: "https://schema.org/InstallAction",
-            userInteractionCount: botInstallations,
-          }
-        : null,
-      totalServers
-        ? {
-            "@type": "InteractionCounter",
-            interactionType: "https://schema.org/JoinAction",
-            userInteractionCount: totalServers,
-          }
-        : null,
-    ].filter((stat): stat is Record<string, unknown> => Boolean(stat)),
+    interactionStatistic,
   }
 
   return (
@@ -203,7 +211,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         className="sr-only"
-        aria-hidden="true"
       />
       <main className="flex-1 w-full px-4 py-24">
         <div className="max-w-3xl mx-auto space-y-8">
@@ -220,7 +227,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-foreground/50">@{profile.handle}</p>
                 <h1 className="text-4xl font-semibold text-foreground mt-2">{profile.displayName}</h1>
-                {profile.headline ? <p className="text-foreground/70 mt-2">{profile.headline}</p> : null}
+                {profile.headline ? <p className="text-foreground/70 mt-3">{profile.headline}</p> : null}
+                {profile.role && (
+                  <div className="mt-3">
+                    <RoleBadge role={profile.role} />
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center justify-center gap-3 mt-4 text-xs text-foreground/60">
                   {profile.location ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-border/40 px-3 py-1">

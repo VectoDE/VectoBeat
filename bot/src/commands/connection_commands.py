@@ -11,6 +11,7 @@ import discord
 import lavalink
 from discord import app_commands
 from discord.ext import commands
+from lavalink.errors import ClientError
 
 from src.services.lavalink_service import LavalinkVoiceClient
 from src.utils.embeds import EmbedFactory
@@ -59,7 +60,11 @@ class ConnectionCommands(commands.Cog):
         """Ensure Lavalink nodes are connected before attempting a join."""
         manager = getattr(self.bot, "lavalink_manager", None)
         if manager:
-            await manager.ensure_ready()
+            try:
+                await manager.ensure_ready()
+            except Exception as exc:  # pragma: no cover - defensive
+                if getattr(self.bot, "logger", None):
+                    self.bot.logger.debug("Failed to refresh Lavalink nodes: %s", exc)
 
     # ------------------------------------------------------------------ commands
     @app_commands.command(name="connect", description="Connect VectoBeat to your current voice channel.")
@@ -103,7 +108,24 @@ class ConnectionCommands(commands.Cog):
                 )
                 return await inter.response.send_message(embed=embed, ephemeral=True)
 
-            await channel.connect(cls=LavalinkVoiceClient)  # type: ignore[arg-type]
+            try:
+                await channel.connect(cls=LavalinkVoiceClient)  # type: ignore[arg-type]
+            except ClientError as exc:
+                if getattr(self.bot, "logger", None):
+                    self.bot.logger.warning("Lavalink not available for guild %s: %s", inter.guild.id, exc)
+                return await inter.response.send_message(
+                    embed=factory.error(
+                        "No Lavalink node is currently available. Please ensure the server is running and reachable."
+                    ),
+                    ephemeral=True,
+                )
+            except Exception as exc:  # pragma: no cover - defensive
+                if getattr(self.bot, "logger", None):
+                    self.bot.logger.error("Voice connection failed for guild %s: %s", inter.guild.id, exc)
+                return await inter.response.send_message(
+                    embed=factory.error("Unable to join the voice channel right now. Please try again shortly."),
+                    ephemeral=True,
+                )
             player = self._find_player(self.bot, inter.guild.id)
             if player:
                 player.text_channel_id = getattr(inter.channel, "id", None)
