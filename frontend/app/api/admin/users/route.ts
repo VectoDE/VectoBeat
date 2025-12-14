@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
     }
 
-    if (!["member", "admin", "operator"].includes(role)) {
+    if (!["member", "admin", "operator", "partner"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 })
     }
 

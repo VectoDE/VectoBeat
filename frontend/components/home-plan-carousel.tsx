@@ -27,6 +27,15 @@ const PLAN_COPY = {
 } as const
 
 const tierEntries = Object.entries(MEMBERSHIP_TIERS) as Array<[MembershipTier, (typeof MEMBERSHIP_TIERS)[MembershipTier]]>
+const tierOrder: Record<MembershipTier, number> = tierEntries.reduce(
+  (acc, [key], index) => ({ ...acc, [key]: index }),
+  {} as Record<MembershipTier, number>,
+)
+const normalizeTier = (value?: string | null): MembershipTier | null => {
+  if (!value || typeof value !== "string") return null
+  const key = value.trim().toLowerCase() as MembershipTier
+  return key in MEMBERSHIP_TIERS ? key : null
+}
 
 type SessionGuild = { id: string; name: string; isAdmin?: boolean }
 type SessionData = {
@@ -149,15 +158,29 @@ export function HomePlanCarousel() {
     }
   }, [session?.email])
 
+  const adminGuilds = useMemo(() => (session?.guilds ?? []).filter((guild) => guild.isAdmin), [session?.guilds])
+  const highestUserTierIndex = useMemo(() => {
+    const tiers = session?.tiers ?? []
+    let maxIndex = -1
+    tiers.forEach((entry) => {
+      const normalized = normalizeTier(entry)
+      if (!normalized) return
+      const idx = tierOrder[normalized]
+      if (typeof idx === "number" && idx > maxIndex) {
+        maxIndex = idx
+      }
+    })
+    return maxIndex
+  }, [session?.tiers])
+
   useEffect(() => {
-    const guilds: SessionGuild[] = session?.guilds ?? []
-    if (!guilds.length) {
+    if (!adminGuilds.length) {
       setSelectedGuildId("")
       return
     }
-    const preferred = guilds.find((guild) => guild.isAdmin) ?? guilds[0]
+    const preferred = adminGuilds[0]
     setSelectedGuildId(preferred?.id ?? "")
-  }, [session?.guilds])
+  }, [adminGuilds])
 
   const fetchSession = async (token?: string, silent?: boolean) => {
     try {
@@ -320,11 +343,10 @@ export function HomePlanCarousel() {
       return
     }
 
-    const allGuilds: SessionGuild[] = resolvedSession.guilds || []
+    const adminOnly: SessionGuild[] = (resolvedSession.guilds || []).filter((guild) => guild.isAdmin)
     const resolvedGuild =
-      allGuilds.find((guild) => guild.id === selectedGuildId) ||
-      allGuilds.find((guild) => guild.isAdmin) ||
-      allGuilds[0]
+      adminOnly.find((guild) => guild.id === selectedGuildId) ||
+      adminOnly[0]
 
     if (!resolvedGuild?.id) {
       setError(PLAN_COPY.errors.noGuild)
@@ -414,15 +436,15 @@ export function HomePlanCarousel() {
               <span className="text-xs text-foreground/50">{PLAN_COPY.emailHint}</span>
             </div>
           )}
-          {session?.guilds?.length ? (
+          {adminGuilds.length ? (
             <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
               <select
                 value={selectedGuildId}
                 onChange={(event) => setSelectedGuildId(event.target.value)}
                 className="w-full sm:w-auto min-w-60 px-3 py-2 rounded-lg border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                {(session?.guilds ?? []).map((guild: SessionGuild) => (
+                {adminGuilds.map((guild: SessionGuild) => (
                   <option key={guild.id} value={guild.id}>
-                    {guild.name} {guild.isAdmin ? "(Admin)" : ""}
+                    {guild.name} (Admin)
                   </option>
                 ))}
               </select>
@@ -437,7 +459,9 @@ export function HomePlanCarousel() {
       )}
 
       <div
-        className="relative rounded-3xl border border-border/40 bg-card/30 py-8 px-4 md:overflow-hidden"
+        className={`relative rounded-3xl border border-border/40 bg-card/30 py-8 px-4 ${
+          prefersTouch ? "overflow-x-auto" : "md:overflow-hidden"
+        }`}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => {
           if (dragStartX === null) setIsPaused(false)
@@ -449,10 +473,10 @@ export function HomePlanCarousel() {
             !prefersTouch && dragStartX === null ? "transition-transform duration-500" : ""
           } ${prefersTouch ? "overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-4" : ""}`}
           style={
-            enablePointerDrag
+            enablePointerDrag || prefersTouch
               ? {
-                  transform: `translateX(${-(sliderStep * activeSlide) + dragOffset}px)`,
-                  touchAction: dragStartX !== null ? "none" : "pan-x pan-y",
+                  transform: enablePointerDrag ? `translateX(${-(sliderStep * activeSlide) + dragOffset}px)` : undefined,
+                  touchAction: prefersTouch ? "pan-x" : dragStartX !== null ? "none" : "pan-x pan-y",
                 }
               : undefined
           }
@@ -483,6 +507,9 @@ export function HomePlanCarousel() {
             const tierDescription = tier.description
             const tierCta = tier.cta
             const tierFeatures = tier.features
+            const tierIndex = tierOrder[tierKey]
+            const isUpgrade = highestUserTierIndex >= 0 && typeof tierIndex === "number" && tierIndex > highestUserTierIndex
+            const buttonLabel = isUpgrade ? "Upgrade" : tierCta
             const yearlyDiscountLabel =
               yearlySavings > 0
                 ? PLAN_COPY.discountLabel.replace("{{amount}}", formatPrice(yearlySavings))
@@ -528,7 +555,7 @@ export function HomePlanCarousel() {
                     }`}
                     disabled={checkoutLoading === tierKey}
                   >
-                    {checkoutLoading === tierKey ? PLAN_COPY.redirecting : tierCta}
+                    {checkoutLoading === tierKey ? PLAN_COPY.redirecting : buttonLabel}
                   </button>
 
                   <div className="space-y-4">

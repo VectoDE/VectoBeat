@@ -7,6 +7,8 @@ import {
   listForumPosts,
   listForumThreads,
   getUserRole,
+  deleteForumThread,
+  deleteForumPost,
 } from "@/lib/db"
 
 export async function GET(request: NextRequest) {
@@ -46,5 +48,43 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[VectoBeat] Failed to load admin forum data:", error)
     return NextResponse.json({ error: "unavailable" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const discordId = request.nextUrl.searchParams.get("discordId")
+  const threadId = request.nextUrl.searchParams.get("threadId")
+  const postId = request.nextUrl.searchParams.get("postId")
+
+  if (!discordId) {
+    return NextResponse.json({ error: "discordId_required" }, { status: 400 })
+  }
+  if (!threadId && !postId) {
+    return NextResponse.json({ error: "threadId or postId required" }, { status: 400 })
+  }
+
+  const verification = await verifyRequestForUser(request, discordId)
+  if (!verification.valid) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+  }
+  const role = await getUserRole(discordId)
+  if (role !== "admin" && role !== "operator") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 })
+  }
+
+  try {
+    if (threadId) {
+      const ok = await deleteForumThread(threadId)
+      if (!ok) return NextResponse.json({ error: "delete_failed" }, { status: 500 })
+      return NextResponse.json({ success: true, threadId })
+    }
+    if (postId) {
+      const ok = await deleteForumPost(postId)
+      if (!ok) return NextResponse.json({ error: "delete_failed" }, { status: 500 })
+      return NextResponse.json({ success: true, postId })
+    }
+  } catch (error) {
+    console.error("[VectoBeat] Failed to delete forum entity:", error)
+    return NextResponse.json({ error: "delete_failed" }, { status: 500 })
   }
 }

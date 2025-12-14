@@ -53,6 +53,79 @@ type AdminUserRow = {
   twoFactorEnabled: boolean
   handle: string | null
   profilePublic: boolean
+  profileName?: string | null
+  headline?: string | null
+  bio?: string | null
+  location?: string | null
+  website?: string | null
+  profileCreatedAt?: string | null
+  profileUpdatedAt?: string | null
+  welcomeSentAt?: string | null
+  contactCreatedAt?: string | null
+  contactUpdatedAt?: string | null
+  stripeCustomerId?: string | null
+  preferences?: {
+    emailUpdates: boolean
+    productUpdates: boolean
+    weeklyDigest: boolean
+    smsAlerts: boolean
+    preferredLanguage: string
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  notifications?: {
+    maintenanceAlerts: boolean
+    downtimeAlerts: boolean
+    releaseNotes: boolean
+    securityNotifications: boolean
+    betaProgram: boolean
+    communityEvents: boolean
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  privacy?: {
+    profilePublic: boolean
+    searchVisibility: boolean
+    analyticsOptIn: boolean
+    dataSharing: boolean
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  security?: {
+    twoFactorEnabled: boolean
+    loginAlerts: boolean
+    backupCodesRemaining: number
+    activeSessions: number
+    lastPasswordChange?: string | null
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  botSettings?: {
+    autoJoinVoice: boolean
+    announceTracks: boolean
+    djMode: boolean
+    normalizeVolume: boolean
+    defaultVolume: number
+    createdAt?: string | null
+    updatedAt?: string | null
+  }
+  roleCreatedAt?: string | null
+  roleUpdatedAt?: string | null
+  sessionInfo?: {
+    count: number
+    lastActive?: string | null
+    lastLocation?: string | null
+    lastUserAgent?: string | null
+    lastIp?: string | null
+  }
+  lastLogin?: {
+    createdAt: string
+    ipAddress?: string | null
+    userAgent?: string | null
+    location?: string | null
+    notified: boolean
+  } | null
+  linkedAccounts?: Array<{ provider: string; handle: string; createdAt: string }>
 }
 
 type AdminSubscriptionRow = {
@@ -234,7 +307,8 @@ export default function AdminControlPanelPage() {
   const [forumPosts, setForumPosts] = useState<any[]>([])
   const [forumSelectedCategory, setForumSelectedCategory] = useState<string>("")
   const [forumSelectedThread, setForumSelectedThread] = useState<string>("")
-  const [forumLoading, setForumLoading] = useState(false)
+const [forumLoading, setForumLoading] = useState(false)
+const [forumActionMessage, setForumActionMessage] = useState<string | null>(null)
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -503,6 +577,7 @@ export default function AdminControlPanelPage() {
     async (opts?: { threadId?: string; category?: string }) => {
     if (!discordId) return
     setForumLoading(true)
+    setForumActionMessage(null)
     try {
       const params = new URLSearchParams({ discordId })
       const category = opts?.category ?? forumSelectedCategory
@@ -535,6 +610,59 @@ export default function AdminControlPanelPage() {
   },
     [discordId, forumSelectedCategory, forumSelectedThread],
   )
+
+  const handleDeleteForumThread = useCallback(
+    async (threadId: string) => {
+      if (!discordId) return
+      setForumActionMessage(null)
+      try {
+        const params = new URLSearchParams({ discordId, threadId })
+        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+          method: "DELETE",
+          credentials: "include",
+        })
+        const payload = await res.json().catch(() => ({}))
+        if (!res.ok || payload?.error) {
+          throw new Error(payload?.error || "Unable to delete thread.")
+        }
+        setForumActionMessage("Thread removed.")
+        setForumSelectedThread("")
+        await loadForumData({ category: forumSelectedCategory })
+      } catch (error) {
+        setForumActionMessage(error instanceof Error ? error.message : "Failed to delete thread.")
+      }
+    },
+    [discordId, forumSelectedCategory, loadForumData],
+  )
+
+  const handleDeleteForumPost = useCallback(
+    async (postId: string) => {
+      if (!discordId) return
+      setForumActionMessage(null)
+      try {
+        const params = new URLSearchParams({ discordId, postId })
+        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+          method: "DELETE",
+          credentials: "include",
+        })
+        const payload = await res.json().catch(() => ({}))
+        if (!res.ok || payload?.error) {
+          throw new Error(payload?.error || "Unable to delete post.")
+        }
+        setForumActionMessage("Post removed.")
+        await loadForumData({ category: forumSelectedCategory, threadId: forumSelectedThread })
+      } catch (error) {
+        setForumActionMessage(error instanceof Error ? error.message : "Failed to delete post.")
+      }
+    },
+    [discordId, forumSelectedCategory, forumSelectedThread, loadForumData],
+  )
+
+  useEffect(() => {
+    if (forumSelectedThread) {
+      void loadForumData({ category: forumSelectedCategory, threadId: forumSelectedThread })
+    }
+  }, [forumSelectedThread, forumSelectedCategory, loadForumData])
 
   const loadContactMessages = useCallback(async () => {
     if (!discordId) return
@@ -582,23 +710,44 @@ export default function AdminControlPanelPage() {
         throw new Error(payload.error || "Failed to load users")
       }
       const data = await response.json()
-      const normalizedUsers = Array.isArray(data.users)
-        ? data.users.map((user: any) => ({
-            id: String(user.id),
-            username: user.username ?? null,
-            displayName: user.displayName ?? user.username ?? null,
-            email: user.email ?? null,
-            phone: user.phone ?? null,
-            avatarUrl: user.avatarUrl ?? null,
-            guildCount: Number.isFinite(user.guildCount) ? user.guildCount : 0,
-            lastSeen: user.lastSeen || new Date().toISOString(),
-            role: (user.role as UserRole) ?? "member",
-            twoFactorEnabled: Boolean(user.twoFactorEnabled),
-            handle: user.handle ?? null,
-            profilePublic: Boolean(user.profilePublic),
-          }))
-        : []
-      setUsers(normalizedUsers)
+            const normalizedUsers = Array.isArray(data.users)
+              ? data.users.map((user: any) => ({
+                  id: String(user.id),
+                  username: user.username ?? null,
+                  displayName: user.displayName ?? user.username ?? null,
+                  email: user.email ?? null,
+                  phone: user.phone ?? null,
+                  avatarUrl: user.avatarUrl ?? null,
+                  guildCount: Number.isFinite(user.guildCount) ? user.guildCount : 0,
+                  lastSeen: user.lastSeen || new Date().toISOString(),
+                  role: (user.role as UserRole) ?? "member",
+                  twoFactorEnabled: user.security?.twoFactorEnabled ?? Boolean(user.twoFactorEnabled),
+                  handle: user.handle ?? null,
+                  profilePublic: Boolean(user.profilePublic),
+                  profileName: user.profileName ?? null,
+                  headline: user.headline ?? null,
+                  bio: user.bio ?? null,
+                  location: user.location ?? null,
+                  website: user.website ?? null,
+                  profileCreatedAt: user.profileCreatedAt ?? null,
+                  profileUpdatedAt: user.profileUpdatedAt ?? null,
+                  welcomeSentAt: user.welcomeSentAt ?? null,
+                  contactCreatedAt: user.contactCreatedAt ?? null,
+                  contactUpdatedAt: user.contactUpdatedAt ?? null,
+                  stripeCustomerId: user.stripeCustomerId ?? null,
+                  preferences: user.preferences,
+                  notifications: user.notifications,
+                  privacy: user.privacy,
+                  security: user.security,
+                  botSettings: user.botSettings,
+                  roleCreatedAt: user.roleCreatedAt ?? null,
+                  roleUpdatedAt: user.roleUpdatedAt ?? null,
+                  sessionInfo: user.sessionInfo,
+                  lastLogin: user.lastLogin ?? null,
+                  linkedAccounts: Array.isArray(user.linkedAccounts) ? user.linkedAccounts : [],
+                }))
+              : []
+            setUsers(normalizedUsers)
     } catch (error) {
       console.error("Failed to load admin users:", error)
       setUsersError(error instanceof Error ? error.message : "Unable to load users")
@@ -1258,6 +1407,27 @@ export default function AdminControlPanelPage() {
     return entries.slice(0, 40)
   }, [packageEntries, packageSearch])
 
+  const ticketStatusClass = (status?: string) => {
+    switch ((status || "").toLowerCase()) {
+      case "waiting":
+        return "bg-amber-500/20 text-amber-600"
+      case "accepted":
+        return "bg-emerald-500/20 text-emerald-600"
+      case "declined":
+        return "bg-rose-500/20 text-rose-600"
+      case "open":
+        return "bg-yellow-500/20 text-yellow-600"
+      case "resolved":
+        return "bg-green-500/20 text-green-600"
+      case "closed":
+        return "bg-foreground/10 text-foreground/60"
+      case "archived":
+        return "bg-indigo-500/15 text-indigo-600"
+      default:
+        return "bg-primary/10 text-primary"
+    }
+  }
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "blog":
@@ -1496,6 +1666,9 @@ export default function AdminControlPanelPage() {
                       className="px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none text-sm"
                     >
                       <option value="all">All statuses</option>
+                      <option value="waiting">Waiting</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="declined">Declined</option>
                       <option value="open">Open</option>
                       <option value="resolved">Resolved</option>
                       <option value="closed">Closed</option>
@@ -1539,6 +1712,9 @@ export default function AdminControlPanelPage() {
                   ) : filteredTickets.length ? (
                     filteredTickets.map((ticket) => {
                       const isActive = ticket.id === selectedTicketId
+                      const isPartner =
+                        String(ticket.topic || ticket.subject || "").toLowerCase().includes("partner") ||
+                        ["waiting", "accepted", "declined"].includes(String(ticket.status || "").toLowerCase())
                       return (
                         <button
                           key={ticket.id}
@@ -1549,19 +1725,16 @@ export default function AdminControlPanelPage() {
                               : "border-border/50 bg-background/70 hover:border-primary/40"
                           }`}
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-3 wrap-break-word">
                             <p className="font-semibold truncate">{ticket.subject || "Support Ticket"}</p>
                             <div className="flex items-center gap-2">
+                              {isPartner && (
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-primary/10 text-primary border border-primary/30">
+                                  Partner
+                                </span>
+                              )}
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                                  ticket.status === "open"
-                                    ? "bg-yellow-500/20 text-yellow-500"
-                                    : ticket.status === "resolved"
-                                      ? "bg-green-500/20 text-green-500"
-                                      : ticket.status === "closed"
-                                        ? "bg-foreground/10 text-foreground/60"
-                                        : "bg-indigo-500/15 text-indigo-600"
-                                }`}
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${ticketStatusClass(ticket.status)}`}
                               >
                                 {ticket.status}
                               </span>
@@ -1580,8 +1753,8 @@ export default function AdminControlPanelPage() {
                               </span>
                             </div>
                           </div>
-                          <p className="text-xs text-foreground/60">{ticket.email}</p>
-                          <p className="mt-2 line-clamp-2 text-sm text-foreground/70">{ticket.message}</p>
+                          <p className="text-xs text-foreground/60 wrap-break-word">{ticket.email}</p>
+                          <p className="mt-2 line-clamp-2 text-sm text-foreground/70 wrap-break-word">{ticket.message}</p>
                           <p className="mt-2 text-[11px] text-foreground/50">
                             Updated {new Date(ticket.updatedAt).toLocaleString()}
                           </p>
@@ -1618,13 +1791,7 @@ export default function AdminControlPanelPage() {
                         <div className="flex items-center gap-3">
                           <p className="text-lg font-semibold">{ticketThread.subject || "Support Ticket"}</p>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                              ticketThread.status === "open"
-                                ? "bg-yellow-500/20 text-yellow-500"
-                                : ticketThread.status === "resolved"
-                                  ? "bg-green-500/20 text-green-500"
-                                  : "bg-foreground/10 text-foreground/60"
-                            }`}
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${ticketStatusClass(ticketThread.status)}`}
                           >
                             {ticketThread.status}
                           </span>
@@ -1642,6 +1809,49 @@ export default function AdminControlPanelPage() {
                           <span>Created {new Date(ticketThread.createdAt).toLocaleString()}</span>
                           <span>Updated {new Date(ticketThread.updatedAt).toLocaleString()}</span>
                         </div>
+                        {(() => {
+                          const topic = String(ticketThread.topic || ticketThread.subject || "").toLowerCase()
+                          const partner =
+                            topic.includes("partner") || ["waiting", "accepted", "declined"].includes((ticketThread.status || "").toLowerCase())
+                          if (!partner) return null
+                          const setPartnerStatus = async (next: string) => {
+                            if (!discordId) return
+                            const form = new FormData()
+                            form.append("status", next)
+                            form.append("authorName", adminProfile.name || "Admin")
+                            const response = await fetch(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
+                              method: "POST",
+                              body: form,
+                              credentials: "include",
+                            })
+                            const payload = await response.json().catch(() => ({}))
+                            if (!response.ok || payload?.error) {
+                              setSupportTicketsError(payload?.error || "Unable to update partner request.")
+                              return
+                            }
+                            await fetchTicketThread(ticketThread.id)
+                            loadSupportTickets()
+                          }
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-foreground/60">Partner request</span>
+                              {["waiting", "accepted", "declined"].map((state) => (
+                                <button
+                                  key={state}
+                                  type="button"
+                                  onClick={() => void setPartnerStatus(state)}
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                    ticketThread.status === state
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-border/60 text-foreground/70 hover:border-primary/50"
+                                  }`}
+                                >
+                                  {state.charAt(0).toUpperCase() + state.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        })()}
                         <div className="flex flex-wrap items-center gap-3">
                           <button
                             type="button"
@@ -1752,9 +1962,9 @@ export default function AdminControlPanelPage() {
                                     {entry.role}
                                   </span>
                                 </div>
-                                <p className={`text-sm text-foreground/80 whitespace-pre-line ${isAgent ? "text-right" : ""}`}>
-                                  {entry.body}
-                                </p>
+                          <p className={`text-sm text-foreground/80 whitespace-pre-line wrap-break-word ${isAgent ? "text-right" : ""}`}>
+                            {entry.body}
+                          </p>
                                 {!!attachments.length && (
                                   <div className="grid gap-3">
                                     {attachments.map((file: any, fileIndex: number) => {
@@ -2000,8 +2210,8 @@ export default function AdminControlPanelPage() {
                               </span>
                             </div>
                           </div>
-                          <p className="text-xs text-foreground/60">{msg.email}</p>
-                          <p className="mt-2 line-clamp-2 text-sm text-foreground/70">{msg.message}</p>
+                          <p className="text-xs text-foreground/60 wrap-break-word">{msg.email}</p>
+                          <p className="mt-2 line-clamp-2 text-sm text-foreground/70 wrap-break-word">{msg.message}</p>
                           <div className="mt-2 text-[11px] text-foreground/50 flex items-center justify-between">
                             <span>{msg.company || msg.topic || "Contact"}</span>
                             <span>{formatDateTime(msg.updatedAt || msg.createdAt)}</span>
@@ -2984,6 +3194,7 @@ export default function AdminControlPanelPage() {
                               <option value="member">Member</option>
                               <option value="operator">Operator</option>
                               <option value="admin">Admin</option>
+                              <option value="partner">Partner</option>
                             </select>
                           </div>
                           <div className="flex flex-wrap gap-2">
@@ -3523,7 +3734,7 @@ export default function AdminControlPanelPage() {
                 <div>
                   <h3 className="text-xl font-semibold text-foreground">Forum manager</h3>
                   <p className="text-xs text-foreground/60">
-                    Browse categories, threads und Posts. Moderation folgt.
+                    Browse categories, threads, and posts. Moderation controls live here.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -3537,7 +3748,7 @@ export default function AdminControlPanelPage() {
                     }}
                     className="px-4 py-2 rounded-lg bg-background border border-border/50 text-sm focus:border-primary/50 outline-none"
                   >
-                    <option value="">Alle Kategorien</option>
+                  <option value="">All categories</option>
                     {forumCategories.map((cat) => (
                       <option key={cat.id ?? cat.slug} value={cat.slug ?? cat.id}>
                         {cat.title} ({cat.threadCount ?? cat.threads?.length ?? 0})
@@ -3553,11 +3764,12 @@ export default function AdminControlPanelPage() {
                   </button>
                 </div>
               </div>
+              {forumActionMessage && <p className="text-xs text-primary">{forumActionMessage}</p>}
 
               <div className="grid lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Kategorien</h4>
+                    <h4 className="font-semibold">Categories</h4>
                     <span className="text-xs text-foreground/60">{forumCategories.length}</span>
                   </div>
                   <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
@@ -3581,7 +3793,7 @@ export default function AdminControlPanelPage() {
                         </p>
                       </button>
                     ))}
-                    {forumCategories.length === 0 && <p className="text-sm text-foreground/60">Keine Kategorien.</p>}
+                    {forumCategories.length === 0 && <p className="text-sm text-foreground/60">No categories available.</p>}
                   </div>
                 </div>
 
@@ -3592,42 +3804,70 @@ export default function AdminControlPanelPage() {
                   </div>
                   <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
                     {forumThreads.map((thread) => (
-                      <button
+                      <div
                         key={thread.id}
-                        onClick={() => setForumSelectedThread(thread.id)}
                         className={`w-full text-left border rounded-lg px-3 py-2 ${
                           forumSelectedThread === thread.id
                             ? "border-primary/60 bg-primary/5"
                             : "border-border/40 hover:border-primary/40"
                         }`}
                       >
-                        <p className="text-sm font-semibold">{thread.title}</p>
-                        <p className="text-xs text-foreground/60">
-                          {thread.categorySlug || "forum"} · {thread.authorName || "Team"} · {thread.replies} replies
-                        </p>
-                      </button>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="cursor-pointer" onClick={() => setForumSelectedThread(thread.id)}>
+                            <p className="text-sm font-semibold wrap-break-word">{thread.title}</p>
+                            <p className="text-xs text-foreground/60">
+                              {thread.categorySlug || "forum"} · {thread.authorName || "Team"} · {thread.replies} replies
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setForumSelectedThread(thread.id)}
+                              className="px-3 py-1 text-xs rounded border border-border/50 hover:border-primary/50"
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDeleteForumThread(thread.id)}
+                              className="px-3 py-1 text-xs rounded border border-destructive/50 text-destructive hover:bg-destructive/10"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                    {forumThreads.length === 0 && <p className="text-sm text-foreground/60">Keine Threads gefunden.</p>}
+                    {forumThreads.length === 0 && <p className="text-sm text-foreground/60">No threads found.</p>}
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold">Beiträge</h4>
+                    <h4 className="font-semibold">Posts</h4>
                     <span className="text-xs text-foreground/60">{forumPosts.length}</span>
                   </div>
                   <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1 muted-scroll">
                     {forumPosts.map((post) => (
-                      <div key={post.id} className="border border-border/40 rounded-lg px-3 py-2 bg-background/70">
-                        <p className="text-xs text-foreground/60 mb-1">
+                      <div key={post.id} className="border border-border/40 rounded-lg px-3 py-2 bg-background/70 space-y-2">
+                        <p className="text-xs text-foreground/60">
                           {post.authorName || "Member"} · {new Date(post.createdAt).toLocaleString()}
                         </p>
-                        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{post.body}</p>
+                        <p className="text-sm text-foreground/90 whitespace-pre-wrap wrap-break-word">{post.body}</p>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteForumPost(post.id)}
+                            className="px-3 py-1 text-xs rounded border border-destructive/50 text-destructive hover:bg-destructive/10"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     ))}
                     {forumPosts.length === 0 && (
                       <p className="text-sm text-foreground/60">
-                        {forumSelectedThread ? "Keine Beiträge im Thread." : "Thread auswählen, um Beiträge zu sehen."}
+                        {forumSelectedThread ? "No posts in this thread." : "Select a thread to view its posts."}
                       </p>
                     )}
                   </div>
@@ -3636,7 +3876,7 @@ export default function AdminControlPanelPage() {
 
               <section className="rounded-xl border border-border/50 bg-card/30 p-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-semibold">Neueste Events</h4>
+                  <h4 className="font-semibold">Latest events</h4>
                   <span className="text-xs text-foreground/60">{forumEvents.length} events</span>
                 </div>
                 <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 muted-scroll">
@@ -3657,7 +3897,7 @@ export default function AdminControlPanelPage() {
                     </div>
                   ))}
                   {forumEvents.length === 0 && (
-                    <p className="text-sm text-foreground/60">Noch keine Forum-Events.</p>
+                  <p className="text-sm text-foreground/60">No forum events yet.</p>
                   )}
                 </div>
               </section>
@@ -4537,7 +4777,7 @@ export default function AdminControlPanelPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background admin-scrollless">
         <Navigation />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
@@ -4552,7 +4792,7 @@ export default function AdminControlPanelPage() {
 
   if (accessDenied) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col admin-scrollless">
         <Navigation />
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="text-center max-w-md border border-border/50 rounded-xl p-8 bg-card/40">
@@ -4575,7 +4815,7 @@ export default function AdminControlPanelPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col admin-scrollless">
         <Navigation />
         <main className="flex-1 w-full pt-24 pb-12 px-4">
           <div className="max-w-6xl mx-auto space-y-10">
@@ -4588,8 +4828,8 @@ export default function AdminControlPanelPage() {
             </header>
 
             <section>
-              <div className="border-b border-border/60 overflow-x-auto pb-1 bg-card/40 rounded-lg muted-scroll">
-                <div className="flex flex-nowrap gap-3 min-w-max px-1">
+              <div className="border-b border-border/60 overflow-x-auto pb-1 bg-card/40 rounded-lg muted-scroll [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&::-webkit-scrollbar-thumb]:bg-orange-500/70 [&::-webkit-scrollbar-track]:bg-transparent">
+                <div className="flex flex-nowrap gap-3 min-w-max px-1 touch-pan-x">
                   {ADMIN_TABS.map((tab) => {
                     const isActive = tab.key === activeTab
                     return (
@@ -5131,6 +5371,9 @@ export default function AdminControlPanelPage() {
             </div>
             <div className="flex-1 space-y-1">
               <p className="text-lg font-semibold">{userPreview.displayName || userPreview.username || userPreview.id}</p>
+              {userPreview.username && (
+                <p className="text-sm text-foreground/60">Username: {userPreview.username}</p>
+              )}
               <p className="text-sm text-foreground/60">{userPreview.email || "No email on file"}</p>
               <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.25em] text-foreground/60">
                 <span>{userPreview.role}</span>
@@ -5141,6 +5384,9 @@ export default function AdminControlPanelPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2 text-sm">
               <p>
+                <span className="text-foreground/60">User ID:</span> {userPreview.id}
+              </p>
+              <p>
                 <span className="text-foreground/60">Guilds:</span> {userPreview.guildCount.toLocaleString()}
               </p>
               <p>
@@ -5149,14 +5395,63 @@ export default function AdminControlPanelPage() {
               <p>
                 <span className="text-foreground/60">Phone:</span> {userPreview.phone || "—"}
               </p>
+              <p>
+                <span className="text-foreground/60">Location:</span> {userPreview.location || "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Website:</span>{" "}
+                {userPreview.website ? (
+                  <Link href={userPreview.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    {userPreview.website}
+                  </Link>
+                ) : (
+                  "—"
+                )}
+              </p>
+              <p>
+                <span className="text-foreground/60">Stripe customer:</span> {userPreview.stripeCustomerId || "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Contact created:</span>{" "}
+                {userPreview.contactCreatedAt ? new Date(userPreview.contactCreatedAt).toLocaleString() : "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Contact updated:</span>{" "}
+                {userPreview.contactUpdatedAt ? new Date(userPreview.contactUpdatedAt).toLocaleString() : "—"}
+              </p>
             </div>
             <div className="space-y-2 text-sm">
               <p>
                 <span className="text-foreground/60">Handle:</span> {userPreview.handle || "Not set"}
               </p>
               <p>
+                <span className="text-foreground/60">Profile name:</span> {userPreview.profileName || "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Headline:</span> {userPreview.headline || "—"}
+              </p>
+              <p>
                 <span className="text-foreground/60">Public profile:</span>{" "}
                 {userPreview.profilePublic && userPreview.handle ? "Visible" : "Hidden"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Profile created:</span>{" "}
+                {userPreview.profileCreatedAt ? new Date(userPreview.profileCreatedAt).toLocaleString() : "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Profile updated:</span>{" "}
+                {userPreview.profileUpdatedAt ? new Date(userPreview.profileUpdatedAt).toLocaleString() : "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Welcome sent:</span>{" "}
+                {userPreview.welcomeSentAt ? new Date(userPreview.welcomeSentAt).toLocaleString() : "—"}
+              </p>
+              <p>
+                <span className="text-foreground/60">Role timestamps:</span>{" "}
+                {userPreview.roleCreatedAt
+                  ? `Created ${new Date(userPreview.roleCreatedAt).toLocaleString()}`
+                  : "—"}{" "}
+                {userPreview.roleUpdatedAt ? `• Updated ${new Date(userPreview.roleUpdatedAt).toLocaleString()}` : ""}
               </p>
               {userPreviewProfileHref && (
                 <Link
@@ -5170,6 +5465,102 @@ export default function AdminControlPanelPage() {
               )}
             </div>
           </div>
+          {userPreview.bio && (
+            <div className="mt-4 rounded-lg border border-border/50 bg-card/50 p-3 text-sm text-foreground/80">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-1">Bio</p>
+              <p className="leading-relaxed whitespace-pre-line">{userPreview.bio}</p>
+            </div>
+          )}
+          <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Preferences</p>
+              <p>Email updates: {userPreview.preferences?.emailUpdates ? "On" : "Off"}</p>
+              <p>Product updates: {userPreview.preferences?.productUpdates ? "On" : "Off"}</p>
+              <p>Weekly digest: {userPreview.preferences?.weeklyDigest ? "On" : "Off"}</p>
+              <p>SMS alerts: {userPreview.preferences?.smsAlerts ? "On" : "Off"}</p>
+              <p>Language: {userPreview.preferences?.preferredLanguage || "—"}</p>
+              <p className="text-xs text-foreground/60">
+                Pref last update:{" "}
+                {userPreview.preferences?.updatedAt ? new Date(userPreview.preferences.updatedAt).toLocaleString() : "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Notifications</p>
+              <p>Maintenance: {userPreview.notifications?.maintenanceAlerts ? "On" : "Off"}</p>
+              <p>Downtime: {userPreview.notifications?.downtimeAlerts ? "On" : "Off"}</p>
+              <p>Release notes: {userPreview.notifications?.releaseNotes ? "On" : "Off"}</p>
+              <p>Security: {userPreview.notifications?.securityNotifications ? "On" : "Off"}</p>
+              <p>Beta program: {userPreview.notifications?.betaProgram ? "On" : "Off"}</p>
+              <p>Community events: {userPreview.notifications?.communityEvents ? "On" : "Off"}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Privacy</p>
+              <p>Profile public: {userPreview.privacy?.profilePublic ? "Yes" : "No"}</p>
+              <p>Search visibility: {userPreview.privacy?.searchVisibility ? "Enabled" : "Hidden"}</p>
+              <p>Analytics opt-in: {userPreview.privacy?.analyticsOptIn ? "Yes" : "No"}</p>
+              <p>Data sharing: {userPreview.privacy?.dataSharing ? "Yes" : "No"}</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Security</p>
+              <p>2FA: {userPreview.security?.twoFactorEnabled ? "Enabled" : "Disabled"}</p>
+              <p>Login alerts: {userPreview.security?.loginAlerts ? "On" : "Off"}</p>
+              <p>Backup codes: {userPreview.security?.backupCodesRemaining ?? 0} remaining</p>
+              <p>Active sessions: {userPreview.security?.activeSessions ?? 0}</p>
+              <p>
+                Last password change:{" "}
+                {userPreview.security?.lastPasswordChange
+                  ? new Date(userPreview.security.lastPasswordChange).toLocaleString()
+                  : "—"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid md:grid-cols-2 gap-4 text-sm">
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Bot settings</p>
+              <p>Auto join voice: {userPreview.botSettings?.autoJoinVoice ? "On" : "Off"}</p>
+              <p>Announce tracks: {userPreview.botSettings?.announceTracks ? "On" : "Off"}</p>
+              <p>DJ mode: {userPreview.botSettings?.djMode ? "On" : "Off"}</p>
+              <p>Normalize volume: {userPreview.botSettings?.normalizeVolume ? "On" : "Off"}</p>
+              <p>Default volume: {userPreview.botSettings?.defaultVolume ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border border-border/50 bg-card/40 p-3 space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50">Sessions & logins</p>
+              <p>Total sessions: {userPreview.sessionInfo?.count ?? 0}</p>
+              <p>
+                Last session:{" "}
+                {userPreview.sessionInfo?.lastActive
+                  ? new Date(userPreview.sessionInfo.lastActive).toLocaleString()
+                  : "—"}
+              </p>
+              <p>Last IP: {userPreview.sessionInfo?.lastIp || "—"}</p>
+              <p>Last location: {userPreview.sessionInfo?.lastLocation || "—"}</p>
+              <p>Last user agent: {userPreview.sessionInfo?.lastUserAgent || "—"}</p>
+              <p>
+                Last login event:{" "}
+                {userPreview.lastLogin
+                  ? `${new Date(userPreview.lastLogin.createdAt).toLocaleString()} • ${userPreview.lastLogin.ipAddress || "ip unknown"}`
+                  : "—"}
+              </p>
+            </div>
+          </div>
+          {userPreview.linkedAccounts && userPreview.linkedAccounts.length > 0 && (
+            <div className="mt-4 rounded-lg border border-border/50 bg-card/40 p-3 text-sm">
+              <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-2">Linked accounts</p>
+              <div className="space-y-1">
+                {userPreview.linkedAccounts.map((account) => (
+                  <div key={`${account.provider}-${account.handle}-${account.createdAt}`} className="flex flex-wrap gap-2">
+                    <span className="font-semibold">{account.provider}</span>
+                    <span className="text-foreground/70">@{account.handle}</span>
+                    <span className="text-foreground/50">
+                      {new Date(account.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </Modal>
       )}
 
@@ -5424,23 +5815,26 @@ export default function AdminControlPanelPage() {
 const AdminPageStyles = () => (
   <style jsx>{`
     .muted-scroll {
-      scrollbar-width: thin;
-      scrollbar-color: rgba(99, 102, 241, 0.55) rgba(0, 0, 0, 0);
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
     .muted-scroll::-webkit-scrollbar {
-      height: 8px;
-      width: 8px;
+      display: none;
+      width: 0;
+      height: 0;
     }
-    .muted-scroll::-webkit-scrollbar-track {
-      background: rgba(0, 0, 0, 0);
+    :global(.admin-scrollless) {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-    .muted-scroll::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, rgba(99, 102, 241, 0.6), rgba(56, 189, 248, 0.55));
-      border-radius: 9999px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    :global(.admin-scrollless *) {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
-    .muted-scroll::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, rgba(99, 102, 241, 0.75), rgba(56, 189, 248, 0.7));
+    :global(.admin-scrollless ::-webkit-scrollbar) {
+      display: none;
+      width: 0;
+      height: 0;
     }
   `}</style>
 )

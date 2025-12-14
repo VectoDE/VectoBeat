@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
 import { getUserSecurity, recordLoginSession } from "@/lib/db"
+import { resolveClientLocation } from "@/lib/request-metadata"
 import { hashSessionToken } from "@/lib/session"
 
 const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
@@ -244,11 +245,13 @@ export async function GET(request: NextRequest) {
     const sessionHash = hashSessionToken(tokenData.access_token)
     const userAgent = request.headers.get("user-agent")
     const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+    const location = resolveClientLocation(request)
     await recordLoginSession({
       discordId: userData.id,
       sessionHash,
       userAgent,
       ipAddress,
+      location,
     })
 
     response.cookies.set("discord_token", tokenData.access_token, {

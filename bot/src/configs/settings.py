@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
+import json
 import yaml
 from dotenv import find_dotenv, load_dotenv
 
@@ -92,6 +93,31 @@ if host or port or pwd or https or name or region:
         name=name or CONFIG.lavalink.name,
         region=region or CONFIG.lavalink.region,
     )
+
+nodes_env = os.getenv("LAVALINK_NODES")
+if nodes_env:
+    try:
+        parsed = json.loads(nodes_env)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, list):
+        nodes: List[LavalinkConfig] = []
+        for idx, raw in enumerate(parsed):
+            if not isinstance(raw, dict):
+                continue
+            nodes.append(
+                LavalinkConfig(
+                    host=raw.get("host", CONFIG.lavalink.host),
+                    port=int(raw.get("port", CONFIG.lavalink.port)),
+                    password=raw.get("password", CONFIG.lavalink.password),
+                    https=bool(raw.get("https", CONFIG.lavalink.https)),
+                    name=raw.get("name") or f"node{idx+1}",
+                    region=raw.get("region", CONFIG.lavalink.region),
+                )
+            )
+        if nodes:
+            CONFIG.lavalink_nodes = nodes
 
 if CONFIG.lavalink_nodes:
     deduped = []

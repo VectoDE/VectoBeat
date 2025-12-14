@@ -29,9 +29,18 @@ import {
   SquareKanban,
 } from "lucide-react"
 import { buildDiscordLoginUrl } from "@/lib/config"
+import { RoleBadge } from "@/components/role-badge"
 
 const PREFERENCE_DEFAULTS = {
   preferredLanguage: "en",
+  fullName: "",
+  birthDate: "",
+  addressCountry: "",
+  addressState: "",
+  addressCity: "",
+  addressStreet: "",
+  addressHouseNumber: "",
+  addressPostalCode: "",
 }
 
 const NOTIFICATION_DEFAULTS = {
@@ -263,6 +272,7 @@ export default function AccountPage() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [authToken, setAuthToken] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string>("member")
   const [formData, setFormData] = useState({
     email: "",
     username: "",
@@ -277,6 +287,9 @@ export default function AccountPage() {
   const [preferences, setPreferences] = useState(() => ({ ...PREFERENCE_DEFAULTS }))
   const [languageSaving, setLanguageSaving] = useState(false)
   const [languageError, setLanguageError] = useState<string | null>(null)
+  const [billingSaving, setBillingSaving] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [billingMessage, setBillingMessage] = useState<string | null>(null)
   const [notifications, setNotifications] = useState<NotificationState>(() => ({ ...NOTIFICATION_DEFAULTS }))
   const [notificationsLoading, setNotificationsLoading] = useState(true)
   const [notificationsSaving, setNotificationsSaving] = useState(false)
@@ -711,6 +724,40 @@ const profileShareUrl = profileShareSlug
     [formData.discordId],
   )
 
+  const handleBillingPreferenceSave = useCallback(async () => {
+    if (!formData.discordId) return
+    setBillingSaving(true)
+    setBillingError(null)
+    setBillingMessage(null)
+    try {
+      const response = await fetch("/api/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discordId: formData.discordId,
+          fullName: preferences.fullName || "",
+          birthDate: preferences.birthDate || "",
+          addressCountry: preferences.addressCountry || "",
+          addressState: preferences.addressState || "",
+          addressCity: preferences.addressCity || "",
+          addressStreet: preferences.addressStreet || "",
+          addressHouseNumber: preferences.addressHouseNumber || "",
+          addressPostalCode: preferences.addressPostalCode || "",
+        }),
+      })
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || "Failed to save billing details")
+      }
+      setBillingMessage("Billing details saved.")
+    } catch (error) {
+      console.error("Failed to save billing details:", error)
+      setBillingError("Could not save billing details.")
+    } finally {
+      setBillingSaving(false)
+    }
+  }, [formData.discordId, preferences])
+
   const fetchNotifications = useCallback(async (discordId: string) => {
     setNotificationsLoading(true)
     setNotificationsError(null)
@@ -1085,6 +1132,7 @@ const profileShareUrl = profileShareSlug
         }
 
         setIsAuthorized(true)
+        setUserRole(sessionData.role || "member")
         setAuthError(null)
         if (token) {
           localStorage.setItem("discord_token", token)
@@ -1253,7 +1301,10 @@ const profileShareUrl = profileShareSlug
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold mb-2">Account Settings</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">Account Settings</h1>
+              <RoleBadge role={userRole} />
+            </div>
             <p className="text-foreground/70">Manage your VectoBeat account and preferences</p>
           </div>
 
@@ -1563,6 +1614,109 @@ const profileShareUrl = profileShareSlug
                           {contactSaving ? "Saving…" : "Save phone"}
                         </button>
                       </div>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">Full name</label>
+                          <input
+                            type="text"
+                            value={preferences.fullName}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, fullName: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="Jane Doe"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">Birthday</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="date"
+                              value={preferences.birthDate || ""}
+                              onChange={(e) => setPreferences((prev) => ({ ...prev, birthDate: e.target.value }))}
+                              className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            />
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="\\d{4}-\\d{2}-\\d{2}"
+                              placeholder="YYYY-MM-DD"
+                              value={preferences.birthDate || ""}
+                              onChange={(e) => setPreferences((prev) => ({ ...prev, birthDate: e.target.value }))}
+                              className="w-36 px-3 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            />
+                          </div>
+                          <p className="text-xs text-foreground/60">Pick a date or type it manually (YYYY-MM-DD).</p>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">Country</label>
+                          <input
+                            type="text"
+                            value={preferences.addressCountry}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressCountry: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="Germany"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">State / Region</label>
+                          <input
+                            type="text"
+                            value={preferences.addressState}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressState: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="Schleswig-Holstein"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">City</label>
+                          <input
+                            type="text"
+                            value={preferences.addressCity}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressCity: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="Itzehoe"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">Street</label>
+                          <input
+                            type="text"
+                            value={preferences.addressStreet}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressStreet: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="Breitenburger Strasse"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">House number</label>
+                          <input
+                            type="text"
+                            value={preferences.addressHouseNumber}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressHouseNumber: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="15"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold mb-1">Postal code</label>
+                          <input
+                            type="text"
+                            value={preferences.addressPostalCode}
+                            onChange={(e) => setPreferences((prev) => ({ ...prev, addressPostalCode: e.target.value }))}
+                            className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
+                            placeholder="25524"
+                          />
+                        </div>
+                      </div>
+                      {billingError && <p className="text-xs text-destructive">{billingError}</p>}
+                      {billingMessage && <p className="text-xs text-green-500">{billingMessage}</p>}
+                      <button
+                        onClick={handleBillingPreferenceSave}
+                        disabled={billingSaving}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors text-sm disabled:opacity-60"
+                      >
+                        {billingSaving ? "Saving…" : "Save billing details"}
+                      </button>
                     </div>
                   </div>
 

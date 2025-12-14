@@ -58,7 +58,7 @@ export const MEMBERSHIP_TIERS = {
       { name: "Dedicated account manager", included: false },
     ] satisfies TierFeature[],
     highlighted: false,
-    cta: "Start Free Trial",
+    cta: "Choose Starter",
   },
   pro: {
     name: "Pro",
@@ -86,7 +86,7 @@ export const MEMBERSHIP_TIERS = {
       { name: "Dedicated account manager", included: false },
     ] satisfies TierFeature[],
     highlighted: true,
-    cta: "Start Free Trial",
+    cta: "Choose Pro",
   },
   growth: {
     name: "Growth",

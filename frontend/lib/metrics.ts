@@ -35,7 +35,7 @@ type BaseMetrics = {
   posts: BlogPost[]
   totals: BaseTotals
   traffic: Awaited<ReturnType<typeof getSiteTrafficSummary>>
-  activeVoiceConnections: Array<{ guildId: string; channelId: string; listeners: number }>
+  activeVoiceConnections: Array<{ guildId: string; guildName?: string; channelId: string; channelName?: string; listeners: number }>
   forumStats: Awaited<ReturnType<typeof getForumStats>>
   forumEvents: Awaited<ReturnType<typeof listForumEvents>>
 }
@@ -63,6 +63,7 @@ export type HomeMetrics = {
     responseTimeMs: number
   }
   updatedAt: string
+  activeVoiceConnections?: Array<{ guildId: string; guildName?: string; channelId: string; channelName?: string; listeners: number }>
 }
 
 type ChartPoint = Record<string, string | number>
@@ -228,14 +229,24 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       : []
   const listenerDetail =
     botStatus &&
-    Array.isArray((botStatus as { listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number }> }).listenerDetail)
-      ? ((botStatus as { listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number }> }).listenerDetail ?? []).map(
-          (entry) => ({
-            guildId: typeof entry.guildId === "string" ? entry.guildId : "",
-            channelId: typeof entry.channelId === "string" ? entry.channelId : "",
-            listeners: normalizeNumber(entry.listeners),
-          }),
-        )
+    Array.isArray(
+      (
+        botStatus as {
+          listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
+        }
+      ).listenerDetail,
+    )
+      ? (
+          botStatus as {
+            listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
+          }
+        ).listenerDetail!.map((entry) => ({
+          guildId: typeof entry.guildId === "string" ? entry.guildId : "",
+          guildName: typeof entry.guildName === "string" ? entry.guildName : undefined,
+          channelId: typeof entry.channelId === "string" ? entry.channelId : "",
+          channelName: typeof entry.channelName === "string" ? entry.channelName : undefined,
+          listeners: normalizeNumber(entry.listeners),
+        }))
       : []
   const rawCurrentListeners = normalizeNumber(
     botStatus?.activePlayers ??
@@ -457,6 +468,7 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       serverCount: totals.serverCount,
       activeUsers: totals.activeUsers,
       totalStreams: totals.totalStreams,
+      commandsTotal: totals.commandsTotal,
       uptimeValue: uptimePercent,
       uptimeLabel,
       responseTimeMs: totals.responseTimeMs,

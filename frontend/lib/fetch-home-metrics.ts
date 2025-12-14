@@ -18,7 +18,7 @@ export const fetchHomeMetrics = async (): Promise<HomeMetrics | null> => {
         process.env.PORT ? `http://localhost:${process.env.PORT}` : null,
         "http://127.0.0.1:3000",
         "http://localhost:3000",
-      ].filter(Boolean),
+      ].filter((value): value is string => typeof value === "string" && value.length > 0),
     ),
   ).map((url) => url.replace(/\/$/, ""))
 

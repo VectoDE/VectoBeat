@@ -52,6 +52,8 @@ INTENTS.guilds = True
 INTENTS.voice_states = True
 INTENTS.members = CONFIG.bot.intents.members
 INTENTS.message_content = True  # Requires privileged intent
+MEMBER_CACHE_FLAGS = discord.MemberCacheFlags.none()
+MESSAGE_CACHE_LIMIT = 1000
 DEFAULT_COMMAND_PREFIX = "!"
 
 
@@ -69,6 +71,9 @@ class VectoBeat(commands.AutoShardedBot):
             intents=INTENTS,
             help_command=None,
             shard_count=CONFIG.bot.shard_count,
+            chunk_guilds_at_startup=False,
+            member_cache_flags=MEMBER_CACHE_FLAGS,
+            max_messages=MESSAGE_CACHE_LIMIT,
         )
         self.logger: Optional[logging.Logger] = None
         self._cleanup_tasks: List[Union[Callable[[], Awaitable[None]], Awaitable[None]]] = []
@@ -78,7 +83,9 @@ class VectoBeat(commands.AutoShardedBot):
         self.autoplay_service = AutoplayService(CONFIG.redis)
         self.lyrics_service = LyricsService()
         self.dj_permissions = DJPermissionManager()
-        self.shard_supervisor = ShardSupervisor(self)
+        # Faster gateway recovery: restart shards if latency stays above 100ms.
+        # Aggressive gateway recovery: recycle shards if latency remains above ~70 ms.
+        self.shard_supervisor = ShardSupervisor(self, latency_threshold=0.07)
         self.metrics_service = MetricsService(self, CONFIG.metrics)
         self.chaos_service = ChaosService(self, CONFIG.chaos)
         self.scaling_service = ScalingService(self, CONFIG.scaling)
@@ -100,6 +107,7 @@ class VectoBeat(commands.AutoShardedBot):
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
         self._entrypoint_payloads: List[dict] = []
         self._panel_parity_task: Optional[asyncio.Task] = None
+        self._prefix_cache: dict[int, tuple[str, float]] = {}
         # Persist uptime on shutdown
         self.add_cleanup_task(HealthState.persist_async)
 
@@ -108,13 +116,20 @@ class VectoBeat(commands.AutoShardedBot):
         prefixes = [DEFAULT_COMMAND_PREFIX]
         guild = getattr(message, "guild", None)
         if guild and getattr(self, "server_settings", None):
-            try:
-                prefix = await self.server_settings.prefix_for_guild(guild.id)
-                if prefix:
-                    prefixes = [prefix]
-            except Exception as exc:
-                if self.logger:
-                    self.logger.debug("Failed to resolve prefix for guild %s: %s", guild.id, exc)
+            cached = self._prefix_cache.get(guild.id)
+            now = self.loop.time()
+            if cached and cached[1] > now:
+                prefixes = [cached[0]]
+            else:
+                try:
+                    prefix = await self.server_settings.prefix_for_guild(guild.id)
+                    if prefix:
+                        prefixes = [prefix]
+                        # Cache prefix for 5 minutes to avoid repeated round-trips per message
+                        self._prefix_cache[guild.id] = (prefix, now + 300)
+                except Exception as exc:
+                    if self.logger:
+                        self.logger.debug("Failed to resolve prefix for guild %s: %s", guild.id, exc)
         return commands.when_mentioned_or(*prefixes)(bot, message)
 
     def add_cleanup_task(self, task: Union[Callable[[], Awaitable[None]], Awaitable[None]]) -> None:

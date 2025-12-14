@@ -24,19 +24,19 @@ branding:
   guild_overrides: {} # future: per-guild brand overrides
 
 lavalink:
-  host: "lava-v4.ajieblogs.eu.org"
-  port: 443
-  password: https://dsc.gg/ajidevserver
-  https: true
+  host: "lavalink"
+  port: 2333
+  password: "localpass"
+  https: false
   name: "main"
   region: "eu"
   # Deprecated single-node fallback. Prefer configuring multiple nodes via ``lavalink_nodes`` below.
 
 lavalink_nodes:
-  - host: "lava-v4.ajieblogs.eu.org"
-    port: 443
-    password: https://dsc.gg/ajidevserver
-    https: true
+  - host: "lavalink"
+    port: 2333
+    password: "localpass"
+    https: false
     name: "main"
     region: "eu"
 

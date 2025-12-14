@@ -19,6 +19,10 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 const LINK_GROUPS = [
   {
@@ -38,6 +42,7 @@ const LINK_GROUPS = [
     links: [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/contact" },
+      { label: "Partners", href: "/partners" },
       { label: "Roadmap", href: "/roadmap" },
       { label: "Success Stories", href: "/success-stories" },
     ],
@@ -48,6 +53,7 @@ const LINK_GROUPS = [
     links: [
       { label: "Statistics", href: "/stats" },
       { label: "Support Desk", href: "/support-desk" },
+      { label: "Developer", href: "/developer" },
     ],
   },
   {
@@ -89,6 +95,13 @@ const OPERATIONS_CARDS = [
 export default function Footer() {
   const currentYear = new Date().getFullYear()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userProfile, setUserProfile] = useState<{ id?: string; name?: string; email?: string }>({})
+  const [donationDialogOpen, setDonationDialogOpen] = useState(false)
+  const [donationLoading, setDonationLoading] = useState(false)
+  const [donationError, setDonationError] = useState<string | null>(null)
+  const [donationAmount, setDonationAmount] = useState("5")
+  const [donationEmail, setDonationEmail] = useState("")
+  const [donationName, setDonationName] = useState("")
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -98,16 +111,90 @@ export default function Footer() {
         })
         if (!response.ok) {
           setIsLoggedIn(false)
+          setUserProfile({})
           return
         }
         const data = await response.json()
         setIsLoggedIn(Boolean(data?.authenticated))
+        if (data?.authenticated) {
+          setUserProfile({
+            id: data.id || data.discordId || "",
+            name: data.displayName || data.username || "",
+            email: data.email || "",
+          })
+        } else {
+          setUserProfile({})
+        }
       } catch (error) {
         setIsLoggedIn(false)
+        setUserProfile({})
       }
     }
     checkLoginStatus()
   }, [])
+
+  const resetDonationForm = () => {
+    setDonationAmount("5")
+    setDonationEmail(userProfile.email || "")
+    setDonationName(userProfile.name || "")
+    setDonationError(null)
+    setDonationLoading(false)
+  }
+
+  const openDonationDialog = () => {
+    resetDonationForm()
+    setDonationDialogOpen(true)
+  }
+
+  const submitDonation = async () => {
+    const amountNumber = Number(String(donationAmount).replace(",", "."))
+    if (!Number.isFinite(amountNumber)) {
+      setDonationError("Please enter a valid amount.")
+      return
+    }
+    if (amountNumber < 0.5) {
+      setDonationError("Minimum donation is €0.50.")
+      return
+    }
+    if (!isLoggedIn) {
+      const email = donationEmail.trim()
+      if (!email || !email.includes("@")) {
+        setDonationError("Please provide a valid email so Stripe can send the receipt.")
+        return
+      }
+    }
+
+    setDonationError(null)
+    setDonationLoading(true)
+    try {
+      const payload: Record<string, any> = {
+        amount: amountNumber,
+        source: "footer",
+      }
+      const email = (donationEmail || userProfile.email || "").trim()
+      const name = (donationName || userProfile.name || "").trim()
+      if (email) payload.email = email
+      if (name) payload.name = name
+      if (userProfile.id) payload.discordId = userProfile.id
+
+      const response = await fetch("/api/donate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const body = await response.json()
+      if (!response.ok || !body?.url) {
+        throw new Error(body?.error || "Stripe donation link could not be created.")
+      }
+      window.location.href = body.url
+      setDonationDialogOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not open donation link."
+      setDonationError(message)
+    } finally {
+      setDonationLoading(false)
+    }
+  }
 
   return (
     <footer className="bg-card/60 border-t border-border/80">
@@ -212,13 +299,6 @@ export default function Footer() {
                 )}
                 {group.key === "resources" && isLoggedIn && (
                   <li>
-                    <Link href="/developer" className="hover:text-primary transition-colors">
-                      Developers
-                    </Link>
-                  </li>
-                )}
-                {group.key === "resources" && isLoggedIn && (
-                  <li>
                     <Link href="/control-panel" className="hover:text-primary transition-colors">
                       Control Panel
                     </Link>
@@ -237,8 +317,16 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-border/30 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-foreground/70 text-sm">© {currentYear} VectoBeat by VectoDE. All rights reserved.</p>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <p className="text-foreground/70 text-sm">© {currentYear} VectoBeat by VectoDE. All rights reserved.</p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={openDonationDialog} disabled={donationLoading}>
+                  {donationLoading ? "Opening Stripe…" : "Donate (Stripe)"}
+                </Button>
+                {donationError && !donationDialogOpen && <span className="text-xs text-destructive">{donationError}</span>}
+              </div>
+            </div>
 
             {/* Social Links */}
             <div className="flex gap-4">
@@ -270,6 +358,61 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      <Dialog open={donationDialogOpen} onOpenChange={(state) => { setDonationDialogOpen(state); if (!state) resetDonationForm() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Support VectoBeat</DialogTitle>
+            <DialogDescription>
+              Choose an amount and receipt email. If you are signed in, your account details are prefilled automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="donation-amount">Amount in EUR</Label>
+              <Input
+                id="donation-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={donationAmount}
+                onChange={(e) => setDonationAmount(e.target.value)}
+                placeholder="5"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="donation-email">
+                Receipt email {isLoggedIn ? <span className="text-foreground/60">(prefilled)</span> : null}
+              </Label>
+              <Input
+                id="donation-email"
+                type="email"
+                value={donationEmail || userProfile.email || ""}
+                onChange={(e) => setDonationEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="donation-name">Name (optional)</Label>
+              <Input
+                id="donation-name"
+                value={donationName || userProfile.name || ""}
+                onChange={(e) => setDonationName(e.target.value)}
+                placeholder="Your name"
+              />
+            </div>
+            {donationError && <p className="text-sm text-destructive">{donationError}</p>}
+          </div>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDonationDialogOpen(false)} disabled={donationLoading}>
+              Cancel
+            </Button>
+            <Button onClick={submitDonation} disabled={donationLoading}>
+              {donationLoading ? "Creating checkout…" : "Continue to Stripe"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </footer>
   )
 }

@@ -211,7 +211,17 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
     }
   }, [localizeMetrics])
 
-  const stats = localizedMetrics.stats
+  const targetLabels = [
+    (statsCopy ?? DEFAULT_STATS_COPY).blogPosts.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).blogViews.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).siteViews.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).activeServers.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).activeUsers.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).uptime.label,
+  ]
+  const stats = targetLabels
+    .map((label) => localizedMetrics.stats.find((stat) => stat.label === label))
+    .filter((stat): stat is SummaryStat => Boolean(stat))
 
   return (
     <section className="w-full py-12 px-4">

@@ -56,7 +56,16 @@ export async function POST(request: NextRequest) {
     }
 
     const subject = subjectInput || `[${category}][${priority}] Ticket`
-    const ticket = await createContactMessage({ name, email, subject, message })
+    const isPartner = category.toLowerCase().includes("partner") || subject.toLowerCase().includes("partner")
+    const ticket = await createContactMessage({
+      name,
+      email,
+      subject,
+      message,
+      topic: category,
+      priority,
+      status: isPartner ? "waiting" : undefined,
+    })
     if (ticket) {
       // Store the initial customer message in the thread to distinguish tickets from general contact entries.
       await appendContactMessageThread({
