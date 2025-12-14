@@ -273,11 +273,6 @@ export async function POST(request: NextRequest) {
       consent_collection: {
         terms_of_service: "required",
       },
-      customer_update: {
-        address: "auto",
-        name: "auto",
-        shipping: "auto",
-      },
     }
 
     sessionParams.success_url = successUrl
