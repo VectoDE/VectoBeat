@@ -28,6 +28,18 @@ class MembershipCommands(commands.Cog):
         self._api_base = (CONFIG.control_panel_api.base_url or "http://127.0.0.1:3000").rstrip("/")
         timeout = max(6, CONFIG.control_panel_api.timeout_seconds)
         self._http_timeout = aiohttp.ClientTimeout(total=timeout)
+        self._http_session: aiohttp.ClientSession | None = None
+
+    async def _session(self) -> aiohttp.ClientSession:
+        """Reuse a single HTTP session to avoid connection setup overhead."""
+        if self._http_session is None or self._http_session.closed:
+            self._http_session = aiohttp.ClientSession(timeout=self._http_timeout)
+        return self._http_session
+
+    async def cog_unload(self):
+        if self._http_session and not self._http_session.closed:
+            await self._http_session.close()
+            self._http_session = None
 
     membership = app_commands.Group(
         name="membership",
@@ -70,12 +82,12 @@ class MembershipCommands(commands.Cog):
         }
         headers = {"Content-Type": "application/json"}
 
-        async with aiohttp.ClientSession(timeout=self._http_timeout) as session:
-            async with session.post(url, json=payload, headers=headers) as resp:
-                data = await resp.json()
-                if not resp.ok:
-                    raise RuntimeError(data.get("error") or f"Checkout start failed ({resp.status}).")
-                return data.get("url")
+        session = await self._session()
+        async with session.post(url, json=payload, headers=headers) as resp:
+            data = await resp.json()
+            if not resp.ok:
+                raise RuntimeError(data.get("error") or f"Checkout start failed ({resp.status}).")
+            return data.get("url")
 
     @membership.command(name="status", description="Show the current VectoBeat plan for this server.")
     async def status(self, inter: discord.Interaction):

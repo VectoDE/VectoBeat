@@ -244,7 +244,8 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       customer: customer.id,
       customer_update: {
-        address: resolvedAddress ? "auto" : undefined,
+        // Always allow Stripe to attach/overwrite the address so tax ID collection works for fresh customers.
+        address: "auto",
         name: "auto",
         shipping: resolvedAddress ? "auto" : undefined,
       },

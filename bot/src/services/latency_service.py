@@ -39,8 +39,8 @@ class LatencyMonitor:
         self,
         bot: discord.Client,
         *,
-        sample_interval: float = 5.0,
-        max_samples: int = 120,
+        sample_interval: float = 2.0,
+        max_samples: int = 60,
     ):
         self.bot = bot
         self.sample_interval = sample_interval
@@ -136,7 +136,7 @@ class LatencyMonitor:
         )
 
     @staticmethod
-    def _trimmed_mean(values: List[float], *, trim_ratio: float = 0.1) -> float:
+    def _trimmed_mean(values: List[float], *, trim_ratio: float = 0.2) -> float:
         """Return a trimmed mean to reduce the impact of outliers."""
         if not values:
             return 0.0

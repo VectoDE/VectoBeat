@@ -85,31 +85,51 @@ class InfoCommands(commands.Cog):
         lavalink = getattr(self.bot, "lavalink", None)
         if not lavalink:
             return []
+
+        def _stat(source, key, default=None):
+            if source is None:
+                return default
+            if isinstance(source, dict):
+                return source.get(key, default)
+            return getattr(source, key, default)
+
         nodes = []
         for node in lavalink.node_manager.nodes:
             stats = node.stats
             rest = getattr(node, "rest", None)
-            endpoint = getattr(getattr(rest, "uri", None), "geturl", None)
-            endpoint_str = endpoint() if callable(endpoint) else str(getattr(rest, "uri", None) or "")
+            raw_uri = getattr(rest, "uri", None)
+            endpoint = getattr(raw_uri, "geturl", None)
+            endpoint_str = endpoint() if callable(endpoint) else str(raw_uri or "")
+            # Derive SSL flag from URI scheme with fallback to node.ssl.
+            ssl_flag = bool(getattr(node, "ssl", False))
+            if endpoint_str:
+                lowered = endpoint_str.lower()
+                if lowered.startswith("https://"):
+                    ssl_flag = True
+                elif lowered.startswith("http://"):
+                    ssl_flag = False
+
+            cpu_stats = _stat(stats, "cpu")
+            mem_stats = _stat(stats, "memory")
             nodes.append(
                 {
                     "name": node.name,
                     "region": node.region,
                     "endpoint": endpoint_str or "unknown",
-                    "ssl": bool(getattr(node, "ssl", False)),
+                    "ssl": ssl_flag,
                     "players": getattr(stats, "players", 0),
                     "playing": getattr(stats, "playing_players", 0),
-                    "uptime_ms": getattr(stats, "uptime", None),
-                    "cpu_system": getattr(getattr(stats, "cpu", None), "system_load", None),
-                    "cpu_lavalink": getattr(getattr(stats, "cpu", None), "lavalink_load", None),
-                    "cpu_cores": getattr(getattr(stats, "cpu", None), "cores", None),
-                    "memory_used": getattr(getattr(stats, "memory", None), "used", None),
-                    "memory_allocated": getattr(getattr(stats, "memory", None), "allocated", None),
-                    "memory_free": getattr(getattr(stats, "memory", None), "free", None),
-                    "memory_reservable": getattr(getattr(stats, "memory", None), "reservable", None),
-                    "frames": getattr(getattr(stats, "frame_stats", None), "sent", None),
-                    "deficit": getattr(getattr(stats, "frame_stats", None), "deficit", None),
-                    "nulled": getattr(getattr(stats, "frame_stats", None), "nulled", None),
+                    "uptime_ms": _stat(stats, "uptime"),
+                    "cpu_system": _stat(cpu_stats, "system_load"),
+                    "cpu_lavalink": _stat(cpu_stats, "lavalink_load"),
+                    "cpu_cores": _stat(cpu_stats, "cores"),
+                    "memory_used": _stat(mem_stats, "used"),
+                    "memory_allocated": _stat(mem_stats, "allocated"),
+                    "memory_free": _stat(mem_stats, "free"),
+                    "memory_reservable": _stat(mem_stats, "reservable"),
+                    "frames": _stat(_stat(stats, "frame_stats"), "sent"),
+                    "deficit": _stat(_stat(stats, "frame_stats"), "deficit"),
+                    "nulled": _stat(_stat(stats, "frame_stats"), "nulled"),
                     "penalties": getattr(stats, "penalty_total", None),
                 }
             )
@@ -156,7 +176,7 @@ class InfoCommands(commands.Cog):
         monitor = getattr(self.bot, "latency_monitor", None)
         if monitor:
             snap = monitor.snapshot()
-            shard_pairs = sorted(snap.shards.items())
+            shard_pairs = sorted((sid, round(lat, 2)) for sid, lat in snap.shards.items())
             return snap.best, snap.average, snap.p95, shard_pairs, snap.loop_lag_ms
 
         shard_pairs = [(sid, round(lat * 1000, 2)) for sid, lat in getattr(self.bot, "latencies", [])]
@@ -165,6 +185,30 @@ class InfoCommands(commands.Cog):
         gateway_avg = statistics.mean(latency_values)
         gateway_p95 = sorted(latency_values)[max(0, int(0.95 * (len(latency_values) - 1)))]
         return gateway_best, gateway_avg, gateway_p95, shard_pairs, None
+
+    @staticmethod
+    def _format_owner(app_info: discord.AppInfo) -> str:
+        """Return a human-friendly owner/team label for the application."""
+        team = getattr(app_info, "team", None)
+        if team:
+            team_name = getattr(team, "name", None) or f"Team {team.id}"
+            owner_member = next(
+                (member for member in getattr(team, "members", []) if getattr(member, "id", None) == getattr(team, "owner_id", None)),
+                None,
+            )
+            owner_user = getattr(owner_member, "user", None) if owner_member else None
+            owner_display = (
+                getattr(owner_user, "global_name", None)
+                or getattr(owner_user, "display_name", None)
+                or getattr(owner_user, "name", None)
+                or getattr(owner_member, "name", None)
+            )
+            return f"{team_name} (Owner: {owner_display})" if owner_display else team_name
+
+        owner = getattr(app_info, "owner", None)
+        if owner:
+            return getattr(owner, "global_name", None) or getattr(owner, "display_name", None) or getattr(owner, "name", None) or str(owner)
+        return "Unknown"
 
     # ------------------------------------------------------------------ commands
     @app_commands.command(name="ping", description="Quick latency & uptime snapshot for VectoBeat.")
@@ -279,7 +323,7 @@ class InfoCommands(commands.Cog):
             embed = factory.primary("📊 VectoBeat Diagnostics")
             embed.description = "Comprehensive runtime metrics for monitoring and support."
 
-            shard_lines = [f"`#{sid}` {lat} ms" for sid, lat in shard_latencies] or ["`#1` n/a"]
+            shard_lines = [f"`#{sid}` {lat:.1f} ms" for sid, lat in shard_latencies] or ["`#1` n/a"]
             embed.add_field(
                 name="Latency",
                 value=f"`best {best_latency:.1f} • avg {avg_latency:.1f} • p95 {p95_latency:.1f} ms`\n"
@@ -383,7 +427,7 @@ class InfoCommands(commands.Cog):
         embed.add_field(name="Started", value=self._format_datetime(started_at), inline=False)
         embed.add_field(
             name="Uptime %",
-            value=f"`{HealthState.uptime_percent():.2f}%` seit erstem Start",
+            value=f"`{HealthState.uptime_percent():.2f}%` since first start",
             inline=True,
         )
         if factory.theme.thumbnail_url:
@@ -395,7 +439,7 @@ class InfoCommands(commands.Cog):
         """Present application metadata, reach and runtime environment information."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         app_info = await self.bot.application_info()
-        owner_names = ", ".join(owner.name for owner in ([app_info.owner] if app_info.owner else []))
+        owner_label = self._format_owner(app_info)
         guild_count = len(self.bot.guilds)
         total_members = sum(g.member_count or 0 for g in self.bot.guilds)
         if inter.guild:
@@ -412,11 +456,13 @@ class InfoCommands(commands.Cog):
         gateway_avg = statistics.mean(latency_values)
         gateway_best = min(latency_values)
         uptime_seconds = HealthState.uptime()
+        lifetime_percent = HealthState.uptime_percent()
+        first_seen = datetime.datetime.fromtimestamp(HealthState.first_seen, tz=datetime.timezone.utc)
 
         embed = factory.primary("🤖 Bot Information")
         embed.add_field(name="Application", value=f"`{app_info.name}`", inline=True)
-        if owner_names:
-            embed.add_field(name="Owner", value=owner_names, inline=True)
+        if owner_label:
+            embed.add_field(name="Owner", value=owner_label, inline=True)
         embed.add_field(name="Command Count", value=f"`{len(self.bot.tree.get_commands())}`", inline=True)
         reach_lines = [
             f"`{self._format_number(guild_count)}` guilds",
@@ -434,7 +480,12 @@ class InfoCommands(commands.Cog):
         )
         embed.add_field(
             name="Uptime",
-            value=f"`{self._format_duration(uptime_seconds)}` • `{HealthState.uptime_percent():.2f}%`",
+            value="\n".join(
+                [
+                    f"`{self._format_duration(uptime_seconds)}` current",
+                    f"`{lifetime_percent:.2f}%` since {discord.utils.format_dt(first_seen, style='R')}",
+                ]
+            ),
             inline=True,
         )
         runtime_meta = "\n".join(
@@ -462,7 +513,7 @@ class InfoCommands(commands.Cog):
             "&permissions=36768832&scope=bot%20applications.commands%20identify"
         )
         view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=website_url, label="Website"))
-        view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=invite_url, label="Bot einladen"))
+        view.add_item(discord.ui.Button(style=discord.ButtonStyle.link, url=invite_url, label="Invite Bot"))
         await inter.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="guildinfo", description="Detailed information about this guild.")
@@ -478,12 +529,15 @@ class InfoCommands(commands.Cog):
         embed.description = self._format_datetime(guild.created_at)
 
         owner = guild.owner or await self.bot.fetch_user(guild.owner_id)
-        embed.add_field(name="Owner", value=f"{owner} (`{owner.id}`)", inline=True)
-        embed.add_field(name="Members", value=f"`{guild.member_count}`", inline=True)
+        owner_value = f"{owner} (`||{owner.id}||`)"
+        embed.add_field(name="Owner", value=owner_value, inline=True)
 
-        humans = sum(not member.bot for member in guild.members)
-        bots = guild.member_count - humans if guild.member_count else 0
-        embed.add_field(name="Humans / Bots", value=f"`{humans}` / `{bots}`", inline=True)
+        total_members = guild.member_count or len(guild.members) or 0
+        embed.add_field(name="Members", value=f"`{total_members}`", inline=True)
+
+        bot_count = sum(1 for member in guild.members if getattr(member, "bot", False)) if guild.members else 0
+        human_count = max(total_members - bot_count, 0)
+        embed.add_field(name="Humans / Bots", value=f"`{human_count}` / `{bot_count}`", inline=True)
 
         embed.add_field(
             name="Channels",
@@ -494,9 +548,12 @@ class InfoCommands(commands.Cog):
             ),
             inline=True,
         )
+        sorted_roles = sorted(guild.roles, key=lambda role: role.position, reverse=True)
+        top_roles = [role.mention for role in sorted_roles if role != guild.default_role][:5]
+        top_roles_display = ", ".join(top_roles) if top_roles else "None"
         embed.add_field(
             name="Roles",
-            value=f"`{len(guild.roles)}` total\nHighest: {guild.roles[-1].mention}",
+            value=f"`{len(guild.roles)}` total\nTop: {top_roles_display}",
             inline=True,
         )
 
@@ -547,7 +604,26 @@ class InfoCommands(commands.Cog):
             inline=True,
         )
 
-        features = ", ".join(sorted(guild.features)) or "_None_"
+        feature_labels = {
+            "ANIMATED_BANNER": "Animated Banner",
+            "ANIMATED_ICON": "Animated Icon",
+            "BANNER": "Banner",
+            "COMMUNITY": "Community",
+            "DISCOVERABLE": "Discoverable",
+            "FEATURES_HUB": "Features Hub",
+            "INVITE_SPLASH": "Invite Splash",
+            "MEMBER_VERIFICATION_GATE_ENABLED": "Membership Screening",
+            "NEWS": "News Channels",
+            "PARTNERED": "Partnered",
+            "PREVIEW_ENABLED": "Preview",
+            "PRIVATE_THREADS": "Private Threads",
+            "ROLE_ICONS": "Role Icons",
+            "TICKETED_EVENTS_ENABLED": "Ticketed Events",
+            "VANITY_URL": "Vanity URL",
+            "VERIFIED": "Verified",
+            "VIP_REGIONS": "VIP Regions",
+        }
+        features = ", ".join(feature_labels.get(feat, feat.replace("_", " ").title()) for feat in sorted(guild.features)) or "_None_"
         embed.add_field(name="Features", value=features, inline=False)
 
         if guild.icon:
@@ -577,10 +653,15 @@ class InfoCommands(commands.Cog):
 
         embed = factory.primary("🎛️ Lavalink Nodes")
         for node in nodes:
+            cpu_ll = node.get("cpu_lavalink")
+            cpu_sys = node.get("cpu_system")
             cpu_line = (
-                f"CPU `{(node['cpu_lavalink'] or 0) * 100:.1f}%` LL / "
-                f"`{(node['cpu_system'] or 0) * 100:.1f}%` SYS"
+                f"CPU `{cpu_ll * 100:.1f}%` LL / `{cpu_sys * 100:.1f}%` SYS"
+                if cpu_ll is not None and cpu_sys is not None
+                else f"CPU `{cpu_ll * 100:.1f}%` LL" if cpu_ll is not None else "CPU `n/a`"
             )
+            if cpu_sys is not None and cpu_ll is None:
+                cpu_line = f"CPU `{cpu_sys * 100:.1f}%` SYS"
             if node.get("cpu_cores") is not None:
                 cpu_line += f" • cores `{node['cpu_cores']}`"
             memory_line = (
@@ -596,7 +677,7 @@ class InfoCommands(commands.Cog):
             if node.get("uptime_ms") is not None:
                 uptime_line = f"Uptime `{self._format_duration(node['uptime_ms'] / 1000)}`"
 
-            endpoint_line = f"Endpoint `{node['endpoint']}` (ssl={node['ssl']})"
+            endpoint_line = f"Endpoint `||{node['endpoint']}||` (SSL {self._bool_icon(bool(node['ssl']))})"
 
             lines = [
                 f"Region `{node['region']}`",

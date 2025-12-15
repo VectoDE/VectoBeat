@@ -102,7 +102,8 @@ class VectoBeat(commands.AutoShardedBot):
         self.alerts = AlertService(CONFIG.alerts, self.server_settings, self.queue_telemetry)
         self.queue_copilot = QueueCopilotService(self.server_settings)
         self.search_cache = SearchCacheService(CONFIG.cache)
-        self.latency_monitor = LatencyMonitor(self)
+        # Sample more frequently to keep gateway latency fresher.
+        self.latency_monitor = LatencyMonitor(self, sample_interval=2.0, max_samples=60)
         self.status_api = StatusAPIService(self, CONFIG.status_api)
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
         self._entrypoint_payloads: List[dict] = []
