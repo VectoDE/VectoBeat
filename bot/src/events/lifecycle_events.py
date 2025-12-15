@@ -13,6 +13,8 @@ class LifecycleEvents(commands.Cog):
             "🎵 /play | Shard {shard}/{total}",
             "📡 {latency} ms ping",
             "🏠 Serving {guilds} guilds",
+            "❔ Need help? /help",
+            "👥 Serving {users} users",
         ]
         self._status_index = 0
         self.rotate_status.start()
@@ -47,6 +49,7 @@ class LifecycleEvents(commands.Cog):
         """Set presence for all shards using a formatted template."""
         total_shards = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
         total_guilds = len(self.bot.guilds)
+        total_users = sum(guild.member_count or len(getattr(guild, "members", [])) or 0 for guild in self.bot.guilds)
         latency_lookup = self._latency_lookup()
 
         for shard_id in range(total_shards):
@@ -56,6 +59,7 @@ class LifecycleEvents(commands.Cog):
                 shard=shard_id + 1,
                 total=total_shards,
                 guilds=total_guilds,
+                users=total_users,
                 shard_guilds=shard_guilds,
                 latency=latency_ms,
             )
