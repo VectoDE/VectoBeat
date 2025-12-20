@@ -12,6 +12,14 @@ import { sendNotificationEmail } from "@/lib/mailer"
 
 const SUCCESS_POD_EMAIL = process.env.SUCCESS_POD_EMAIL || process.env.SMTP_FROM || "timhauke@uplytech.de"
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+
 const sanitize = (value?: string | null, max = 255) => {
   if (typeof value !== "string") return ""
   const trimmed = value.trim()

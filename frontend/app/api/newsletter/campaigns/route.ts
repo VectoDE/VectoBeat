@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "discordId, subject and body are required" }, { status: 400 })
     }
 
+    const safeSubject = String(subject).trim().slice(0, 200)
+    const safeBody = String(body).slice(0, 10000)
+
     const auth = await verifyRequestForUser(request, discordId)
     if (!auth.valid) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -67,21 +70,21 @@ export async function POST(request: NextRequest) {
 
     const sampleResults: Array<{ email: string; delivered: boolean }> = []
     for (const email of sampleTargets) {
-      const result = await sendNewsletterEmail({ to: email, subject, markdown: body, sample: true })
+      const result = await sendNewsletterEmail({ to: email, subject: safeSubject, markdown: safeBody, sample: true })
       sampleResults.push({ email, delivered: result.delivered })
     }
 
     let delivered = 0
     for (const subscriber of subscribers) {
-      const result = await sendNewsletterEmail({ to: subscriber.email, subject, markdown: body })
+      const result = await sendNewsletterEmail({ to: subscriber.email, subject: safeSubject, markdown: safeBody })
       if (result.delivered) {
         delivered++
       }
     }
 
     const campaign = await createNewsletterCampaign({
-      subject,
-      body,
+      subject: safeSubject,
+      body: safeBody,
       sentBy: discordId,
       recipientCountOverride: subscribers.length,
     })

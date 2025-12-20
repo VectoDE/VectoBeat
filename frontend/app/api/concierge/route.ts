@@ -20,6 +20,14 @@ const sanitize = (value?: string, max = 500) => {
   return trimmed.slice(0, max)
 }
 
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
   fetchUserSubscriptions?: typeof getUserSubscriptions
@@ -137,13 +145,13 @@ export const createConciergeHandlers = (deps: RouteDeps = {}) => {
 
     const html = `
       <p><strong>Request ID:</strong> ${record?.id ?? "pending"}</p>
-      <p><strong>Guild:</strong> ${guildName} (${guildId})</p>
-      <p><strong>Plan:</strong> ${membership.tier}</p>
-      <p><strong>Contact:</strong> ${contact || "Not provided"}</p>
+      <p><strong>Guild:</strong> ${escapeHtml(guildName)} (${escapeHtml(guildId)})</p>
+      <p><strong>Plan:</strong> ${escapeHtml(String(membership.tier))}</p>
+      <p><strong>Contact:</strong> ${contact ? escapeHtml(contact) : "Not provided"}</p>
       <p><strong>Hours Requested:</strong> ${hours}</p>
       <p><strong>SLA:</strong> ${slaMinutes} minutes</p>
       <p><strong>Request:</strong></p>
-      <p>${summary.replace(/\n/g, "<br/>")}</p>
+      <p>${escapeHtml(summary).replace(/\n/g, "<br/>")}</p>
     `
       const mailFrom =
         typeof (settings as any)?.mailFromAddress === "string" && (settings as any).mailFromAddress?.trim()
