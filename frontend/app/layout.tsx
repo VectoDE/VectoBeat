@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { CookieBanner } from "@/components/cookie-banner"
 import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import { SiteAnalyticsTracker } from "@/components/site-analytics"
 
 const _geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -91,6 +92,7 @@ export default async function RootLayout({
         {children}
         <CookieBanner />
         <Analytics />
+        <SpeedInsights />
         <Suspense fallback={null}>
           <SiteAnalyticsTracker />
         </Suspense>
