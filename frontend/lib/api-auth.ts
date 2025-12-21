@@ -23,12 +23,19 @@ const AUTH_BYPASS =
   process.env.ALLOW_UNAUTHENTICATED === "1" ||
   process.env.SKIP_API_AUTH === "1"
 
-export const normalizeToken = (token?: string | null) => {
+export const normalizeToken = (token?: string | null): string => {
   if (!token) return ""
-  const trimmed = token.trim()
-  // Strip surrounding quotes to tolerate quoted envs in compose or shell exports.
-  const unquoted = trimmed.replace(/^['"]+|['"]+$/g, "")
-  return unquoted.trim()
+
+  let trimmed = token.trim()
+
+  while (trimmed.startsWith('"') || trimmed.startsWith("'")) {
+    trimmed = trimmed.slice(1)
+  }
+  while (trimmed.endsWith('"') || trimmed.endsWith("'")) {
+    trimmed = trimmed.slice(0, -1)
+  }
+
+  return trimmed.trim()
 }
 
 export const expandSecrets = (...values: Array<string | null | undefined>) =>

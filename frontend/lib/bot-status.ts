@@ -1,9 +1,17 @@
 import { getApiKeySecrets } from "./api-keys"
 
+const trimTrailingSlashes = (url: string) => {
+  let end = url.length
+  while (end > 0 && url[end - 1] === "/") {
+    end--
+  }
+  return url.slice(0, end)
+}
+
 const BOT_API_BASE_URL = process.env.BOT_API_BASE_URL || ""
 const BOT_STATUS_API_URL =
   process.env.BOT_STATUS_API_URL ||
-  (BOT_API_BASE_URL ? `${BOT_API_BASE_URL.replace(/\/+$/, "")}/status` : "")
+  (BOT_API_BASE_URL ? `${trimTrailingSlashes(BOT_API_BASE_URL)}/status` : "")
 const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
   .split(",")
   .map((entry) => entry.trim())
@@ -224,7 +232,9 @@ export const getBotGuildPresence = async (): Promise<Set<string>> => {
 const deriveControlEndpoint = (endpoint: string, path = "/reconcile-routing") => {
   const normalized = normalizeEndpoint(endpoint)
   if (!normalized) return ""
-  const trimmed = normalized.replace(/\/+$/, "")
+
+  const trimmed = trimTrailingSlashes(normalized)
+
   if (trimmed.endsWith("/status")) {
     return `${trimmed.slice(0, -7)}${path}`
   }

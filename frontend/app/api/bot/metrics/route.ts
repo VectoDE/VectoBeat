@@ -50,11 +50,21 @@ export async function GET() {
   const history = await getBotMetricHistory(1)
   const latest = history.at(-1) ?? null
 
+  const trimTrailingSlashes = (url: string) => {
+    while (url.endsWith("/")) {
+      url = url.slice(0, -1)
+    }
+    return url
+  }
+
   // Prefer a live status pull so uptimePercent reflects downtime between pushes.
   const defaultStatusUrl =
     process.env.BOT_STATUS_API_URL ||
-    (process.env.BOT_API_BASE_URL ? `${process.env.BOT_API_BASE_URL.replace(/\/+$/, "")}/status` : null) ||
+    (process.env.BOT_API_BASE_URL
+      ? `${trimTrailingSlashes(process.env.BOT_API_BASE_URL)}/status`
+      : null) ||
     "http://localhost:3051/status"
+
   let liveSnapshot: any = null
   try {
     const statusToken =

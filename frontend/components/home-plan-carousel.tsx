@@ -45,8 +45,20 @@ type SessionData = {
   displayName?: string | null
   username?: string | null
   guilds?: SessionGuild[]
+  tiers?: MembershipTier[]
 }
 
+function isEmailValid(email: string): boolean {
+  const trimmed = email.trim()
+  const atIndex = trimmed.indexOf("@")
+  if (atIndex <= 0) return false
+  const local = trimmed.slice(0, atIndex)
+  const domain = trimmed.slice(atIndex + 1)
+  if (!local || !domain) return false
+  const dotIndex = domain.indexOf(".")
+  if (dotIndex <= 0 || dotIndex === domain.length - 1) return false
+  return true
+}
 
 export function HomePlanCarousel() {
   const totalSlides = tierEntries.length
@@ -337,7 +349,7 @@ export function HomePlanCarousel() {
     }
 
     const normalizedEmail = (resolvedSession.email || billingEmail).trim()
-    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    const emailValid = isEmailValid(normalizedEmail)
     if (!emailValid) {
       setError(PLAN_COPY.errors.emailInvalid)
       return
@@ -400,21 +412,19 @@ export function HomePlanCarousel() {
       <div className="inline-flex items-center gap-4 bg-card/50 border border-border/50 rounded-lg p-2">
         <button
           onClick={() => setBillingCycle("monthly")}
-          className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-            billingCycle === "monthly"
+          className={`px-6 py-2 rounded-lg font-semibold transition-all ${billingCycle === "monthly"
               ? "bg-primary text-primary-foreground"
               : "text-foreground/70 hover:text-foreground"
-          }`}
+            }`}
         >
           {PLAN_COPY.monthlyLabel}
         </button>
         <button
           onClick={() => setBillingCycle("yearly")}
-          className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-            billingCycle === "yearly"
+          className={`px-6 py-2 rounded-lg font-semibold transition-all ${billingCycle === "yearly"
               ? "bg-primary text-primary-foreground"
               : "text-foreground/70 hover:text-foreground"
-          }`}
+            }`}
         >
           {PLAN_COPY.yearlyLabel}
         </button>
@@ -459,9 +469,8 @@ export function HomePlanCarousel() {
       )}
 
       <div
-        className={`relative rounded-3xl border border-border/40 bg-card/30 py-8 px-4 ${
-          prefersTouch ? "overflow-x-auto" : "md:overflow-hidden"
-        }`}
+        className={`relative rounded-3xl border border-border/40 bg-card/30 py-8 px-4 ${prefersTouch ? "overflow-x-auto" : "md:overflow-hidden"
+          }`}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => {
           if (dragStartX === null) setIsPaused(false)
@@ -469,15 +478,14 @@ export function HomePlanCarousel() {
       >
         <div
           ref={sliderRef}
-          className={`flex gap-6 items-stretch ${
-            !prefersTouch && dragStartX === null ? "transition-transform duration-500" : ""
-          } ${prefersTouch ? "overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-4" : ""}`}
+          className={`flex gap-6 items-stretch ${!prefersTouch && dragStartX === null ? "transition-transform duration-500" : ""
+            } ${prefersTouch ? "overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-4" : ""}`}
           style={
             enablePointerDrag || prefersTouch
               ? {
-                  transform: enablePointerDrag ? `translateX(${-(sliderStep * activeSlide) + dragOffset}px)` : undefined,
-                  touchAction: prefersTouch ? "pan-x" : dragStartX !== null ? "none" : "pan-x pan-y",
-                }
+                transform: enablePointerDrag ? `translateX(${-(sliderStep * activeSlide) + dragOffset}px)` : undefined,
+                touchAction: prefersTouch ? "pan-x" : dragStartX !== null ? "none" : "pan-x pan-y",
+              }
               : undefined
           }
           onPointerDown={enablePointerDrag ? handlePointerDown : undefined}
@@ -487,10 +495,10 @@ export function HomePlanCarousel() {
           onPointerLeave={
             enablePointerDrag
               ? (event) => {
-                  if (dragStartX !== null) {
-                    handlePointerUp(event)
-                  }
+                if (dragStartX !== null) {
+                  handlePointerUp(event)
                 }
+              }
               : undefined
           }
           onTouchStart={enableTouchFallback ? handleTouchStart : undefined}
@@ -518,11 +526,10 @@ export function HomePlanCarousel() {
               <div
                 key={tierKey}
                 data-plan-card
-                className={`relative min-w-[260px] sm:min-w-[320px] lg:min-w-[360px] rounded-2xl border transition-all group ${
-                  tier.highlighted
+                className={`relative min-w-[260px] sm:min-w-[320px] lg:min-w-[360px] rounded-2xl border transition-all group ${tier.highlighted
                     ? "bg-linear-to-b from-primary/20 to-secondary/10 border-primary/50 shadow-lg hover:scale-[1.02]"
                     : "bg-card/50 border-border/50 hover:border-primary/30"
-                } ${prefersTouch ? "snap-center" : ""}`}
+                  } ${prefersTouch ? "snap-center" : ""}`}
               >
                 {tier.highlighted && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 px-4 py-1 bg-primary rounded-full text-sm font-semibold text-primary-foreground">
@@ -548,11 +555,10 @@ export function HomePlanCarousel() {
 
                   <button
                     onClick={() => handleSubscribe(tierKey)}
-                    className={`w-full inline-flex justify-center py-3 rounded-lg font-semibold transition-all mb-8 ${
-                      tier.highlighted
+                    className={`w-full inline-flex justify-center py-3 rounded-lg font-semibold transition-all mb-8 ${tier.highlighted
                         ? "bg-primary text-primary-foreground hover:bg-primary/90"
                         : "border border-primary/30 text-primary hover:bg-primary/10"
-                    }`}
+                      }`}
                     disabled={checkoutLoading === tierKey}
                   >
                     {checkoutLoading === tierKey ? PLAN_COPY.redirecting : buttonLabel}

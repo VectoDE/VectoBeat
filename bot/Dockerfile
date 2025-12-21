@@ -22,6 +22,9 @@ COPY bot/config.yml ./config.yml
 ENV CONFIG_PATH=/app/config.yml
 
 FROM base AS production
+COPY . /app
+RUN chown -R vectode:vectode /app
+USER vectode
 CMD ["python", "-m", "src.main"]
 
 # Development target keeps the same layout but can be used with bind mounts.

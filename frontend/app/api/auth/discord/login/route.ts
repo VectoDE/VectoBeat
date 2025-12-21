@@ -5,12 +5,17 @@ import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_ST
 const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
 const REDIRECT_COOKIE = "discord_pkce_redirect"
 
-const base64UrlEncode = (input: Buffer) =>
-  input
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "")
+const base64UrlEncode = (input: Buffer) => {
+  let base64 = input.toString("base64")
+
+  while (base64.endsWith("=")) {
+    base64 = base64.slice(0, -1)
+  }
+
+  return base64
+    .replace("+", "-")
+    .replace("/", "_")
+}
 
 const generateCodeVerifier = () => base64UrlEncode(crypto.randomBytes(64))
 const generateCodeChallenge = (verifier: string) => base64UrlEncode(crypto.createHash("sha256").update(verifier).digest())
