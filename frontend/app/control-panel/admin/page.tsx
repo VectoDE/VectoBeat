@@ -213,16 +213,55 @@ const initialForm = {
   category: "Announcement",
 }
 
+function stripMarkdown(content: string): string {
+  let result = ""
+  let i = 0
+  const len = content.length
+
+  while (i < len) {
+    if (content.startsWith("```", i)) {
+      i += 3
+      while (i < len && !content.startsWith("```", i)) i++
+      i += 3
+      result += " "
+      continue
+    }
+    if (content[i] === "`") {
+      i++
+      while (i < len && content[i] !== "`") i++
+      i++
+      result += " "
+      continue
+    }
+    if (content[i] === "<") {
+      while (i < len && content[i] !== ">") i++
+      i++
+      result += " "
+      continue
+    }
+    if (content[i] === "[") {
+      let endBracket = content.indexOf("]", i)
+      let startParen = content.indexOf("(", endBracket)
+      let endParen = content.indexOf(")", startParen)
+      if (endBracket !== -1 && startParen !== -1 && endParen !== -1) {
+        result += content.slice(i + 1, endBracket)
+        i = endParen + 1
+        continue
+      }
+    }
+    result += content[i]
+    i++
+  }
+
+  result = result.replace(/[#>*_~]/g, " ")
+  return result
+}
+
 const estimateReadTime = (content: string | undefined | null) => {
   if (!content?.trim()) {
     return "1 min read"
   }
-  const plain = content
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/[#>*_~]/g, " ")
+  const plain = stripMarkdown(content)
   const words = plain.trim().split(/\s+/).filter(Boolean).length
   const minutes = Math.max(1, Math.round(words / 200))
   return `${minutes} min read`
@@ -307,8 +346,8 @@ export default function AdminControlPanelPage() {
   const [forumPosts, setForumPosts] = useState<any[]>([])
   const [forumSelectedCategory, setForumSelectedCategory] = useState<string>("")
   const [forumSelectedThread, setForumSelectedThread] = useState<string>("")
-const [forumLoading, setForumLoading] = useState(false)
-const [forumActionMessage, setForumActionMessage] = useState<string | null>(null)
+  const [forumLoading, setForumLoading] = useState(false)
+  const [forumActionMessage, setForumActionMessage] = useState<string | null>(null)
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -575,39 +614,39 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
 
   const loadForumData = useCallback(
     async (opts?: { threadId?: string; category?: string }) => {
-    if (!discordId) return
-    setForumLoading(true)
-    setForumActionMessage(null)
-    try {
-      const params = new URLSearchParams({ discordId })
-      const category = opts?.category ?? forumSelectedCategory
-      const threadId = opts?.threadId ?? forumSelectedThread
-      if (category) params.set("category", category)
-      if (threadId) params.set("threadId", threadId)
-      const res = await fetch(`/api/admin/forum?${params.toString()}`, {
-        cache: "no-store",
-        credentials: "include",
-      })
-      if (!res.ok) throw new Error("Failed to load forum data")
-      const payload = await res.json()
-      setForumStats(payload.stats ?? null)
-      setForumEvents(Array.isArray(payload.events) ? payload.events : [])
-      setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
-      setForumThreads(Array.isArray(payload.threads) ? payload.threads : [])
-      setForumPosts(Array.isArray(payload.posts) ? payload.posts : [])
-      // auto-select defaults
-      if (!forumSelectedCategory && payload.categories?.length) {
-        setForumSelectedCategory(payload.categories[0].slug || payload.categories[0].id || "")
+      if (!discordId) return
+      setForumLoading(true)
+      setForumActionMessage(null)
+      try {
+        const params = new URLSearchParams({ discordId })
+        const category = opts?.category ?? forumSelectedCategory
+        const threadId = opts?.threadId ?? forumSelectedThread
+        if (category) params.set("category", category)
+        if (threadId) params.set("threadId", threadId)
+        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+          cache: "no-store",
+          credentials: "include",
+        })
+        if (!res.ok) throw new Error("Failed to load forum data")
+        const payload = await res.json()
+        setForumStats(payload.stats ?? null)
+        setForumEvents(Array.isArray(payload.events) ? payload.events : [])
+        setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
+        setForumThreads(Array.isArray(payload.threads) ? payload.threads : [])
+        setForumPosts(Array.isArray(payload.posts) ? payload.posts : [])
+        // auto-select defaults
+        if (!forumSelectedCategory && payload.categories?.length) {
+          setForumSelectedCategory(payload.categories[0].slug || payload.categories[0].id || "")
+        }
+        if (!threadId && payload.threads?.length) {
+          setForumSelectedThread(payload.threads[0].id)
+        }
+      } catch (error) {
+        console.error("Failed to load forum data:", error)
+      } finally {
+        setForumLoading(false)
       }
-      if (!threadId && payload.threads?.length) {
-        setForumSelectedThread(payload.threads[0].id)
-      }
-    } catch (error) {
-      console.error("Failed to load forum data:", error)
-    } finally {
-      setForumLoading(false)
-    }
-  },
+    },
     [discordId, forumSelectedCategory, forumSelectedThread],
   )
 
@@ -710,44 +749,44 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
         throw new Error(payload.error || "Failed to load users")
       }
       const data = await response.json()
-            const normalizedUsers = Array.isArray(data.users)
-              ? data.users.map((user: any) => ({
-                  id: String(user.id),
-                  username: user.username ?? null,
-                  displayName: user.displayName ?? user.username ?? null,
-                  email: user.email ?? null,
-                  phone: user.phone ?? null,
-                  avatarUrl: user.avatarUrl ?? null,
-                  guildCount: Number.isFinite(user.guildCount) ? user.guildCount : 0,
-                  lastSeen: user.lastSeen || new Date().toISOString(),
-                  role: (user.role as UserRole) ?? "member",
-                  twoFactorEnabled: user.security?.twoFactorEnabled ?? Boolean(user.twoFactorEnabled),
-                  handle: user.handle ?? null,
-                  profilePublic: Boolean(user.profilePublic),
-                  profileName: user.profileName ?? null,
-                  headline: user.headline ?? null,
-                  bio: user.bio ?? null,
-                  location: user.location ?? null,
-                  website: user.website ?? null,
-                  profileCreatedAt: user.profileCreatedAt ?? null,
-                  profileUpdatedAt: user.profileUpdatedAt ?? null,
-                  welcomeSentAt: user.welcomeSentAt ?? null,
-                  contactCreatedAt: user.contactCreatedAt ?? null,
-                  contactUpdatedAt: user.contactUpdatedAt ?? null,
-                  stripeCustomerId: user.stripeCustomerId ?? null,
-                  preferences: user.preferences,
-                  notifications: user.notifications,
-                  privacy: user.privacy,
-                  security: user.security,
-                  botSettings: user.botSettings,
-                  roleCreatedAt: user.roleCreatedAt ?? null,
-                  roleUpdatedAt: user.roleUpdatedAt ?? null,
-                  sessionInfo: user.sessionInfo,
-                  lastLogin: user.lastLogin ?? null,
-                  linkedAccounts: Array.isArray(user.linkedAccounts) ? user.linkedAccounts : [],
-                }))
-              : []
-            setUsers(normalizedUsers)
+      const normalizedUsers = Array.isArray(data.users)
+        ? data.users.map((user: any) => ({
+          id: String(user.id),
+          username: user.username ?? null,
+          displayName: user.displayName ?? user.username ?? null,
+          email: user.email ?? null,
+          phone: user.phone ?? null,
+          avatarUrl: user.avatarUrl ?? null,
+          guildCount: Number.isFinite(user.guildCount) ? user.guildCount : 0,
+          lastSeen: user.lastSeen || new Date().toISOString(),
+          role: (user.role as UserRole) ?? "member",
+          twoFactorEnabled: user.security?.twoFactorEnabled ?? Boolean(user.twoFactorEnabled),
+          handle: user.handle ?? null,
+          profilePublic: Boolean(user.profilePublic),
+          profileName: user.profileName ?? null,
+          headline: user.headline ?? null,
+          bio: user.bio ?? null,
+          location: user.location ?? null,
+          website: user.website ?? null,
+          profileCreatedAt: user.profileCreatedAt ?? null,
+          profileUpdatedAt: user.profileUpdatedAt ?? null,
+          welcomeSentAt: user.welcomeSentAt ?? null,
+          contactCreatedAt: user.contactCreatedAt ?? null,
+          contactUpdatedAt: user.contactUpdatedAt ?? null,
+          stripeCustomerId: user.stripeCustomerId ?? null,
+          preferences: user.preferences,
+          notifications: user.notifications,
+          privacy: user.privacy,
+          security: user.security,
+          botSettings: user.botSettings,
+          roleCreatedAt: user.roleCreatedAt ?? null,
+          roleUpdatedAt: user.roleUpdatedAt ?? null,
+          sessionInfo: user.sessionInfo,
+          lastLogin: user.lastLogin ?? null,
+          linkedAccounts: Array.isArray(user.linkedAccounts) ? user.linkedAccounts : [],
+        }))
+        : []
+      setUsers(normalizedUsers)
     } catch (error) {
       console.error("Failed to load admin users:", error)
       setUsersError(error instanceof Error ? error.message : "Unable to load users")
@@ -990,11 +1029,11 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
         setTicketThread(data)
       } catch (error) {
         console.error("Failed to load ticket thread:", error)
-      setTicketThreadError(error instanceof Error ? error.message : "Unable to load ticket thread")
-    } finally {
-      setTicketThreadLoading(false)
-    }
-  },
+        setTicketThreadError(error instanceof Error ? error.message : "Unable to load ticket thread")
+      } finally {
+        setTicketThreadLoading(false)
+      }
+    },
     [authToken, discordId],
   )
 
@@ -1242,7 +1281,7 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
     envEntries.forEach((entry) => combinedKeys.add(entry.key))
     systemKeys.forEach((key) => {
       if (key.envVar) combinedKeys.add(key.envVar)
-      ;(key.envVars || []).forEach((ev) => combinedKeys.add(ev))
+        ; (key.envVars || []).forEach((ev) => combinedKeys.add(ev))
     })
     Object.keys(process.env || {}).forEach((ev) => combinedKeys.add(ev))
     const combinedEntries = Array.from(combinedKeys).map((key) => ({
@@ -1398,11 +1437,11 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
     const term = packageSearch.trim().toLowerCase()
     const entries = term
       ? packageEntries.filter(
-          (pkg) =>
-            pkg.name.toLowerCase().includes(term) ||
-            pkg.version.toLowerCase().includes(term) ||
-            pkg.type.toLowerCase().includes(term),
-        )
+        (pkg) =>
+          pkg.name.toLowerCase().includes(term) ||
+          pkg.version.toLowerCase().includes(term) ||
+          pkg.type.toLowerCase().includes(term),
+      )
       : packageEntries
     return entries.slice(0, 40)
   }, [packageEntries, packageSearch])
@@ -1719,11 +1758,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                         <button
                           key={ticket.id}
                           onClick={() => setSelectedTicketId(ticket.id)}
-                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${
-                            isActive
+                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${isActive
                               ? "border-primary/60 bg-primary/5 shadow-lg shadow-primary/10"
                               : "border-border/50 bg-background/70 hover:border-primary/40"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between gap-3 wrap-break-word">
                             <p className="font-semibold truncate">{ticket.subject || "Support Ticket"}</p>
@@ -1739,15 +1777,14 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                                 {ticket.status}
                               </span>
                               <span
-                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                                  ticket.priority === "urgent"
+                                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${ticket.priority === "urgent"
                                     ? "bg-destructive/20 text-destructive"
                                     : ticket.priority === "high"
                                       ? "bg-amber-100 text-amber-900"
                                       : ticket.priority === "low"
                                         ? "bg-foreground/10 text-foreground/60"
                                         : "bg-primary/10 text-primary"
-                                }`}
+                                  }`}
                               >
                                 {ticket.priority || "normal"}
                               </span>
@@ -1840,11 +1877,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                                   key={state}
                                   type="button"
                                   onClick={() => void setPartnerStatus(state)}
-                                  className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                                    ticketThread.status === state
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold border ${ticketThread.status === state
                                       ? "border-primary bg-primary/10 text-primary"
                                       : "border-border/60 text-foreground/70 hover:border-primary/50"
-                                  }`}
+                                    }`}
                                 >
                                   {state.charAt(0).toUpperCase() + state.slice(1)}
                                 </button>
@@ -1922,31 +1958,29 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                           Array.isArray(ticketThread.messages) && ticketThread.messages.length
                             ? ticketThread.messages
                             : [
-                                {
-                                  id: `${ticketThread.id}-origin`,
-                                  authorName: ticketThread.name,
-                                  role: "member",
-                                  body: ticketThread.message,
-                                  createdAt: ticketThread.createdAt,
-                                  attachments: [],
-                                },
-                              ]
+                              {
+                                id: `${ticketThread.id}-origin`,
+                                authorName: ticketThread.name,
+                                role: "member",
+                                body: ticketThread.message,
+                                createdAt: ticketThread.createdAt,
+                                attachments: [],
+                              },
+                            ]
                         ) as any[]).map((entry) => {
                           const attachments = Array.isArray(entry.attachments) ? entry.attachments : []
                           const isAgent = entry.role !== "member"
                           return (
                             <div key={entry.id} className={`flex ${isAgent ? "justify-end" : "justify-start"}`}>
                               <div
-                                className={`max-w-[85%] rounded-lg border p-4 space-y-3 shadow-sm ${
-                                  isAgent
+                                className={`max-w-[85%] rounded-lg border p-4 space-y-3 shadow-sm ${isAgent
                                     ? "border-primary/30 bg-primary/10 text-foreground"
                                     : "border-border/40 bg-card/40 text-foreground"
-                                }`}
+                                  }`}
                               >
                                 <div
-                                  className={`flex flex-wrap items-center gap-2 text-sm ${
-                                    isAgent ? "justify-end text-right" : ""
-                                  }`}
+                                  className={`flex flex-wrap items-center gap-2 text-sm ${isAgent ? "justify-end text-right" : ""
+                                    }`}
                                 >
                                   <p className="font-semibold">
                                     {entry.authorName || (entry.role === "member" ? ticketThread.name : "VectoBeat")}
@@ -1955,16 +1989,15 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                                     {new Date(entry.createdAt).toLocaleString()}
                                   </span>
                                   <span
-                                    className={`text-[10px] uppercase tracking-[0.3em] ${
-                                      entry.role === "member" ? "text-foreground/50" : "text-primary"
-                                    }`}
+                                    className={`text-[10px] uppercase tracking-[0.3em] ${entry.role === "member" ? "text-foreground/50" : "text-primary"
+                                      }`}
                                   >
                                     {entry.role}
                                   </span>
                                 </div>
-                          <p className={`text-sm text-foreground/80 whitespace-pre-line wrap-break-word ${isAgent ? "text-right" : ""}`}>
-                            {entry.body}
-                          </p>
+                                <p className={`text-sm text-foreground/80 whitespace-pre-line wrap-break-word ${isAgent ? "text-right" : ""}`}>
+                                  {entry.body}
+                                </p>
                                 {!!attachments.length && (
                                   <div className="grid gap-3">
                                     {attachments.map((file: any, fileIndex: number) => {
@@ -2036,11 +2069,11 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                             className="px-4 py-2 rounded-lg bg-background border border-border/50 text-sm focus:border-primary/50 outline-none"
                           >
                             <option value="">Keep status</option>
-                          <option value="open">Open</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="closed">Closed</option>
-                          <option value="archived">Archived</option>
-                        </select>
+                            <option value="open">Open</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                            <option value="archived">Archived</option>
+                          </select>
                           <label className="px-4 py-2 rounded-lg border border-border/50 text-sm cursor-pointer hover:border-primary/50 transition">
                             Attach files
                             <input
@@ -2152,15 +2185,15 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     onClick={loadContactMessages}
                     className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/50 transition-colors"
                   >
-                  Refresh
-                </button>
-                <button
-                  onClick={() => setIsContactModalOpen(true)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  Create Contact
-                </button>
-              </div>
+                    Refresh
+                  </button>
+                  <button
+                    onClick={() => setIsContactModalOpen(true)}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Create Contact
+                  </button>
+                </div>
               </div>
               {contactActionMessage && <p className="text-xs text-primary">{contactActionMessage}</p>}
               {contactError && <p className="text-sm text-destructive">{contactError}</p>}
@@ -2189,11 +2222,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                         <button
                           key={msg.id}
                           onClick={() => setSelectedContactId(msg.id)}
-                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${
-                            isActive
+                          className={`w-full text-left rounded-xl border px-4 py-3 transition ${isActive
                               ? "border-primary/60 bg-primary/5 shadow-lg shadow-primary/10"
                               : "border-border/50 bg-background/70 hover:border-primary/40"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-semibold truncate">{msg.subject || "Contact message"}</p>
@@ -2235,15 +2267,14 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                               {selectedContact.status}
                             </span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                                selectedContact.priority === "urgent"
+                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${selectedContact.priority === "urgent"
                                   ? "bg-destructive/15 text-destructive"
                                   : selectedContact.priority === "high"
                                     ? "bg-amber-500/20 text-amber-500"
                                     : selectedContact.priority === "low"
                                       ? "bg-foreground/10 text-foreground/60"
                                       : "bg-primary/10 text-primary"
-                              }`}
+                                }`}
                             >
                               {selectedContact.priority || "normal"}
                             </span>
@@ -2351,10 +2382,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
           botStatus && botStatus !== "offline"
             ? true
             : !!(
-                systemHealth?.snapshot?.uptimePercent != null ||
-                (systemHealth?.snapshot?.activeListeners || 0) > 0 ||
-                (systemHealth?.history || []).some((entry: any) => entry?.status === "online")
-              )
+              systemHealth?.snapshot?.uptimePercent != null ||
+              (systemHealth?.snapshot?.activeListeners || 0) > 0 ||
+              (systemHealth?.history || []).some((entry: any) => entry?.status === "online")
+            )
         return (
           <>
             <section className="grid lg:grid-cols-4 md:grid-cols-2 gap-4">
@@ -2459,11 +2490,11 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
         const clientInfo =
           typeof window !== "undefined"
             ? {
-                userAgent: navigator.userAgent,
-                language: navigator.language,
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                screen: `${window.screen.width}x${window.screen.height}`,
-              }
+              userAgent: navigator.userAgent,
+              language: navigator.language,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              screen: `${window.screen.width}x${window.screen.height}`,
+            }
             : null
         const clientPerf =
           typeof window !== "undefined" && typeof performance !== "undefined" && "memory" in performance
@@ -2525,91 +2556,91 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
           }
         }
 
-  const resolveStatus = (configured: boolean) => {
-    if (!configured) return "offline"
-    const lastHistory = Array.isArray(systemHealth?.history) ? systemHealth.history[0] : null
-    const state = (systemHealth?.snapshot?.status || lastHistory?.status || "").toString().toLowerCase()
-    const isOffline = ["offline", "down", "error", "failed"].some((token) => state.includes(token))
-    if (isOffline) return "offline"
-    const isOnline = ["online", "ok", "healthy", "up"].some((token) => state.includes(token))
-    return isOnline ? "online" : "online"
-  }
+        const resolveStatus = (configured: boolean) => {
+          if (!configured) return "offline"
+          const lastHistory = Array.isArray(systemHealth?.history) ? systemHealth.history[0] : null
+          const state = (systemHealth?.snapshot?.status || lastHistory?.status || "").toString().toLowerCase()
+          const isOffline = ["offline", "down", "error", "failed"].some((token) => state.includes(token))
+          if (isOffline) return "offline"
+          const isOnline = ["online", "ok", "healthy", "up"].some((token) => state.includes(token))
+          return isOnline ? "online" : "online"
+        }
 
         const redisPrimary =
           envMap.REDIS_URL || envMap.UPSTASH_REDIS_REST_URL || envMap.UPSTASH_REDIS_WS_URL || process.env.REDIS_URL
         const connectionOverview =
           connectivity && connectivity.length
             ? connectivity.map((conn) => ({
-                label: conn.label,
-                key: conn.key,
-                display: conn.url || "Not configured",
-                status: conn.status === "missing" ? "missing" : "configured",
-                liveStatus: conn.status,
-              }))
+              label: conn.label,
+              key: conn.key,
+              display: conn.url || "Not configured",
+              status: conn.status === "missing" ? "missing" : "configured",
+              liveStatus: conn.status,
+            }))
             : [
-                {
-                  label: "Database",
-                  key: "DATABASE_URL",
-                  ...formatConn("DATABASE_URL"),
-                  status: formatConn("DATABASE_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Redis",
-                  key: "REDIS_URL",
-                  configured: Boolean(redisPrimary),
-                  display: formatConn(redisPrimary ? "REDIS_URL" : "UPSTASH_REDIS_REST_URL").display,
-                  status: Boolean(redisPrimary) ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Cache",
-                  key: "CACHE_URL",
-                  ...formatConn("CACHE_URL"),
-                  status: formatConn("CACHE_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Upstash REST",
-                  key: "UPSTASH_REDIS_REST_URL",
-                  ...formatConn("UPSTASH_REDIS_REST_URL"),
-                  status: formatConn("UPSTASH_REDIS_REST_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Upstash WS",
-                  key: "UPSTASH_REDIS_WS_URL",
-                  ...formatConn("UPSTASH_REDIS_WS_URL"),
-                  status: formatConn("UPSTASH_REDIS_WS_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Status API",
-                  key: "BOT_STATUS_API_URL",
-                  ...formatConn("BOT_STATUS_API_URL"),
-                  status: formatConn("BOT_STATUS_API_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Server settings",
-                  key: "SERVER_SETTINGS_API_URL",
-                  ...formatConn("SERVER_SETTINGS_API_URL"),
-                  status: formatConn("SERVER_SETTINGS_API_URL").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-                {
-                  label: "Queue sync",
-                  key: "QUEUE_SYNC_ENDPOINT",
-                  ...formatConn("QUEUE_SYNC_ENDPOINT"),
-                  status: formatConn("QUEUE_SYNC_ENDPOINT").configured ? "configured" : "missing",
-                  liveStatus: "unknown",
-                },
-              ]
+              {
+                label: "Database",
+                key: "DATABASE_URL",
+                ...formatConn("DATABASE_URL"),
+                status: formatConn("DATABASE_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Redis",
+                key: "REDIS_URL",
+                configured: Boolean(redisPrimary),
+                display: formatConn(redisPrimary ? "REDIS_URL" : "UPSTASH_REDIS_REST_URL").display,
+                status: Boolean(redisPrimary) ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Cache",
+                key: "CACHE_URL",
+                ...formatConn("CACHE_URL"),
+                status: formatConn("CACHE_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Upstash REST",
+                key: "UPSTASH_REDIS_REST_URL",
+                ...formatConn("UPSTASH_REDIS_REST_URL"),
+                status: formatConn("UPSTASH_REDIS_REST_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Upstash WS",
+                key: "UPSTASH_REDIS_WS_URL",
+                ...formatConn("UPSTASH_REDIS_WS_URL"),
+                status: formatConn("UPSTASH_REDIS_WS_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Status API",
+                key: "BOT_STATUS_API_URL",
+                ...formatConn("BOT_STATUS_API_URL"),
+                status: formatConn("BOT_STATUS_API_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Server settings",
+                key: "SERVER_SETTINGS_API_URL",
+                ...formatConn("SERVER_SETTINGS_API_URL"),
+                status: formatConn("SERVER_SETTINGS_API_URL").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+              {
+                label: "Queue sync",
+                key: "QUEUE_SYNC_ENDPOINT",
+                ...formatConn("QUEUE_SYNC_ENDPOINT"),
+                status: formatConn("QUEUE_SYNC_ENDPOINT").configured ? "configured" : "missing",
+                liveStatus: "unknown",
+              },
+            ]
         const latestHealthTimestamp =
           systemHealth?.history && systemHealth.history.length
             ? systemHealth.history[0]?.timestamp || systemHealth.history[0]?.createdAt
             : systemHealth?.snapshot?.timestamp
-      return (
+        return (
           <>
             <section className="grid lg:grid-cols-4 md:grid-cols-2 gap-4">
               {[
@@ -2716,20 +2747,18 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                           <p className="text-xs text-foreground/60 break-all">{conn.display}</p>
                         </div>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            conn.status === "configured"
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${conn.status === "configured"
                               ? "bg-primary/10 text-primary"
                               : "bg-destructive/15 text-destructive"
-                          }`}
+                            }`}
                         >
                           {conn.status}
                         </span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            conn.liveStatus === "online"
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${conn.liveStatus === "online"
                               ? "bg-emerald-500/15 text-emerald-500"
                               : "bg-amber-500/15 text-amber-500"
-                          }`}
+                            }`}
                         >
                           {conn.liveStatus}
                         </span>
@@ -2822,7 +2851,7 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                         <div key={`history-${idx}`} className="border border-border/30 rounded-md p-2 bg-background/70">
                           <div className="flex items-center justify-between text-xs text-foreground/70">
                             <span>{item.status || "OK"}</span>
-                          <span className="text-[10px] text-foreground/50">{formatDateTime(item.timestamp)}</span>
+                            <span className="text-[10px] text-foreground/50">{formatDateTime(item.timestamp)}</span>
                           </div>
                           {item.uptimePercent != null && (
                             <p className="text-[11px] text-foreground/70">Uptime {item.uptimePercent}%</p>
@@ -2891,9 +2920,9 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                           Memory{" "}
                           {clientPerf.usedJSHeapSize && clientPerf.jsHeapSizeLimit
                             ? `${(clientPerf.usedJSHeapSize / 1048576).toFixed(1)} MB / ${(
-                                (clientPerf.jsHeapSizeLimit || 0) /
-                                1048576
-                              ).toFixed(1)} MB`
+                              (clientPerf.jsHeapSizeLimit || 0) /
+                              1048576
+                            ).toFixed(1)} MB`
                             : "n/a"}
                         </div>
                       ) : null}
@@ -2944,9 +2973,8 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                       <div key={check.key} className="flex items-center justify-between">
                         <span>{check.label}</span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            check.configured ? "bg-primary/10 text-primary" : "bg-destructive/15 text-destructive"
-                          }`}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${check.configured ? "bg-primary/10 text-primary" : "bg-destructive/15 text-destructive"
+                            }`}
                         >
                           {check.configured ? "Configured" : "Missing"}
                         </span>
@@ -3269,21 +3297,21 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     <option value="canceled">Canceled</option>
                   </select>
                 </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={loadAdminSubscriptions}
-                  className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/50 transition-colors"
-                >
-                  Refresh
-                </button>
-                <button
-                  onClick={() => setIsSubscriptionModalOpen(true)}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  Create Subscription
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={loadAdminSubscriptions}
+                    className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/50 transition-colors"
+                  >
+                    Refresh
+                  </button>
+                  <button
+                    onClick={() => setIsSubscriptionModalOpen(true)}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Create Subscription
+                  </button>
+                </div>
               </div>
-            </div>
               {subscriptionsError && <p className="text-sm text-destructive mb-4">{subscriptionsError}</p>}
               {subscriptionsLoading ? (
                 <p className="text-sm text-foreground/60">Loading subscriptions…</p>
@@ -3441,9 +3469,8 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="text-sm font-semibold">{item.pricePerMonth.toFixed(2)} €</span>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                            item.overdue ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
-                          }`}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${item.overdue ? "bg-destructive/20 text-destructive" : "bg-primary/10 text-primary"
+                            }`}
                         >
                           {item.overdue ? "Overdue" : "Scheduled"}
                         </span>
@@ -3559,13 +3586,12 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                         <div className="flex items-center gap-3 flex-wrap">
                           <p className="font-semibold">{entry.label}</p>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${
-                              entry.configured
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide ${entry.configured
                                 ? "bg-primary/10 text-primary"
                                 : entry.required
                                   ? "bg-destructive/15 text-destructive"
                                   : "bg-foreground/10 text-foreground/60"
-                            }`}
+                              }`}
                           >
                             {entry.configured ? "Configured" : entry.required ? "Missing" : "Optional"}
                           </span>
@@ -3643,11 +3669,11 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     className="flex-1 min-w-[200px] px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
                   />
                 </div>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={loadEnvEntries}
-                  className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/50 transition-colors"
-                  disabled={envLoading}
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={loadEnvEntries}
+                    className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/50 transition-colors"
+                    disabled={envLoading}
                   >
                     {envLoading ? "Refreshing…" : "Reload .env"}
                   </button>
@@ -3700,8 +3726,8 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                       rows={2}
                       className="w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm"
                     />
-                </div>
-              ))}
+                  </div>
+                ))}
               </div>
 
               <div className="flex justify-end gap-3">
@@ -3748,7 +3774,7 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     }}
                     className="px-4 py-2 rounded-lg bg-background border border-border/50 text-sm focus:border-primary/50 outline-none"
                   >
-                  <option value="">All categories</option>
+                    <option value="">All categories</option>
                     {forumCategories.map((cat) => (
                       <option key={cat.id ?? cat.slug} value={cat.slug ?? cat.id}>
                         {cat.title} ({cat.threadCount ?? cat.threads?.length ?? 0})
@@ -3781,11 +3807,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                           setForumSelectedThread("")
                           void loadForumData({ category: cat.slug ?? cat.id ?? "" })
                         }}
-                        className={`w-full text-left border rounded-lg px-3 py-2 ${
-                          forumSelectedCategory === (cat.slug ?? cat.id)
+                        className={`w-full text-left border rounded-lg px-3 py-2 ${forumSelectedCategory === (cat.slug ?? cat.id)
                             ? "border-primary/60 bg-primary/5"
                             : "border-border/40 hover:border-primary/40"
-                        }`}
+                          }`}
                       >
                         <p className="text-sm font-semibold">{cat.title}</p>
                         <p className="text-xs text-foreground/60">
@@ -3806,11 +3831,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     {forumThreads.map((thread) => (
                       <div
                         key={thread.id}
-                        className={`w-full text-left border rounded-lg px-3 py-2 ${
-                          forumSelectedThread === thread.id
+                        className={`w-full text-left border rounded-lg px-3 py-2 ${forumSelectedThread === thread.id
                             ? "border-primary/60 bg-primary/5"
                             : "border-border/40 hover:border-primary/40"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="cursor-pointer" onClick={() => setForumSelectedThread(thread.id)}>
@@ -3897,7 +3921,7 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                     </div>
                   ))}
                   {forumEvents.length === 0 && (
-                  <p className="text-sm text-foreground/60">No forum events yet.</p>
+                    <p className="text-sm text-foreground/60">No forum events yet.</p>
                   )}
                 </div>
               </section>
@@ -4800,8 +4824,8 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
             <p className="text-foreground/70 mb-6">
               You need an administrator role to access the VectoBeat control room.
             </p>
-              <Link
-                href="/control-panel"
+            <Link
+              href="/control-panel"
               className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
             >
               Back to Control Panel
@@ -4836,11 +4860,10 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
                       <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`px-4 py-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${
-                          isActive
+                        className={`px-4 py-3 text-sm font-semibold transition-colors border-b-2 whitespace-nowrap ${isActive
                             ? "text-primary border-primary"
                             : "text-foreground/60 border-transparent hover:text-foreground"
-                        }`}
+                          }`}
                       >
                         {tab.label}
                       </button>
@@ -4852,7 +4875,7 @@ const [forumActionMessage, setForumActionMessage] = useState<string | null>(null
             </section>
 
             <div className="space-y-8 pt-4">{renderTabContent()}</div>
-      </div>
+          </div>
         </main>
         <Footer />
       </div>

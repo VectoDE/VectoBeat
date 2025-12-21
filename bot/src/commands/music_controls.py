@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import re
+import secrets
 from types import SimpleNamespace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -769,10 +770,10 @@ class MusicControls(commands.Cog):
                 policy_hint = self._source_policy_warning(removed, source_level, allowed_sources)
 
         if results.load_type == "PLAYLIST_LOADED":
-            selected = tracks
+            selected = [tracks[i] for i in indices]
         elif results.load_type == "SEARCH_RESULT":
             count = min(3, len(tracks))
-            selected = random.sample(tracks, k=count) if count else tracks[:1]
+            indices = secrets.SystemRandom().sample(range(len(tracks)), count)
         else:
             selected = tracks[:1]
 

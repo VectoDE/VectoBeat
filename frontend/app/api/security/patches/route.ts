@@ -26,10 +26,27 @@ const extractCves = (line: string) => {
 const synthesizeCveSummary = (id: string, version: string, date: string, notes: string[]) => {
   const base = notes.length
     ? notes
-        .map((note) => note.replace(/^[•\-]+\s*/, ""))
-        .join("; ")
+      .map((note) => note.replace(/^[•\-]+\s*/, ""))
+      .join("; ")
     : "Security hardening across authentication, webhook validation, and dependency risk."
   return `CVE ${id}: VectoBeat ${version} (${date}) — ${base}`
+}
+
+const parseHeaderLine = (header: string): { version: string; date: string } | null => {
+  if (!header.startsWith("[")) return null
+
+  const closingBracket = header.indexOf("]")
+  if (closingBracket === -1) return null
+
+  const dashIndex = header.indexOf("-", closingBracket)
+  if (dashIndex === -1) return null
+
+  const version = header.slice(1, closingBracket).trim()
+  const date = header.slice(dashIndex + 1).trim()
+
+  if (!version || !date) return null
+
+  return { version, date }
 }
 
 const parseChangelog = (content: string): PatchWave[] => {
@@ -38,20 +55,32 @@ const parseChangelog = (content: string): PatchWave[] => {
 
   sections.forEach((section) => {
     const [header, ...rest] = section.split("\n")
-    const headerMatch = header.match(/^\[(.+?)\]\s*-\s*(.+)$/)
-    if (!headerMatch) return
-    const version = headerMatch[1].trim()
-    const date = headerMatch[2].trim()
-    const lines = rest.join("\n").split("\n").map((line) => line.trim()).filter(Boolean)
-    const relevant = lines.filter((line) => line.startsWith("-") && isSecurityLine(line))
+
+    const parsedHeader = parseHeaderLine(header)
+    if (!parsedHeader) return
+
+    const { version, date } = parsedHeader
+
+    const lines = rest
+      .join("\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    const relevant = lines.filter(
+      (line) => line.startsWith("-") && isSecurityLine(line),
+    )
+
     if (!relevant.length) return
+
     let cves = Array.from(new Set(relevant.flatMap((line) => extractCves(line))))
     const notes = relevant.map((line) => line.replace(/^-+\s*/, "")).slice(0, 4)
-    // If no CVE was explicitly listed, synthesize an internal ID so the entry is tracked.
+
     if (!cves.length) {
       const normalizedVersion = version.replace(/[^0-9a-z]+/gi, "-")
       cves = [`CVE-UNASSIGNED-${normalizedVersion}-${patches.length + 1}`]
     }
+
     const cveSummaries = cves.map((id) => ({
       id,
       summary: synthesizeCveSummary(id, version, date, notes),

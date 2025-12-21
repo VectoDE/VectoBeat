@@ -10,13 +10,26 @@ const DOMAIN_TARGET =
 
 const sanitizeDomain = (value?: string | null) => {
   if (typeof value !== "string") return ""
-  const trimmed = value.trim().toLowerCase()
-  if (!trimmed) return ""
-  const withoutProtocol = trimmed.replace(/^https?:\/\//, "").replace(/\/.*$/, "")
-  if (!/^[a-z0-9.-]+$/.test(withoutProtocol)) {
+
+  let input = value.trim().toLowerCase()
+  if (!input) return ""
+
+  if (input.startsWith("http://")) {
+    input = input.slice(7)
+  } else if (input.startsWith("https://")) {
+    input = input.slice(8)
+  }
+
+  const slashIndex = input.indexOf("/")
+  if (slashIndex !== -1) {
+    input = input.slice(0, slashIndex)
+  }
+
+  if (!/^[a-z0-9.-]+$/.test(input)) {
     return ""
   }
-  return withoutProtocol.slice(0, 150)
+
+  return input.slice(0, 150)
 }
 
 const sanitizeUrl = (value?: string | null) => {
@@ -33,13 +46,29 @@ const sanitizeUrl = (value?: string | null) => {
 }
 
 const sanitizeEmail = (value?: string | null) => {
-  if (!value) return ""
+  if (typeof value !== "string") return ""
+
   const trimmed = value.trim()
-  if (!trimmed) return ""
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
-    return ""
+  if (!trimmed || trimmed.length > 120) return ""
+
+  const at = trimmed.indexOf("@")
+  if (at <= 0 || at !== trimmed.lastIndexOf("@")) return ""
+
+  const local = trimmed.slice(0, at)
+  const domain = trimmed.slice(at + 1)
+
+  if (!local || !domain) return ""
+  if (!domain.includes(".")) return ""
+  if (domain.startsWith(".") || domain.endsWith(".")) return ""
+
+  for (const char of local) {
+    if (!/[a-z0-9._+-]/i.test(char)) return ""
   }
-  return trimmed.slice(0, 120)
+  for (const char of domain) {
+    if (!/[a-z0-9.-]/i.test(char)) return ""
+  }
+
+  return trimmed
 }
 
 const ensureAccess = (tier: MembershipTier) => getPlanCapabilities(tier).features.apiTokens

@@ -35,12 +35,25 @@ const TLS_STATUS_VALUES = new Set(["pending", "active", "failed"])
 
 const sanitizeDomain = (value: unknown): string => {
   if (typeof value !== "string") return ""
+
   let input = value.trim().toLowerCase()
   if (!input) return ""
-  input = input.replace(/^https?:\/\//, "").replace(/\/.*$/, "")
+
+  if (input.startsWith("http://")) {
+    input = input.slice(7)
+  } else if (input.startsWith("https://")) {
+    input = input.slice(8)
+  }
+
+  const slashIndex = input.indexOf("/")
+  if (slashIndex !== -1) {
+    input = input.slice(0, slashIndex)
+  }
+
   if (!/^[a-z0-9.-]+$/.test(input)) {
     return ""
   }
+
   return input.slice(0, 150)
 }
 
@@ -59,12 +72,28 @@ const sanitizeUrlInput = (value: unknown): string => {
 
 const sanitizeEmailInput = (value: unknown): string => {
   if (typeof value !== "string") return ""
+
   const trimmed = value.trim()
   if (!trimmed) return ""
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
+  if (trimmed.length > 120) return ""
+
+  const atIndex = trimmed.indexOf("@")
+  if (atIndex <= 0 || atIndex !== trimmed.lastIndexOf("@")) {
     return ""
   }
-  return trimmed.slice(0, 120)
+
+  const local = trimmed.slice(0, atIndex)
+  const domain = trimmed.slice(atIndex + 1)
+
+  if (!local || !domain) return ""
+  if (domain.startsWith(".") || domain.endsWith(".")) return ""
+  if (!domain.includes(".")) return ""
+
+  // einfache Zeichensatzprüfung
+  if (!/^[a-z0-9._+-]+$/i.test(local)) return ""
+  if (!/^[a-z0-9.-]+$/i.test(domain)) return ""
+
+  return trimmed
 }
 
 const sanitizeHexColor = (value: unknown): string => {

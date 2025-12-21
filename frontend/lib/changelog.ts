@@ -56,7 +56,12 @@ const parseReleaseBody = (body: string | null) => {
   let inHighlightSection = false
 
   lines.forEach((line) => {
-    const headingMatch = line.match(/^#{1,6}\s*(.+)$/)
+    let headingMatch: string | null = null
+    for (let i = 1; i <= 6 && line[i - 1] === "#"; i++) {
+      const rest = line.slice(i).trim()
+      headingMatch = rest ? rest : null
+      break
+    }
     if (headingMatch) {
       inHighlightSection = headingMatch[1].toLowerCase().includes("highlight")
       return

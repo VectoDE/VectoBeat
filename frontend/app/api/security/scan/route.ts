@@ -17,20 +17,32 @@ const BLOCKED_MIME = new Set([
 
 const BLOCKED_EXTENSIONS = new Set(["exe", "bat", "cmd", "com", "jar", "msi", "scr", "ps1", "vbs", "apk"])
 
-const SUSPICIOUS_PATTERNS = [
-  /powershell/i,
-  /Invoke-WebRequest/i,
-  /cmd\.exe/i,
-  /<script/i,
-  /document\.write/i,
-  /eval\(/i,
-  /WScript\.Shell/i,
-  /AutoOpen/i,
-  /vbaProject/i,
-  /base64,/i,
-  /chmod\s+\+x/i,
-  /curl\s+.*\s+\|/i,
-]
+const containsCurlPipe = (input: string): boolean => {
+  const lower = input.toLowerCase()
+
+  const curlIndex = lower.indexOf("curl ")
+  if (curlIndex === -1) return false
+
+  const pipeIndex = lower.indexOf("|", curlIndex)
+  return pipeIndex !== -1
+}
+
+const SUSPICIOUS_PATTERNS: Array<
+  RegExp | ((input: string) => boolean)
+> = [
+    /powershell/i,
+    /Invoke-WebRequest/i,
+    /cmd\.exe/i,
+    /<script/i,
+    /document\.write/i,
+    /eval\(/i,
+    /WScript\.Shell/i,
+    /AutoOpen/i,
+    /vbaProject/i,
+    /base64,/i,
+    /chmod\s+\+x/i,
+    containsCurlPipe,
+  ]
 
 const TEXTUAL_MIME_PREFIXES = ["text/", "application/json", "application/xml", "application/javascript", "application/x-sh"]
 const TEXTUAL_EXTENSIONS = new Set(["txt", "json", "xml", "csv", "md", "yaml", "yml", "js", "ts", "sh", "py", "rb", "lua"])
@@ -111,8 +123,16 @@ export async function POST(request: NextRequest) {
     textPreview = extractTextPreview(buffer)
     const lowered = textPreview.toLowerCase()
     for (const pattern of SUSPICIOUS_PATTERNS) {
-      if (pattern.test(textPreview)) {
-        warnings.push(`Suspicious signature detected: ${pattern.source}`)
+      const matched =
+        pattern instanceof RegExp
+          ? pattern.test(textPreview)
+          : pattern(textPreview)
+
+      if (matched) {
+        warnings.push(
+          `Suspicious signature detected: ${pattern instanceof RegExp ? pattern.source : "curl pipe execution"
+          }`
+        )
         if (severity === "clean") severity = "warning"
       }
     }
