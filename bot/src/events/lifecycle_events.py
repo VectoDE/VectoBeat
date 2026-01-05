@@ -1,11 +1,15 @@
 """Lifecycle hooks for updating presence and handling readiness."""
 
+import asyncio
 import discord
 from discord.ext import commands, tasks
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class LifecycleEvents(commands.Cog):
-    """Handles ready events and rotating presence updates."""
+    """Handles ready events and safe rotating presence updates."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -17,58 +21,98 @@ class LifecycleEvents(commands.Cog):
             "👥 Serving {users} users",
         ]
         self._status_index = 0
-        self.rotate_status.start()
+        self._ready = asyncio.Event()
 
     def cog_unload(self):
-        """Cancel the rotating status loop when the cog unloads."""
         self.rotate_status.cancel()
+
+    # -------------------- EVENTS --------------------
 
     @commands.Cog.listener()
     async def on_ready(self):
-        """Initialise the first presence message once the bot is ready."""
-        if not self._status_templates:
-            return
-        template = self._status_templates[self._status_index % len(self._status_templates)]
-        await self._set_presence_for_all(template)
+        log.info("Bot ready – initializing presence system.")
+        self._ready.set()
+
+        if not self.rotate_status.is_running():
+            self.rotate_status.start()
+
+        await self._safe_presence_update(initial=True)
+
+    @commands.Cog.listener()
+    async def on_resumed(self):
+        log.warning("Connection resumed – refreshing presence.")
+        await self._safe_presence_update(initial=True)
+
+    # -------------------- LOOP --------------------
 
     @tasks.loop(seconds=45)
     async def rotate_status(self):
-        """Cycle through predefined presence messages for every shard."""
-        if not self._status_templates:
-            return
-        template = self._status_templates[self._status_index % len(self._status_templates)]
-        self._status_index = (self._status_index + 1) % len(self._status_templates)
-        await self._set_presence_for_all(template)
+        await self._ready.wait()
+        await self._safe_presence_update()
 
     @rotate_status.before_loop
     async def before_rotate_status(self):
-        """Ensure the bot is ready before modifying presence."""
         await self.bot.wait_until_ready()
 
+    # -------------------- CORE LOGIC --------------------
+
+    async def _safe_presence_update(self, initial: bool = False):
+        try:
+            template = self._status_templates[self._status_index]
+            self._status_index = (self._status_index + 1) % len(self._status_templates)
+            await self._set_presence_for_all(template)
+        except Exception:
+            log.exception("Presence update failed – retrying shortly.")
+            await asyncio.sleep(5)
+            # Force re-trigger ready logic
+            self._ready.clear()
+            await self.bot.wait_until_ready()
+            self._ready.set()
+
     async def _set_presence_for_all(self, template: str):
-        """Set presence for all shards using a formatted template."""
-        total_shards = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
+        total_shards = self.bot.shard_count or 1
         total_guilds = len(self.bot.guilds)
-        total_users = sum(guild.member_count or len(getattr(guild, "members", [])) or 0 for guild in self.bot.guilds)
+        total_users = sum(g.member_count or 0 for g in self.bot.guilds)
         latency_lookup = self._latency_lookup()
 
+        tasks_ = []
+
         for shard_id in range(total_shards):
-            shard_guilds = sum(1 for guild in self.bot.guilds if guild.shard_id == shard_id)
-            latency_ms = latency_lookup.get(shard_id, int(self.bot.latency * 1000))
             message = template.format(
                 shard=shard_id + 1,
                 total=total_shards,
                 guilds=total_guilds,
                 users=total_users,
-                shard_guilds=shard_guilds,
-                latency=latency_ms,
+                latency=latency_lookup.get(shard_id, int(self.bot.latency * 1000)),
             )
-            activity = discord.Activity(type=discord.ActivityType.listening, name=message)
-            await self.bot.change_presence(
-                status=discord.Status.online,
-                activity=activity,
-                shard_id=shard_id,
+
+            activity = discord.Activity(
+                type=discord.ActivityType.listening,
+                name=message,
             )
+
+            tasks_.append(
+                self._update_shard_presence(shard_id, activity)
+            )
+
+        await asyncio.gather(*tasks_, return_exceptions=True)
+
+    async def _update_shard_presence(self, shard_id: int, activity: discord.Activity):
+        try:
+            await asyncio.wait_for(
+                self.bot.change_presence(
+                    status=discord.Status.online,
+                    activity=activity,
+                    shard_id=shard_id,
+                ),
+                timeout=10,
+            )
+        except asyncio.TimeoutError:
+            log.warning(f"Presence timeout on shard {shard_id}")
+        except Exception:
+            log.exception(f"Presence update failed on shard {shard_id}")
+
+    # -------------------- UTIL --------------------
 
     def _latency_lookup(self):
         monitor = getattr(self.bot, "latency_monitor", None)
@@ -77,5 +121,5 @@ class LifecycleEvents(commands.Cog):
         return {sid: int(lat * 1000) for sid, lat in getattr(self.bot, "latencies", [])}
 
 
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot: commands.Bot):
     await bot.add_cog(LifecycleEvents(bot))
