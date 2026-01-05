@@ -67,7 +67,7 @@
     "react-hook-form": "^7.69.0",
     "react-is": "^19.2.3",
     "react-markdown": "latest",
-    "react-resizable-panels": "^2.1.7",
+    "react-resizable-panels": "^4.2.1",
     "recharts": "latest",
     "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
