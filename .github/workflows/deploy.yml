@@ -12,10 +12,8 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # timeout-minutes entfernt = Standard 6 Stunden
     env:
       DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-      DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
       DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
       DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
@@ -27,7 +25,6 @@ jobs:
         run: |
           missing=()
           [ -z "$DEPLOY_SSH_HOST" ] && missing+=('DEPLOY_SSH_HOST')
-          [ -z "$DEPLOY_SSH_PORT" ] && missing+=('DEPLOY_SSH_PORT')
           [ -z "$DEPLOY_SSH_USER" ] && missing+=('DEPLOY_SSH_USER')
           [ -z "$DEPLOY_SSH_KEY" ] && missing+=('DEPLOY_SSH_KEY')
           [ -z "$DEPLOY_TARGET_PATH" ] && missing+=('DEPLOY_TARGET_PATH')
@@ -41,24 +38,25 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           key_file=~/.ssh/deploy_key
+          # Support secrets stored with literal \n sequences or real newlines
           printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
-          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key"; exit 1; }
+          # Validate key before adding to agent
+          ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
           eval "$(ssh-agent -s)"
           ssh-add "$key_file"
-          # SSH Speedup: ControlMaster persistent connection
-          echo -e "Host *\n  ControlMaster auto\n  ControlPath ~/.ssh/cm-%r@%h:%p\n  ControlPersist 10m" >> ~/.ssh/config
-          chmod 600 ~/.ssh/config
           echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
 
       - name: Sync repository to server
         run: |
-          ssh -p "$DEPLOY_SSH_PORT" -o StrictHostKeyChecking=no "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" "mkdir -p '${DEPLOY_TARGET_PATH}'"
-          rsync -az --delete --exclude '.git' --compress-level=9 -e "ssh -p $DEPLOY_SSH_PORT -o StrictHostKeyChecking=no" ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" "mkdir -p '${DEPLOY_TARGET_PATH}'"
+          rsync -az --delete --exclude '.git' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
 
       - name: Run deploy.sh on server
         run: |
-          ssh -p "$DEPLOY_SSH_PORT" -o StrictHostKeyChecking=no \
+          ssh -o StrictHostKeyChecking=no \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
             "cd '${DEPLOY_TARGET_PATH}' && chmod +x deploy.sh && ./deploy.sh"
