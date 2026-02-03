@@ -3,23 +3,40 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
+import hashlib
 import json
 import os
+import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+import aiofiles
+from aiofiles import os as aios
 
 from src.services.server_settings_service import ServerSettingsService
 
+if TYPE_CHECKING:
+    from src.services.profile_service import GuildProfileManager
+
 GROWTH_TIERS = {"growth", "scale", "enterprise"}
+logger = logging.getLogger("VectoBeat.AnalyticsExport")
 
 
 class AnalyticsExportService:
     """Buffer queue/command events and flush JSON exports for Growth guilds."""
 
-    def __init__(self, settings: ServerSettingsService, directory: str = "data/analytics_exports", interval: int = 300):
+    def __init__(
+        self, 
+        settings: ServerSettingsService, 
+        directory: str = "data/analytics_exports", 
+        interval: int = 300,
+        profile_manager: Optional[GuildProfileManager] = None
+    ) -> None:
         self.settings = settings
         self.directory = directory
         self.interval = max(30, interval)
+        self.profile_manager = profile_manager
         self._buffer: Dict[int, List[Dict[str, Any]]] = {}
         self._task: Optional[asyncio.Task[None]] = None
         os.makedirs(self.directory, exist_ok=True)
@@ -41,13 +58,31 @@ class AnalyticsExportService:
 
     async def record_event(self, guild_id: int, event: str, payload: Dict[str, Any]) -> None:
         tier = await self.settings.tier(guild_id)
-        if tier not in GROWTH_TIERS:
+        
+        # Allow export if tier is sufficient OR compliance mode is explicitly enabled
+        compliance_enabled = False
+        if self.profile_manager:
+            profile = self.profile_manager.get(guild_id)
+            compliance_enabled = getattr(profile, "compliance_mode", False)
+
+        if tier not in GROWTH_TIERS and not compliance_enabled:
             return
         entry = {
             "event": event,
             "data": payload,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
+        
+        # Enterprise Hardening: Sign the payload
+        secret = getattr(self.settings.config, "api_key", "")
+
+        if secret:
+            serialized = json.dumps(entry, sort_keys=True)
+            signature = hmac.new(secret.encode(), serialized.encode(), hashlib.sha256).hexdigest()
+            entry["sig"] = signature
+        else:
+            logger.warning("No API key configured; analytics payload unsigned.")
+
         bucket = self._buffer.setdefault(guild_id, [])
         bucket.append(entry)
 
@@ -69,10 +104,10 @@ class AnalyticsExportService:
                 continue
             path = os.path.join(self.directory, f"{guild_id}.jsonl")
             try:
-                with open(path, "a", encoding="utf-8") as handle:
+                async with aiofiles.open(path, "a", encoding="utf-8") as handle:
                     for entry in entries:
-                        handle.write(json.dumps(entry, ensure_ascii=False))
-                        handle.write("\n")
+                        await handle.write(json.dumps(entry, ensure_ascii=False))
+                        await handle.write("\n")
             except OSError:
                 # swallow errors; exporters are best-effort
                 continue
@@ -90,9 +125,24 @@ class AnalyticsExportService:
         await self._flush_all()
         path = os.path.join(self.directory, f"{guild_id}.jsonl")
         try:
-            with open(path, "r", encoding="utf-8") as handle:
-                return handle.read()
+            async with aiofiles.open(path, "r", encoding="utf-8") as handle:
+                return await handle.read()
         except FileNotFoundError:
             return ""
         except OSError:
             return ""
+
+    async def delete_data(self, guild_id: int) -> bool:
+        """Permanently delete all compliance/analytics data for ``guild_id`` (GDPR)."""
+        # Clear in-memory buffer
+        self._buffer.pop(guild_id, None)
+        
+        # Delete on-disk file
+        path = os.path.join(self.directory, f"{guild_id}.jsonl")
+        try:
+            if os.path.exists(path):
+                await aios.remove(path)
+                return True
+            return False
+        except OSError:
+            return False

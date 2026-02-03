@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import aiofiles
 import discord
 
 
@@ -25,32 +27,41 @@ class DJGuildConfig:
 class DJPermissionManager:
     """Store DJ roles per guild and keep a short action history."""
 
-    def __init__(self, path: str | Path = "data/dj_permissions.json", *, max_audit: int = 50):
+    def __init__(self, path: str | Path = "data/dj_permissions.json", *, max_audit: int = 50) -> None:
         self.path = Path(path)
         self.max_audit = max_audit
         self._configs: Dict[str, DJGuildConfig] = {}
-        self.load()
 
     # ------------------------------------------------------------------ persistence
-    def load(self) -> None:
+    async def start(self) -> None:
+        """Initialize the service and load persisted data."""
+        await self.load()
+
+    async def load(self) -> None:
         if not self.path.exists():
             return
         try:
-            raw = json.loads(self.path.read_text("utf-8"))
-        except json.JSONDecodeError:
+            async with aiofiles.open(self.path, "r", encoding="utf-8") as f:
+                content = await f.read()
+            raw = json.loads(content)
+        except (json.JSONDecodeError, OSError):
             raw = {}
         for guild_id, payload in raw.items():
             roles = [int(role) for role in payload.get("roles", [])]
             audit = payload.get("audit", [])[-self.max_audit:]
             self._configs[guild_id] = DJGuildConfig(roles=roles, audit=audit)
 
-    def save(self) -> None:
+    async def save(self) -> None:
         if not self.path.parent.exists():
             self.path.parent.mkdir(parents=True, exist_ok=True)
         serialised = {
             guild_id: config.to_dict() for guild_id, config in self._configs.items()
         }
-        self.path.write_text(json.dumps(serialised, indent=2, sort_keys=True), "utf-8")
+        try:
+            async with aiofiles.open(self.path, "w", encoding="utf-8") as f:
+                await f.write(json.dumps(serialised, indent=2, sort_keys=True))
+        except OSError:
+            pass
 
     # ------------------------------------------------------------------ helpers
     def _key(self, guild_id: int) -> str:
@@ -69,25 +80,25 @@ class DJPermissionManager:
     def get_roles(self, guild_id: int) -> List[int]:
         return list(self.config(guild_id).roles)
 
-    def set_roles(self, guild_id: int, role_ids: List[int]) -> DJGuildConfig:
+    async def set_roles(self, guild_id: int, role_ids: List[int]) -> DJGuildConfig:
         config = self.config(guild_id)
         config.roles = sorted(set(int(rid) for rid in role_ids))
-        self.save()
+        await self.save()
         return config
 
-    def add_role(self, guild_id: int, role_id: int) -> DJGuildConfig:
+    async def add_role(self, guild_id: int, role_id: int) -> DJGuildConfig:
         config = self.config(guild_id)
         if role_id not in config.roles:
             config.roles.append(role_id)
             config.roles.sort()
-            self.save()
+            await self.save()
         return config
 
-    def remove_role(self, guild_id: int, role_id: int) -> DJGuildConfig:
+    async def remove_role(self, guild_id: int, role_id: int) -> DJGuildConfig:
         config = self.config(guild_id)
         if role_id in config.roles:
             config.roles.remove(role_id)
-            self.save()
+            await self.save()
         return config
 
     def has_restrictions(self, guild_id: int) -> bool:
@@ -103,8 +114,7 @@ class DJPermissionManager:
         member_role_ids = {role.id for role in getattr(member, "roles", [])}
         return any(role_id in member_role_ids for role_id in config.roles)
 
-    # ------------------------------------------------------------------ audit helpers
-    def record_action(
+    async def record_action(
         self,
         guild_id: int,
         user: discord.abc.User,
@@ -122,7 +132,8 @@ class DJPermissionManager:
         }
         config.audit.append(entry)
         config.audit = config.audit[-self.max_audit:]
-        self.save()
+        # Use asyncio.create_task to save in background to avoid blocking
+        asyncio.create_task(self.save())
 
     def recent_actions(self, guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         config = self.config(guild_id)

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def setup_logging():
+def setup_logging() -> None:
     """Initialise logging handlers and adjust default noisy loggers."""
     fmt = "[%(asctime)s] %(levelname)s:%(name)s: %(message)s"
 
@@ -44,3 +44,8 @@ def setup_logging():
     )
     logging.getLogger("discord").setLevel(logging.INFO)
     # Lavalink handles its own server-side logging; nothing special to configure client-side.
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger instance with the specified name."""
+    return logging.getLogger(name)

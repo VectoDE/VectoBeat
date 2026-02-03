@@ -6,10 +6,13 @@ import asyncio
 import inspect
 import logging
 import time
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 import discord
 from discord.gateway import DiscordWebSocket
+
+if TYPE_CHECKING:
+    from src.services.federation_service import FederationService
 
 
 class ShardSupervisor:
@@ -22,11 +25,13 @@ class ShardSupervisor:
         check_interval: float = 30.0,
         latency_threshold: float = 15.0,
         stale_after: float = 120.0,
-    ):
+        federation_service: Optional[FederationService] = None,
+    ) -> None:
         self.bot = bot
         self.check_interval = check_interval
         self.latency_threshold = latency_threshold
         self.stale_after = stale_after
+        self.federation = federation_service
         self.logger = logging.getLogger("VectoBeat.ShardSupervisor")
         self._task: Optional[asyncio.Task[None]] = None
         self._last_healthy: Dict[int, float] = {}
@@ -167,7 +172,7 @@ class ShardSupervisor:
         except Exception as exc:  # pragma: no cover - defensive
             self.logger.error("Failed to relaunch shard %s: %s", shard_id, exc)
 
-    def _pick_gateway(self):
+    def _pick_gateway(self) -> str:
         shards = getattr(self.bot, "shards", {})
         for shard in shards.values():
             parent = getattr(shard, "_parent", None)

@@ -50,6 +50,29 @@ export const verifyControlPanelGuildAccess = async (
   )
 
   if (!activeMembership) {
+    const userGuilds = verification.user?.guilds || []
+    const guildInfo = userGuilds.find((g) => g.id === trimmedGuildId)
+
+    if (guildInfo && guildInfo.isAdmin) {
+      return {
+        ok: true,
+        tier: "free",
+        subscription: {
+          id: `free-${trimmedGuildId}`,
+          discordId: trimmedDiscordId,
+          discordServerId: trimmedGuildId,
+          name: guildInfo.name,
+          tier: "free",
+          status: "active",
+          stripeCustomerId: null,
+          pricePerMonth: 0,
+          currentPeriodStart: new Date().toISOString(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        user: verification.user ?? null,
+      }
+    }
+
     return { ok: false, status: 403, code: "guild_not_accessible" }
   }
 

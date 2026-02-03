@@ -26,7 +26,7 @@ branding:
 lavalink:
   host: "lavalink"
   port: 2333
-  password: "localpass"
+  password: "a83zurcn84fsofv8c4uf"
   https: false
   name: "main"
   region: "eu"
@@ -35,7 +35,7 @@ lavalink:
 lavalink_nodes:
   - host: "lavalink"
     port: 2333
-    password: "localpass"
+    password: "a83zurcn84fsofv8c4uf"
     https: false
     name: "main"
     region: "eu"
@@ -64,9 +64,9 @@ crossfade:
 
 redis:
   # Redis playlist persistence backend
-  host: "45.84.196.19"
-  port: 32768
-  password: ""
+  host: "redis"
+  port: 6379
+  password: "aijsemcx38adxd8d"
   db: 0
   ca_path: ""
 

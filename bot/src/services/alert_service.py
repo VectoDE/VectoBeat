@@ -25,7 +25,7 @@ class AlertService:
         config: AlertsConfig,
         settings: ServerSettingsService,
         telemetry: Optional[QueueTelemetryService] = None,
-    ):
+    ) -> None:
         self.config = config
         self.settings = settings
         self.logger = logging.getLogger("VectoBeat.Alerts")

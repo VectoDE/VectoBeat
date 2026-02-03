@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  engineType    = "library"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -545,6 +547,26 @@ model ApiCredential {
   @@map("api_credentials")
 }
 
+model FederationPeer {
+  instanceId String   @id @map("instance_id")
+  region     String
+  status     String
+  lastSeen   DateTime @default(now()) @map("last_seen")
+  meta       Json?
+
+  @@map("federation_peers")
+}
+
+model FederationBroadcast {
+  id         String   @id @default(uuid())
+  event      String
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt], name: "federation_broadcasts_created_idx")
+  @@map("federation_broadcasts")
+}
+
 model IncidentMirror {
   id            String   @id @default(uuid())
   sourceGuildId String   @map("source_guild_id")
@@ -588,8 +610,12 @@ model ForumThread {
   posts    ForumPost[]
 
   @@index([categoryId], name: "forum_threads_category_idx")
+  @@index([authorId], name: "forum_threads_author_idx")
+  @@index([createdAt], name: "forum_threads_created_idx")
   @@map("forum_threads")
 }
+
+
 
 model ForumPost {
   id         String      @id @default(uuid())
@@ -598,7 +624,9 @@ model ForumPost {
   authorName String?     @map("author_name")
   body       String      @db.Text
   role       String      @default("member")
+  isSolution Boolean     @default(false) @map("is_solution")
   createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
 
   thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
@@ -634,4 +662,78 @@ model UserLinkedAccount {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("user_linked_accounts")
+}
+
+// Plugin Marketplace
+model Plugin {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  version     String
+  author      String
+  price       Decimal  @default(0.00) @db.Decimal(10, 2)
+  downloads   Int      @default(0)
+  rating      Float    @default(0.0)
+  verified    Boolean  @default(false)
+  enabled     Boolean  @default(true)
+  configSchema Json?   @map("config_schema")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@index([downloads(sort: Desc)])
+  @@index([rating(sort: Desc)])
+  @@map("plugins")
+}
+
+model PluginInstallation {
+  id        String   @id @default(uuid())
+  pluginId  String   @map("plugin_id")
+  guildId   String   @map("guild_id")
+  config    Json?
+  enabled   Boolean  @default(true)
+  installedAt DateTime @default(now()) @map("installed_at")
+
+  @@unique([pluginId, guildId])
+  @@index([guildId])
+  @@map("plugin_installations")
+}
+
+// Compliance
+model DataExportRequest {
+  id        String   @id @default(uuid())
+  discordId String   @map("discord_id")
+  status    String   @default("pending") // pending, processing, completed, failed
+  downloadUrl String? @map("download_url")
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("data_export_requests")
+}
+
+// Enterprise
+model EnterpriseSetting {
+  id        String   @id @default(uuid())
+  guildId   String   @unique @map("guild_id")
+  domain    String?  @unique
+  ssoEnabled Boolean @default(false) @map("sso_enabled")
+  ssoProvider String? @map("sso_provider")
+  ssoConfig Json?    @map("sso_config")
+  branding  Json?    // { logo: "", colors: {} }
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("enterprise_settings")
+}
+
+// Bot Federation
+model BotInstance {
+  id        String   @id @default(uuid())
+  instanceId String  @unique @map("instance_id")
+  region    String
+  status    String   @default("online")
+  lastHeartbeat DateTime @default(now()) @map("last_heartbeat")
+  meta      Json?
+
+  @@map("bot_instances")
 }

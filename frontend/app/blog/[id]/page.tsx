@@ -203,7 +203,7 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
     headline: hydratedPost.title,
     description: hydratedPost.excerpt || hydratedPost.content?.slice(0, 160),
     datePublished: new Date(hydratedPost.publishedAt).toISOString(),
-    dateModified: new Date(hydratedPost.updatedAt ?? hydratedPost.publishedAt).toISOString(),
+    dateModified: new Date(hydratedPost.updatedAt || hydratedPost.publishedAt).toISOString(),
     author: {
       "@type": "Person",
       name: hydratedPost.author || "VectoBeat Team",

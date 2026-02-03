@@ -3,10 +3,11 @@
 The control panel is a Next.js App Router project that shares the root `.env` with the bot. `frontend/Dockerfile` is the single build target and expects `plan-capabilities.json` plus the Prisma schema at build time.
 
 ## Stack
-- Next.js 16 (App Router), React 19, TypeScript 5 on Node 20
+- Next.js 16.1+ (App Router), React 19, TypeScript 5 on Node 20
 - Prisma (MySQL) for persistence and plan enforcement
 - Socket.IO for queue/analytics broadcasts and dashboard live updates
 - Stripe for billing and entitlement provisioning
+- Vercel Speed Insights & Web Analytics for performance/usage telemetry
 
 ## Running locally
 ```bash

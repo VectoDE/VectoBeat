@@ -77,7 +77,6 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         className="sr-only"
-        aria-hidden="true"
       />
 
       <section className="w-full px-4 pt-24 pb-10 bg-linear-to-b from-primary/5 via-background to-background">

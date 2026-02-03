@@ -3,6 +3,51 @@
 All notable changes to **VectoBeat** are tracked in this document.
 We follow the [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format and [Semantic Versioning](https://semver.org/).
 
+
+## [2.3.2] - 2026-02-03
+
+### Highlights
+- **Vercel Integration:** Added Vercel Speed Insights (#62) and enabled Vercel Web Analytics setup guide (#63).
+- **Security:** Addressed potential client-side cross-site scripting (XSS) vulnerability (code scanning alert no. 3) (#60, #61).
+- **Maintenance:** Upgraded Next.js to 16.1.0 (#59) and performed extensive dependency updates.
+
+### Features
+- Enable Vercel Web Analytics setup guide (#63) @[vercel[bot]](https://github.com/apps/vercel)
+- Add Vercel Speed Insights to your project (#62) @[vercel[bot]](https://github.com/apps/vercel)
+- Version 2.3.2 (#64) @VectoDE
+
+### Fixes
+- Potential fix for code scanning alert no. 3: Client-side cross-site scripting (#60, #61) @VectoDE
+- Version 2.3.2 (#64) @VectoDE
+
+### Documentation
+- Version 2.3.2 (#64) @VectoDE
+
+### Maintenance
+- Development (#83) @VectoDE
+- [Snyk] Upgrade @react-three/drei from 10.7.6 to 10.7.7 (#74) @VectoDE
+- [Snyk] Upgrade @radix-ui/react-accordion from 1.2.2 to 1.2.12 (#71) @VectoDE
+- [Snyk] Upgrade @radix-ui/react-separator from 1.1.1 to 1.1.8 (#73) @VectoDE
+- [Snyk] Upgrade @radix-ui/react-switch from 1.1.2 to 1.2.6 (#72) @VectoDE
+- [Snyk] Upgrade @radix-ui/react-toast from 1.2.4 to 1.2.15 (#70) @VectoDE
+- chore(deps): Bump next from 16.0.0 to 16.1.0 in /frontend (#59) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump actions/upload-artifact from 4 to 6 (#58) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump qs from 6.14.0 to 6.14.1 in /frontend (#82, #76) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump @radix-ui/react-label from 2.1.1 to 2.1.8 in /frontend (#81) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump react-resizable-panels from 2.1.9 to 4.2.1 in /frontend (#80) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump @radix-ui/react-tooltip from 1.1.6 to 1.2.8 in /frontend (#79, #69) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump sonner from 1.7.4 to 2.0.7 in /frontend (#78) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump @radix-ui/react-dialog from 1.1.4 to 1.1.15 in /frontend (#68) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump @radix-ui/react-collapsible from 1.1.2 to 1.1.12 in /frontend (#67) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps-dev): Bump @tailwindcss/postcss from 4.1.17 to 4.1.18 in /frontend (#66) @[dependabot[bot]](https://github.com/apps/dependabot)
+- chore(deps): Bump the nextjs-runtime group in /frontend (#75, #77) @[dependabot[bot]](https://github.com/apps/dependabot)
+
+## [2.3.1] - 2026-01-15
+
+### Maintenance
+- Minor dependency updates and stability improvements.
+- *Note: Detailed changelog for 2.3.1 was not provided, but changes are implicitly covered in the cumulative updates.*
+
 ## [2.3.0] - 2025-12-14
 
 ### Highlights

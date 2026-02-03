@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-import os
-from typing import Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import discord
 from discord import app_commands
@@ -13,15 +12,19 @@ from discord.ext import commands
 from src.utils.embeds import EmbedFactory
 from src.utils.security import SensitiveScope, has_scope, log_sensitive_action
 
+if TYPE_CHECKING:
+    from src.services.success_pod_service import SuccessPodService
+    from src.services.scale_contact_service import ScaleContactService
 
-def _service(bot: commands.Bot):
+
+def _service(bot: commands.Bot) -> SuccessPodService:
     svc = getattr(bot, "success_pod", None)
     if not svc:
         raise RuntimeError("Success pod service not configured.")
     return svc
 
 
-def _contact_service(bot: commands.Bot):
+def _contact_service(bot: commands.Bot) -> ScaleContactService:
     svc = getattr(bot, "scale_contacts", None)
     if not svc:
         raise RuntimeError("Scale contact service not configured.")
@@ -51,7 +54,7 @@ def _format_timestamp(value: Optional[str]) -> str:
 class SuccessPodCommands(commands.Cog):
     """Expose commands for Scale customers + staff to track success pod work."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     success = app_commands.Group(
@@ -80,21 +83,15 @@ class SuccessPodCommands(commands.Cog):
         return True
 
     def _is_staff(self, inter: discord.Interaction) -> bool:
-        user = inter.user if isinstance(inter.user, discord.abc.User) else None
-        if has_scope(user, SensitiveScope.SUCCESS_POD):
-            return True
-        if not inter.guild or not user:
-            return False
-        member = inter.guild.get_member(user.id)
-        return bool(member and member.guild_permissions.administrator)
+        return has_scope(inter.user, SensitiveScope.SUCCESS_POD)
 
-    def _log_action(self, inter: discord.Interaction, action: str, metadata: Optional[dict] = None) -> None:
+    def _log_action(self, inter: discord.Interaction, action: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         log_sensitive_action(
             self.bot,
             scope=SensitiveScope.SUCCESS_POD,
             action=action,
             guild=inter.guild,
-            user=inter.user if isinstance(inter.user, discord.abc.User) else None,
+            user=inter.user,
             metadata=metadata,
         )
 
@@ -103,7 +100,7 @@ class SuccessPodCommands(commands.Cog):
         contact="Email or handle your account manager can reach you at.",
         summary="Context, goals, and any deadlines.",
     )
-    async def request(self, inter: discord.Interaction, contact: str, summary: str):
+    async def request(self, inter: discord.Interaction, contact: str, summary: str) -> None:
         if not await self._ensure_scale(inter):
             return
         service = _service(self.bot)
@@ -141,7 +138,7 @@ class SuccessPodCommands(commands.Cog):
         )
 
     @success.command(name="status", description="Review recent success pod lifecycle updates.")
-    async def status(self, inter: discord.Interaction):
+    async def status(self, inter: discord.Interaction) -> None:
         if not await self._ensure_scale(inter):
             return
         service = _service(self.bot)
@@ -193,7 +190,7 @@ class SuccessPodCommands(commands.Cog):
         self._log_action(inter, action="status_view", metadata={"count": len(requests)})
 
     @success.command(name="contact", description="Show your account manager and escalation path.")
-    async def contact(self, inter: discord.Interaction):
+    async def contact(self, inter: discord.Interaction) -> None:
         if not await self._ensure_scale(inter):
             return
         service = _contact_service(self.bot)
@@ -241,7 +238,7 @@ class SuccessPodCommands(commands.Cog):
         note: Optional[str] = None,
         assigned_to: Optional[str] = None,
         assigned_contact: Optional[str] = None,
-    ):
+    ) -> None:
         if not self._is_staff(inter):
             await inter.response.send_message("Success pod staff privileges required.", ephemeral=True)
             return
@@ -287,7 +284,7 @@ class SuccessPodCommands(commands.Cog):
         note: Optional[str] = None,
         assigned_to: Optional[str] = None,
         assigned_contact: Optional[str] = None,
-    ):
+    ) -> None:
         if not self._is_staff(inter):
             await inter.response.send_message("Success pod staff privileges required.", ephemeral=True)
             return
@@ -333,7 +330,7 @@ class SuccessPodCommands(commands.Cog):
         request_id="Request identifier (see /success status).",
         note="Resolution summary for the customer.",
     )
-    async def resolve(self, inter: discord.Interaction, request_id: str, note: str):
+    async def resolve(self, inter: discord.Interaction, request_id: str, note: str) -> None:
         if not self._is_staff(inter):
             await inter.response.send_message("Success pod staff privileges required.", ephemeral=True)
             return
@@ -377,7 +374,7 @@ class SuccessPodCommands(commands.Cog):
         manager_discord: Optional[str] = None,
         escalation_channel: Optional[str] = None,
         escalation_notes: Optional[str] = None,
-    ):
+    ) -> None:
         if not self._is_staff(inter):
             await inter.response.send_message("Success pod staff privileges required.", ephemeral=True)
             return
@@ -424,5 +421,5 @@ class SuccessPodCommands(commands.Cog):
         return parsed.astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(SuccessPodCommands(bot))

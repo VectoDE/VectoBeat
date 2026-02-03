@@ -34,6 +34,8 @@ import { getPlanCapabilities, getQueueLimitCap } from "@/lib/plan-capabilities"
 import { QueueSyncPanel } from "@/components/queue-sync-panel"
 import { API_SCOPE_DEFINITIONS, DEFAULT_API_SCOPES } from "@/lib/api-scopes"
 
+import { PluginMarketplace } from "@/components/plugin-marketplace"
+
 interface Subscription {
   id: string
   name: string
@@ -74,6 +76,8 @@ const OVERVIEW_TAB_ID = "control-panel-tab-overview"
 const SETTINGS_TAB_ID = "control-panel-tab-settings"
 const OVERVIEW_PANEL_ID = "control-panel-overview-panel"
 const SETTINGS_PANEL_ID = "control-panel-settings-panel"
+const MARKETPLACE_TAB_ID = "control-panel-tab-marketplace"
+const MARKETPLACE_PANEL_ID = "control-panel-marketplace-panel"
 const GUILD_SELECT_ID = "control-panel-guild-select"
 const REGION_SELECT_ID = "control-panel-region-select"
 const REGION_SELECT_HELP_ID = "control-panel-region-select-help"
@@ -4200,6 +4204,21 @@ Target: ${dnsRecord}`}
               >
                 Settings
               </button>
+              <button
+                type="button"
+                id={MARKETPLACE_TAB_ID}
+                role="tab"
+                aria-controls={MARKETPLACE_PANEL_ID}
+                aria-selected={activeTab === "marketplace"}
+                tabIndex={activeTab === "marketplace" ? 0 : -1}
+                onClick={() => setActiveTab("marketplace")}
+                className={`px-4 py-3 font-semibold border-b-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-t ${activeTab === "marketplace"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-foreground/60 hover:text-foreground"
+                  }`}
+              >
+                Marketplace
+              </button>
             </nav>
           </div>
 
@@ -4690,6 +4709,18 @@ Target: ${dnsRecord}`}
                   <LogOut size={18} />
                 </button>
               </div>
+            </section>
+          )}
+
+          {/* Marketplace Tab */}
+          {activeTab === "marketplace" && (
+            <section
+              id={MARKETPLACE_PANEL_ID}
+              role="tabpanel"
+              aria-labelledby={MARKETPLACE_TAB_ID}
+              aria-live="polite"
+            >
+              <PluginMarketplace guildId={selectedGuildId} />
             </section>
           )}
         </div>

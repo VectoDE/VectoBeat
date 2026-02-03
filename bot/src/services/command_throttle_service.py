@@ -15,7 +15,7 @@ GROWTH_TIERS = {"growth", "scale", "enterprise"}
 class CommandThrottleService:
     """Simple sliding-window limiter keyed by guild + bucket name."""
 
-    def __init__(self, settings: ServerSettingsService, window_seconds: int = 15, growth_limit: int = 20):
+    def __init__(self, settings: ServerSettingsService, window_seconds: int = 15, growth_limit: int = 50) -> None:
         self.settings = settings
         self.window = window_seconds
         self.limit = growth_limit

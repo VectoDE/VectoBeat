@@ -79,7 +79,7 @@ export type AnalyticsOverview = {
   referrerPaths: Array<{ host: string; path: string; views: number }>
   botSummary: Array<{ label: string; value: string; detail: string }>
   botHistory: Array<{ recordedAt: string; guildCount: number; activeListeners: number; totalStreams: number; avgResponseMs: number }>
-  activeVoiceConnections: Array<{ guildId: string; channelId: string; listeners: number }>
+  activeVoiceConnections: Array<{ guildId: string; guildName?: string; channelId: string; channelName?: string; listeners: number }>
   performanceMetrics: Array<{ metric: string; value: string; detail: string }>
   engagementMetrics: Array<{ metric: string; value: string; detail: string }>
   pageViews24h: number

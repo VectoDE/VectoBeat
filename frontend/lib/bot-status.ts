@@ -17,7 +17,13 @@ const BOT_STATUS_FALLBACKS = (process.env.BOT_STATUS_API_FALLBACK_URLS || "")
   .map((entry) => entry.trim())
   .filter(Boolean)
 
-const DEFAULT_FALLBACKS = ["http://127.0.0.1:3051/status", "http://localhost:3051/status"]
+const DEFAULT_FALLBACKS = [
+  "http://127.0.0.1:3051/status",
+  "http://localhost:3051/status",
+  "http://127.0.0.1:3061/status",
+  "http://localhost:3061/status",
+]
+
 const ENDPOINT_COOLDOWN_MS = 30_000
 const FETCH_TIMEOUT_MS = 8_000
 const ALLOW_LOCAL_FALLBACKS =

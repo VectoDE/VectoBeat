@@ -1,14 +1,18 @@
 """Moderator toolkit commands for quick-response macros and badges."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
+from typing import TypedDict, List
 import discord
 from discord import app_commands
 from discord.ext import commands
 
-MODERATOR_MACROS = [
+class Macro(TypedDict):
+    id: str
+    label: str
+    body: str
+
+MODERATOR_MACROS: List[Macro] = [
     {
         "id": "ack_incident",
         "label": "Incident acknowledgment",
@@ -36,7 +40,7 @@ BADGES = [
 class ModeratorToolkit(commands.Cog):
     """Macros and badges to speed up moderator responses."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @staticmethod
@@ -48,7 +52,7 @@ class ModeratorToolkit(commands.Cog):
 
     @app_commands.command(name="macro", description="Insert a moderator macro (private by default).")
     @app_commands.describe(macro="Pick a macro", post_public="Send to the channel instead of privately copying it.")
-    async def macro(self, inter: discord.Interaction, macro: str, post_public: bool = False):
+    async def macro(self, inter: discord.Interaction, macro: str, post_public: bool = False) -> None:
         if not isinstance(inter.user, discord.Member) or not self._is_moderator(inter.user):
             return await inter.response.send_message("Moderator permissions required.", ephemeral=True)
 
@@ -63,7 +67,7 @@ class ModeratorToolkit(commands.Cog):
             await inter.response.send_message(f"Copied macro:\n{content}", ephemeral=True)
 
     @macro.autocomplete("macro")
-    async def macro_autocomplete(self, _: discord.Interaction, current: str):
+    async def macro_autocomplete(self, _: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         current_lower = current.lower()
         matches = [
             app_commands.Choice(name=macro["label"], value=macro["id"])
@@ -72,8 +76,8 @@ class ModeratorToolkit(commands.Cog):
         ]
         return matches[:10]
 
-    @app_commands.command(name="modbadges", description="List available moderator badges.")
-    async def modbadges(self, inter: discord.Interaction):
+    @app_commands.command(name="badges", description="List available moderator badges.")
+    async def badges(self, inter: discord.Interaction) -> None:
         if not isinstance(inter.user, discord.Member) or not self._is_moderator(inter.user):
             return await inter.response.send_message("Moderator permissions required.", ephemeral=True)
 
@@ -84,5 +88,5 @@ class ModeratorToolkit(commands.Cog):
         )
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ModeratorToolkit(bot))

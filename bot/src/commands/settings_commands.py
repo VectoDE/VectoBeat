@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import discord
 from discord import app_commands
@@ -8,16 +8,19 @@ from discord.ext import commands
 
 from src.utils.embeds import EmbedFactory
 
+if TYPE_CHECKING:
+    from src.services.server_settings_service import ServerSettingsService
+
 
 class SettingsCommands(commands.Cog):
     """Slash commands to manage control-panel settings from Discord."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     settings = app_commands.Group(name="settings", description="Manage VectoBeat server settings.")
 
-    def _settings_service(self):
+    def _settings_service(self) -> Optional[ServerSettingsService]:
         return getattr(self.bot, "server_settings", None)
 
     async def _ensure_manage_guild(self, inter: discord.Interaction) -> Optional[str]:
@@ -32,7 +35,7 @@ class SettingsCommands(commands.Cog):
 
     @settings.command(name="queue-limit", description="Update the maximum queue size (respects plan limits).")
     @app_commands.describe(limit="Desired queue size (Free plan caps at 100 tracks).")
-    async def queue_limit(self, inter: discord.Interaction, limit: app_commands.Range[int, 50, 50000]):
+    async def queue_limit(self, inter: discord.Interaction, limit: app_commands.Range[int, 50, 50000]) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         error = await self._ensure_manage_guild(inter)
         if error:
@@ -62,7 +65,7 @@ class SettingsCommands(commands.Cog):
 
     @settings.command(name="collaborative", description="Enable or disable collaborative queueing.")
     @app_commands.describe(enabled="Allow members without DJ role to add songs.")
-    async def collaborative(self, inter: discord.Interaction, enabled: bool):
+    async def collaborative(self, inter: discord.Interaction, enabled: bool) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         error = await self._ensure_manage_guild(inter)
         if error:
@@ -85,5 +88,5 @@ class SettingsCommands(commands.Cog):
         await inter.followup.send(embed=embed, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(SettingsCommands(bot))

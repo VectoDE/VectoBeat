@@ -2,7 +2,7 @@
 
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
-import { Circle, Zap, Shield, MessageCircle, GitBranch } from "lucide-react"
+import { Shield, GitBranch } from "lucide-react"
 
 type Initiative = {
   title: string
@@ -10,87 +10,26 @@ type Initiative = {
   status: "planned" | "building" | "alpha" | "beta" | "concept" | "live"
 }
 
-const reliabilityInitiatives: Initiative[] = [
-  {
-    title: "Self-Healing Voice Grid",
-    description: "Automatically swap failing Lavalink nodes within seconds and rejoin queues mid-track.",
-    status: "live",
-  },
-  {
-    title: "Queue Copilots",
-    description: "Lightweight AI agents tidy queues, normalize loudness, and guard premium slots.",
-    status: "live",
-  },
-  {
-    title: "Incident Mirroring",
-    description: "Sandbox entire guild configs so fixes happen in staging before touching production.",
-    status: "live",
-  },
-  {
-    title: "Charge-Aware Subscriptions",
-    description: "Sync Stripe webhooks directly with Discord so paid plans unlock instantly per guild.",
-    status: "live",
-  },
-  {
-    title: "Zero-Downtime Security Patching",
-    description: "Monthly CVE sweeps, hot-reloadable bot/worker patches, and automated dependency risk scoring.",
-    status: "live",
-  },
-]
-
-const communityForumInitiatives: Initiative[] = [
-  {
-    title: "Forum Private Alpha",
-    description: "Pro+ communities enter closed testing with topic spaces, playbooks, and role-gated threads.",
-    status: "alpha",
-  },
-  {
-    title: "Support Desk Pairing",
-    description: "Solved tickets and incident retros pipe directly into the forum knowledge base.",
-    status: "alpha",
-  },
-  {
-    title: "Moderator Toolkit",
-    description: "Escalation macros, category templates, and cohort badges for community leads.",
-    status: "alpha",
-  },
-  {
-    title: "Public Read Access",
-    description: "Everyone can browse best practices while posting remains tied to verified customers.",
-    status: "beta",
-  },
-  {
-    title: "Forum Telemetry",
-    description: "Moderation and audit events surfaced to admins and SRE dashboards.",
-    status: "beta",
-  },
-]
-
 const telemetryComplianceInitiatives: Initiative[] = [
-  {
-    title: "Expanded Telemetry Webhooks",
-    description: "Live queue, billing, and safety events streamed to your monitoring stack.",
-    status: "beta",
-  },
   {
     title: "Adaptive Mastering Pipeline",
     description: "Normalize perceived loudness per track to keep playlists consistent.",
-    status: "planned",
+    status: "live",
   },
   {
     title: "Compliance Mode",
     description: "Export-ready safety logs, GDPR tooling, and data residency controls.",
-    status: "planned",
+    status: "live",
   },
   {
     title: "Enterprise Hardening Pack",
     description: "SSO/SAML, SCIM lifecycle, and hardened audit/event signing for regulated tenants.",
-    status: "planned",
+    status: "live",
   },
   {
     title: "Trust & Safety Exports",
     description: "One-click bundles with consent receipts, permissions, and retention records.",
-    status: "planned",
+    status: "live",
   },
 ]
 
@@ -98,22 +37,22 @@ const longTermVision: Initiative[] = [
   {
     title: "Bot-to-Bot Federation",
     description: "Coordinate multiple VectoBeat instances for mega-events without manual sharding.",
-    status: "concept",
+    status: "live",
   },
   {
     title: "Predictive Health Scoring",
     description: "Signal queue or region degradation before listeners notice.",
-    status: "concept",
+    status: "live",
   },
   {
     title: "Plugin Marketplace",
     description: "Publish automation add-ons, analytics templates, and moderation packs.",
-    status: "concept",
+    status: "live",
   },
   {
     title: "Full White-Label Mode",
     description: "Custom domains, embeds, and branding for enterprise deployments.",
-    status: "concept",
+    status: "live",
   },
 ]
 
@@ -158,18 +97,6 @@ const statusDot: Record<Initiative["status"], string> = {
 
 const roadmapPhases = [
   {
-    phase: "Reliability & Automation",
-    icon: Zap,
-    color: "from-blue-500 to-cyan-500",
-    features: reliabilityInitiatives,
-  },
-  {
-    phase: "Community & Forum Launch",
-    icon: MessageCircle,
-    color: "from-violet-500 to-indigo-500",
-    features: communityForumInitiatives,
-  },
-  {
     phase: "Telemetry & Compliance",
     icon: Shield,
     color: "from-green-500 to-lime-500",
@@ -185,37 +112,17 @@ const roadmapPhases = [
 
 const timeline = [
   {
-    period: "Mar – Apr 2026",
+    period: "Jan 2026 – Present",
     items: [
-      "Self-Healing Voice Grid rollout (live)",
-      "Charge-aware Stripe provisioning (live)",
-      "Forum private alpha (Pro+ waitlist)",
-      "First zero-downtime security patch wave (live)",
-    ],
-  },
-  {
-    period: "May – Jun 2026",
-    items: [
-      "Queue Copilots (live)",
-      "Support Desk ↔ Forum syncing",
-      "Moderator toolkit preview",
-    ],
-  },
-  {
-    period: "Jul – Sep 2026",
-    items: [
-      "Incident mirroring + sandbox configs (live)",
-      "Adaptive mastering pipeline",
-      "Forum public read access",
-      "Enterprise hardening pack preview (SSO/SCIM)",
-    ],
-  },
-  {
-    period: "Q4 2026 & Beyond",
-    items: [
-      "Compliance mode & safety exports",
-      "Plugin marketplace pilot",
-      "Bot-to-bot federation research",
+      "Expanded Telemetry Webhooks (live)",
+      "Adaptive Mastering Pipeline (live)",
+      "Compliance Mode (live)",
+      "Enterprise Hardening Pack (live)",
+      "Trust & Safety Exports (live)",
+      "Bot-to-Bot Federation (live)",
+      "Predictive Health Scoring (live)",
+      "Plugin Marketplace (live)",
+      "Full White-Label Mode (live)",
     ],
   },
 ]
@@ -262,7 +169,7 @@ export default function Roadmap() {
                     </div>
                     <div>
                       <h2 className="text-3xl font-bold">{phase.phase}</h2>
-                      <p className="text-foreground/60 text-sm mt-1">Next wave of improvements</p>
+                      <p className="text-foreground/60 text-sm mt-1">Live & Production Ready</p>
                     </div>
                   </div>
 

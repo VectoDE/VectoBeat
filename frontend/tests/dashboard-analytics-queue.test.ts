@@ -19,7 +19,21 @@ test("dashboard analytics pulls queue snapshot from durable store", async () => 
   }
 
   const { GET } = createAnalyticsHandlers({
-    verifyUser: async () => ({ valid: true, token: null, sessionHash: null }),
+    verifyUser: async () => ({
+      valid: true,
+      token: "t",
+      sessionHash: "h",
+      user: {
+        id: "u1",
+        username: "tester",
+        email: "test@example.com",
+        displayName: "Tester",
+        avatarUrl: null,
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        guilds: [],
+      },
+    }),
     fetchSubscriptions: async () => [{ discordServerId: "g1", status: "active", tier: "growth" } as any],
     fetchQueueSnapshot: async () => fakeSnapshot,
   })

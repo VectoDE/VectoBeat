@@ -77,6 +77,19 @@ def _load_yaml(path: str) -> Dict:
 _raw = _load_yaml(os.getenv("CONFIG_PATH", "config.yml"))
 CONFIG = AppConfig(**_raw)
 
+# Load version from package.json
+try:
+    with (_base_dir / "package.json").open("r", encoding="utf-8") as f:
+        _pkg = json.load(f)
+        VERSION = _pkg.get("version", "2.3.2")
+except (FileNotFoundError, json.JSONDecodeError):
+    VERSION = "2.3.2"
+
+# .env overrides for Bot Intents
+intents_members = os.getenv("BOT_INTENTS_MEMBERS")
+if intents_members:
+    CONFIG.bot.intents.members = (intents_members.lower() == "true")
+
 # .env overrides for Lavalink (if provided)
 host = os.getenv("LAVALINK_HOST")
 port = os.getenv("LAVALINK_PORT")

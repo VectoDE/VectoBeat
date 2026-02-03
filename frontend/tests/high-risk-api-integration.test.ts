@@ -7,6 +7,7 @@ import { createSuccessPodHandlers } from "@/app/api/success-pod/route"
 import { createApiTokenHandlers } from "@/app/api/control-panel/api-tokens/route"
 import { createSecurityAuditHandlers } from "@/app/api/control-panel/security/audit/route"
 import { createAnalyticsExportHandlers } from "@/app/api/analytics/export/route"
+import { defaultServerFeatureSettings } from "@/lib/server-settings"
 import * as queueSyncModule from "../pages/api/queue-sync"
 import type { QueueSnapshot } from "@/types/queue-sync"
 
@@ -18,6 +19,16 @@ test("control-panel server settings returns tiered settings", async () => {
       ok: true,
       tier: "pro",
       subscription: { id: "s1", discordServerId: "g1" } as any,
+      user: {
+        id: "u1",
+        username: "tester",
+        email: "u@test.tld",
+        displayName: "Tester",
+        avatarUrl: null,
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        guilds: [],
+      },
     }),
   })
   const res = await handlers.GET(
@@ -28,7 +39,7 @@ test("control-panel server settings returns tiered settings", async () => {
 
 test("concierge denies when guild not accessible", async () => {
   const { GET } = createConciergeHandlers({
-    verifyUser: async () => ({ valid: true, token: "t", sessionHash: "h" }),
+    verifyUser: async () => ({ valid: true, token: "t", sessionHash: "h", user: null }),
     fetchUserSubscriptions: async () => [],
     fetchGuildTier: async () => "growth",
   })
@@ -38,10 +49,10 @@ test("concierge denies when guild not accessible", async () => {
 
 test("success pod creation uses plan gate and returns request", async () => {
   const { POST } = createSuccessPodHandlers({
-    verifyUser: async () => ({ valid: true, token: "t", sessionHash: "h" }),
+    verifyUser: async () => ({ valid: true, token: "t", sessionHash: "h", user: null }),
     fetchTier: async () => "scale",
     saveRequest: async (payload) => ({ id: "req1", ...payload } as any),
-    mail: async () => {},
+    mail: async () => ({ delivered: true }),
   })
   const res = await POST(
     buildRequest("https://vectobeat.test/api/success-pod", {
@@ -58,12 +69,22 @@ test("API token leak marker logs actor", async () => {
   let events: any[] = []
   const handlers = createApiTokenHandlers({
     verifyAccess: async () => ({
-      ok: true,
-      tier: "pro",
+      ok: true as const,
+      tier: "pro" as const,
       subscription: { id: "s1", discordServerId: "g1", tier: "pro", status: "active" } as any,
-      user: { id: "u1", username: "tester", email: "u@test.tld" },
+      user: {
+        id: "u1",
+        username: "tester",
+        email: "u@test.tld",
+        displayName: "Tester",
+        avatarUrl: null,
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        guilds: [] as any[],
+      },
     }),
     fetchSettings: async () => ({
+      ...defaultServerFeatureSettings,
       apiTokens: [
         {
           id: "t1",
@@ -77,11 +98,11 @@ test("API token leak marker logs actor", async () => {
         },
       ],
     }),
-    saveSettings: async () => {},
+    saveSettings: async (_g, _d, updates) => ({ ...defaultServerFeatureSettings, ...updates }),
     recordEvent: async (payload) => {
       events.push(payload)
     },
-    email: async () => {},
+    email: async () => ({ delivered: true }),
   })
 
   const res = await handlers.PATCH(

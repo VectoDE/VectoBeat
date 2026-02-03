@@ -26,7 +26,7 @@ export const fetchHomeMetrics = async (): Promise<HomeMetrics | null> => {
     if (!skipRemote) {
       for (const baseUrl of candidates) {
         try {
-          const response = await fetch(`${baseUrl}/api/metrics?scope=home`, { next: { revalidate: 300 } })
+          const response = await fetch(`${baseUrl}/api/metrics?scope=home`, { cache: "no-store" })
           if (response.ok) {
             return (await response.json()) as HomeMetrics
           }

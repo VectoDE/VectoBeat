@@ -16,7 +16,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from src.configs.settings import CONFIG, DISCORD_TOKEN
+from src.configs.settings import CONFIG, DISCORD_TOKEN, VERSION
 from src.services.health_service import HealthState
 from src.services.autoplay_service import AutoplayService
 from src.services.dj_permission_service import DJPermissionManager
@@ -44,8 +44,12 @@ from src.services.success_pod_service import SuccessPodService
 from src.services.concierge_service import ConciergeService
 from src.services.scale_contact_service import ScaleContactService
 from src.services.regional_routing_service import RegionalRoutingService
+from src.services.federation_service import FederationService
+from src.services.predictive_health_service import PredictiveHealthService
+from src.services.plugin_service import PluginService
 from src.utils.logger import setup_logging
 from src.utils.embeds import set_branding_resolver
+from src.utils.plan_capabilities import load_plan_capabilities_async
 
 INTENTS = discord.Intents.default()
 INTENTS.guilds = True
@@ -96,8 +100,11 @@ class VectoBeat(commands.AutoShardedBot):
         self.concierge = ConciergeService(CONFIG.control_panel_api)
         self.regional_routing = RegionalRoutingService(self, self.server_settings, self.lavalink_manager)
         self.scale_contacts = ScaleContactService(CONFIG.control_panel_api)
+        self.plugin_service = PluginService(self.server_settings)
+        self.federation_service = FederationService(self, CONFIG.control_panel_api)
+        self.predictive_health = PredictiveHealthService(self)
         self.command_throttle = CommandThrottleService(self.server_settings)
-        self.analytics_export = AnalyticsExportService(self.server_settings)
+        self.analytics_export = AnalyticsExportService(self.server_settings, profile_manager=self.profile_manager)
         self.queue_telemetry = QueueTelemetryService(CONFIG.queue_telemetry, self.server_settings)
         self.alerts = AlertService(CONFIG.alerts, self.server_settings, self.queue_telemetry)
         self.queue_copilot = QueueCopilotService(self.server_settings)
@@ -160,7 +167,7 @@ class VectoBeat(commands.AutoShardedBot):
             await self.lavalink_manager.close()
 
         if hasattr(self, "profile_manager"):
-            self.profile_manager.save()
+            await self.profile_manager.save()
 
         if hasattr(self, "playlist_service"):
             await self.playlist_service.close()
@@ -206,6 +213,10 @@ class VectoBeat(commands.AutoShardedBot):
             await self.regional_routing.close()
         if hasattr(self, "scale_contacts"):
             await self.scale_contacts.close()
+        if hasattr(self, "federation_service"):
+            await self.federation_service.close()
+        if hasattr(self, "predictive_health"):
+            await self.predictive_health.close()
 
         if hasattr(self, "status_api"):
             await self.status_api.close()
@@ -229,7 +240,7 @@ class VectoBeat(commands.AutoShardedBot):
         setup_logging()
 
         self.logger = logging.getLogger("VectoBeat")
-        self.logger.info("Initializing VectoBeat...")
+        self.logger.info("Initializing VectoBeat v%s...", VERSION)
 
         await self.lavalink_manager.connect()
         self.playlist_service.logger = self.logger
@@ -255,15 +266,20 @@ class VectoBeat(commands.AutoShardedBot):
         await self.automation_audit.start()
         await self.success_pod.start()
         await self.concierge.start()
+        await self.federation_service.start()
         await self.scale_contacts.start()
+        await self.predictive_health.start()
         set_branding_resolver(self.server_settings.branding_snapshot)
         await self.alerts.start()
         await self.analytics_export.start()
         await self.queue_telemetry.start()
         await self.queue_sync.start()
         await self.status_api.start()
+        await self.dj_permissions.start()
         # search_cache is synchronous; no start required
         await self.latency_monitor.start()
+        await HealthState.load_async()
+        await load_plan_capabilities_async()
 
         if self._panel_parity_task:
             self._panel_parity_task.cancel()

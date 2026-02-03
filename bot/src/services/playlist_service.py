@@ -1,16 +1,17 @@
 """Redis-backed playlist persistence."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import json
+import logging
 import ssl
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import lavalink
 import redis.asyncio as redis
 from redis import RedisError
+
+from src.configs.schema import RedisConfig
 
 
 class PlaylistStorageError(RuntimeError):
@@ -20,7 +21,7 @@ class PlaylistStorageError(RuntimeError):
 class PlaylistService:
     """Provide CRUD operations for guild playlists using Redis storage."""
 
-    def __init__(self, config, *, logger=None):
+    def __init__(self, config: RedisConfig, *, logger: Optional[logging.Logger] = None) -> None:
         self.config = config
         self.logger = logger
         ssl_enabled = bool(getattr(config, "ca_path", None))

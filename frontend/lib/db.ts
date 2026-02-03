@@ -9,6 +9,8 @@ import { normalizeTierId, type MembershipTier } from "./memberships"
 import type { AnalyticsOverview, HomeMetrics } from "./metrics"
 import type { QueueSnapshot } from "@/types/queue-sync"
 
+export { getPrismaClient, handlePrismaError }
+
 const getPool = () => getPrismaClient()
 
 const logDbError = (message: string, error: unknown) => {
@@ -83,8 +85,11 @@ const normalizeWebsite = (url?: string | null) => {
   }
 }
 
-const USER_API_KEY_SECRET =
-  process.env.DATA_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || process.env.SECRET_KEY || "vectobeat"
+const USER_API_KEY_SECRET = process.env.DATA_ENCRYPTION_KEY
+
+if (!USER_API_KEY_SECRET) {
+  throw new Error("DATA_ENCRYPTION_KEY is required in environment variables.")
+}
 const USER_API_KEY_PREFIX = "vbk_"
 
 const deriveUserApiKey = (discordId: string) => {
@@ -120,18 +125,14 @@ const packSecretValue = (value: string) => {
   if (encrypted) {
     return { encryptedValue: encrypted.payload, iv: encrypted.iv, authTag: encrypted.tag, valueHash: hashSecretValue(value) }
   }
-  const fallback = Buffer.from(value, "utf8").toString("base64")
-  // Flag the IV/tag so we can decode later even when encryption is unavailable.
-  return { encryptedValue: fallback, iv: "__plain__", authTag: "__plain__", valueHash: hashSecretValue(value) }
+  throw new Error("Encryption failed. DATA_ENCRYPTION_KEY might be invalid or missing.")
 }
 
 const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
   if (record.iv === "__plain__" && record.authTag === "__plain__") {
-    try {
-      return Buffer.from(record.encryptedValue, "base64").toString("utf8")
-    } catch {
-      return null
-    }
+    // Legacy support: We throw error to force migration or manual intervention, or we can just log error.
+    // The plan says "Remove Base64-Fallback Logic", so strict removal.
+    throw new Error("Insecure stored value detected. Rotation required.")
   }
   return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
 }
@@ -4333,6 +4334,7 @@ export interface BlogPost {
   views: number
   featured: boolean
   publishedAt: string
+  updatedAt: string
   image?: string | null
 }
 
@@ -4403,6 +4405,7 @@ const mapBlogPost = (row: BlogPostRow): BlogPost => ({
   views: row.views ?? 0,
   featured: row.featured ?? false,
   publishedAt: row.publishedAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
 })
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {

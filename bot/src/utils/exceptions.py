@@ -4,6 +4,6 @@
 class UserFacingError(Exception):
     """Errors that should be presented to users as embeds."""
 
-    def __init__(self, message: str):
+    def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message

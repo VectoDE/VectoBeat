@@ -13,7 +13,7 @@ from src.configs.schema import ControlPanelAPIConfig
 class SuccessPodService:
     """Expose helper methods for fetching/updating success pod requests."""
 
-    def __init__(self, config: ControlPanelAPIConfig):
+    def __init__(self, config: ControlPanelAPIConfig) -> None:
         self.config = config
         self.enabled = bool(config.enabled and config.base_url)
         self.logger = logging.getLogger("VectoBeat.SuccessPod")

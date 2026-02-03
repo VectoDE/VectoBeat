@@ -1,7 +1,5 @@
 """Auto scaling service that signals orchestrators based on live load."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
@@ -19,7 +17,7 @@ from src.configs.schema import ScalingConfig
 class ScalingService:
     """Periodically evaluate shard/node demand and call an external scaler."""
 
-    def __init__(self, bot: commands.Bot, config: ScalingConfig):
+    def __init__(self, bot: commands.Bot, config: ScalingConfig) -> None:
         self.bot = bot
         self.config = config
         self.enabled = config.enabled and bool(config.endpoint)
@@ -79,7 +77,7 @@ class ScalingService:
     def _build_payload(self, trigger: str) -> Optional[Dict[str, Any]]:
         guilds = len(getattr(self.bot, "guilds", [])) or 0
         shards = max(len(getattr(self.bot, "shards", {})) or (self.bot.shard_count or 1), 1)
-        lavalink_client: Any = getattr(self.bot, "lavalink", None)
+        lavalink_client = getattr(self.bot, "lavalink", None)
         players = 0
         active_players = 0
         if lavalink_client:

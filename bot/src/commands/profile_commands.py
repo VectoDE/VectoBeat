@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import aiohttp
 import discord
@@ -11,6 +11,9 @@ from discord.ext import commands
 
 from src.services.profile_service import GuildProfileManager
 from src.utils.embeds import EmbedFactory
+
+if TYPE_CHECKING:
+    from src.services.profile_service import GuildProfile
 
 
 def _manager(bot: commands.Bot) -> GuildProfileManager:
@@ -68,29 +71,31 @@ class ProfileCommands(commands.Cog):
                 self.bot.logger.debug("Bot defaults sync error: %s", exc)
 
     @staticmethod
-    def _profile_embed(inter: discord.Interaction, profile) -> discord.Embed:
+    def _profile_embed(inter: discord.Interaction, profile: GuildProfile) -> discord.Embed:
         """Build a concise embed representing the guild profile."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         embed = factory.primary("Playback Profile")
         embed.add_field(name="Default Volume", value=f"`{profile.default_volume}%`", inline=True)
         embed.add_field(name="Autoplay", value="✅ Enabled" if profile.autoplay else "❌ Disabled", inline=True)
         embed.add_field(name="Announcement Style", value=f"`{profile.announcement_style}`", inline=True)
+        embed.add_field(name="Adaptive Mastering", value="✅ Enabled" if profile.adaptive_mastering else "❌ Disabled", inline=True)
+        embed.add_field(name="Compliance Mode", value="✅ Enabled" if profile.compliance_mode else "❌ Disabled", inline=True)
         embed.set_footer(text="Use /profile commands to adjust these defaults.")
         return embed
 
     # ------------------------------------------------------------------ slash commands
     @profile.command(name="show", description="Display the current playback profile for this guild.")
-    async def show(self, inter: discord.Interaction):
+    async def show(self, inter: discord.Interaction) -> None:
         profile = _manager(self.bot).get(inter.guild.id)  # type: ignore[union-attr]
         await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
 
     @profile.command(name="set-volume", description="Set the default playback volume for this guild.")
     @app_commands.describe(level="Volume percent to apply automatically (0-200).")
-    async def set_volume(self, inter: discord.Interaction, level: app_commands.Range[int, 0, 200]):
+    async def set_volume(self, inter: discord.Interaction, level: app_commands.Range[int, 0, 200]) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
         manager = _manager(self.bot)
-        profile = manager.update(inter.guild.id, volume=level)  # type: ignore[union-attr]
+        profile = await manager.update(inter.guild.id, volume=level)  # type: ignore[union-attr]
 
         player = self.bot.lavalink.player_manager.get(inter.guild.id)  # type: ignore[union-attr]
         if player:
@@ -105,7 +110,7 @@ class ProfileCommands(commands.Cog):
         )
 
     @profile.command(name="set-autoplay", description="Enable or disable autoplay when the queue finishes.")
-    async def set_autoplay(self, inter: discord.Interaction, enabled: bool):
+    async def set_autoplay(self, inter: discord.Interaction, enabled: bool) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
         if enabled:
@@ -117,7 +122,7 @@ class ProfileCommands(commands.Cog):
                 )
                 return await inter.response.send_message(embed=warning, ephemeral=True)
         manager = _manager(self.bot)
-        profile = manager.update(inter.guild.id, autoplay=enabled)  # type: ignore[union-attr]
+        profile = await manager.update(inter.guild.id, autoplay=enabled)  # type: ignore[union-attr]
 
         player = self.bot.lavalink.player_manager.get(inter.guild.id)  # type: ignore[union-attr]
         if player:
@@ -136,7 +141,7 @@ class ProfileCommands(commands.Cog):
             app_commands.Choice(name="Minimal Text", value="minimal"),
         ]
     )
-    async def set_announcement(self, inter: discord.Interaction, style: app_commands.Choice[str]):
+    async def set_announcement(self, inter: discord.Interaction, style: app_commands.Choice[str]) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
         manager = _manager(self.bot)
@@ -150,6 +155,29 @@ class ProfileCommands(commands.Cog):
             embed=self._profile_embed(inter, profile),
             ephemeral=True,
         )
+
+    @profile.command(name="set-mastering", description="Enable or disable adaptive mastering (loudness normalization).")
+    async def set_mastering(self, inter: discord.Interaction, enabled: bool) -> None:
+        if (error := self._ensure_manage_guild(inter)) is not None:
+            return await inter.response.send_message(error, ephemeral=True)
+        manager = _manager(self.bot)
+        profile = await manager.update(inter.guild.id, adaptive_mastering=enabled)
+
+        player = self.bot.lavalink.player_manager.get(inter.guild.id)
+        if player:
+            cog = self.bot.get_cog("MusicEvents")
+            if cog and hasattr(cog, "_apply_adaptive_mastering"):
+                await cog._apply_adaptive_mastering(player)
+
+        await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
+
+    @profile.command(name="set-compliance", description="Enable compliance mode (export-ready safety logs).")
+    async def set_compliance(self, inter: discord.Interaction, enabled: bool) -> None:
+        if (error := self._ensure_manage_guild(inter)) is not None:
+            return await inter.response.send_message(error, ephemeral=True)
+        manager = _manager(self.bot)
+        profile = await manager.update(inter.guild.id, compliance_mode=enabled)
+        await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

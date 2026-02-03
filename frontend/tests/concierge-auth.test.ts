@@ -4,8 +4,22 @@ import { NextRequest } from "next/server"
 import { createConciergeHandlers } from "@/app/api/concierge/route"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
-const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null })
-const validVerifier = async () => ({ valid: true, token: "t", sessionHash: "h" })
+const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null, user: null })
+const validVerifier = async () => ({
+  valid: true,
+  token: "t",
+  sessionHash: "h",
+  user: {
+    id: "u1",
+    username: "tester",
+    email: "test@example.com",
+    displayName: "Tester",
+    avatarUrl: null,
+    createdAt: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    guilds: [],
+  },
+})
 const failIfCalled = () => {
   throw new Error("should not be called")
 }
@@ -80,6 +94,7 @@ test("concierge POST uses subscription tier for limits", async () => {
     fetchSettings: async () => ({} as any),
     notify: async ({ html }) => {
       sentHtml = html
+      return { delivered: true, reason: "sent" }
     },
     fetchGuildTier: async () => "starter",
   })

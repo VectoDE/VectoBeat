@@ -12,6 +12,7 @@ const planCapabilitiesAbsolute =
   })()
 
 const planCapabilitiesData = JSON.parse(fs.readFileSync(planCapabilitiesAbsolute, "utf-8"))
+const packageJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, "./package.json"), "utf-8"))
 
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
@@ -19,8 +20,8 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network",
-      "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://m.stripe.network",
+      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.network",
+      "script-src-elem 'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.network",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
@@ -34,20 +35,26 @@ const securityHeaders = [
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "geolocation=(), microphone=(), camera=()" },
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
 ]
 
 const nextConfig = {
+  output: "standalone",
   typescript: {
-    ignoreBuildErrors: true,
+    // ignoreBuildErrors: true, // Removed for type safety
   },
   images: {
-    unoptimized: true,
+    // unoptimized: true, // Removed for performance
   },
   experimental: {
     externalDir: true,
   },
+  turbopack: {
+    root: __dirname,
+  },
   env: {
     NEXT_PUBLIC_PLAN_CAPABILITIES: JSON.stringify(planCapabilitiesData),
+    NEXT_PUBLIC_APP_VERSION: packageJson.version,
   },
   async headers() {
     return [

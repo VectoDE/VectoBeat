@@ -6,8 +6,22 @@ import type { SubscriptionSummary } from "@/lib/db"
 
 const mockRequest = {} as NextRequest
 
-const validVerification = { valid: true, token: "token", sessionHash: "hash", user: { id: "user-1" } }
-const invalidVerification = { valid: false, token: null, sessionHash: null }
+const validVerification = {
+  valid: true,
+  token: "token",
+  sessionHash: "hash",
+  user: {
+    id: "user-1",
+    username: "tester",
+    email: "test@example.com",
+    displayName: "Tester",
+    avatarUrl: null,
+    createdAt: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    guilds: [],
+  },
+}
+const invalidVerification = { valid: false, token: null, sessionHash: null, user: null }
 
 const buildSubscription = (overrides: Partial<SubscriptionSummary> = {}): SubscriptionSummary => ({
   id: overrides.id ?? "sub",

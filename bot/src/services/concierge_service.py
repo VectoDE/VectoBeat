@@ -13,7 +13,7 @@ from src.configs.schema import ControlPanelAPIConfig
 class ConciergeService:
     """Bridge concierge desk actions to the control panel API."""
 
-    def __init__(self, config: ControlPanelAPIConfig):
+    def __init__(self, config: ControlPanelAPIConfig) -> None:
         self.config = config
         self.enabled = bool(config.enabled and config.base_url)
         self.logger = logging.getLogger("VectoBeat.Concierge")
@@ -25,7 +25,6 @@ class ConciergeService:
             return
         timeout = aiohttp.ClientTimeout(total=max(3, self.config.timeout_seconds))
         self._session = aiohttp.ClientSession(timeout=timeout)
-        self.logger.info("Concierge integration enabled.")
 
     async def close(self) -> None:
         if self._session:
@@ -49,7 +48,7 @@ class ConciergeService:
                     text = (await resp.text())[:200]
                     self.logger.warning("Concierge usage fetch failed (%s): %s", resp.status, text)
                     return None
-                payload = await resp.json()
+                payload: Dict[str, Any] = await resp.json()
                 return payload.get("usage")
         except aiohttp.ClientError as exc:  # pragma: no cover - network guard
             self.logger.error("Concierge usage fetch error: %s", exc)
@@ -108,7 +107,8 @@ class ConciergeService:
                     text = (await resp.text())[:200]
                     self.logger.warning("Concierge action failed (%s): %s", resp.status, text)
                     return None
-                return await resp.json()
+                data: Dict[str, Any] = await resp.json()
+                return data
         except aiohttp.ClientError as exc:  # pragma: no cover - network guard
             self.logger.error("Concierge transport error: %s", exc)
             return None

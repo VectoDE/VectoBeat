@@ -6,11 +6,24 @@ import asyncio
 import logging
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 import aiohttp
 
 LRC_TAG_PATTERN = re.compile(r"\[(\d+):(\d+)(?:\.(\d+))?\]")
+
+
+class LyricLine(TypedDict):
+    timestamp: int
+    text: str
+
+
+class LyricsResult(TypedDict):
+    source: str
+    provider_url: Optional[str]
+    track: str
+    artist: str
+    lines: List[LyricLine]
 
 
 class LyricsService:
@@ -18,15 +31,16 @@ class LyricsService:
 
     API_URL = "https://lrclib.net/api/search"
 
-    def __init__(self, *, logger: Optional[logging.Logger] = None, cache_ttl: int = 3600):
+    def __init__(self, *, logger: Optional[logging.Logger] = None, cache_ttl: int = 3600) -> None:
         self.logger = logger or logging.getLogger("VectoBeat.Lyrics")
         self.cache_ttl = cache_ttl
-        self._cache: Dict[str, tuple[float, Optional[Dict[str, Any]]]] = {}
+        self._cache: Dict[str, tuple[float, Optional[LyricsResult]]] = {}
         self._session: Optional[aiohttp.ClientSession] = None
 
     # ------------------------------------------------------------------ lifecycle
     async def close(self) -> None:
         """Close the underlying HTTP session when the bot shuts down."""
+
         if self._session and not self._session.closed:
             await self._session.close()
         self._session = None
@@ -44,7 +58,7 @@ class LyricsService:
         safe_title = (title or "unknown").strip().lower()
         return f"{safe_artist}::{safe_title}"
 
-    def _cache_get(self, key: str) -> Optional[Dict[str, Any]]:
+    def _cache_get(self, key: str) -> Optional[LyricsResult]:
         cached = self._cache.get(key)
         if not cached:
             return None
@@ -54,7 +68,7 @@ class LyricsService:
             return None
         return payload
 
-    def _cache_set(self, key: str, payload: Optional[Dict[str, Any]]) -> None:
+    def _cache_set(self, key: str, payload: Optional[LyricsResult]) -> None:
         self._cache[key] = (time.monotonic(), payload)
 
     # ------------------------------------------------------------------ lookup + parsing
@@ -64,7 +78,7 @@ class LyricsService:
         title: str,
         artist: Optional[str] = None,
         duration_ms: Optional[int] = None,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[LyricsResult]:
         """Fetch synced lyrics for the supplied title/artist pair."""
         if not title:
             return None
@@ -141,10 +155,10 @@ class LyricsService:
         return best
 
     @staticmethod
-    def _parse_synced(content: str) -> List[Dict[str, Any]]:
+    def _parse_synced(content: str) -> List[LyricLine]:
         if not content:
             return []
-        parsed: List[Dict[str, Any]] = []
+        parsed: List[LyricLine] = []
         for raw_line in content.splitlines():
             raw_line = raw_line.strip()
             if not raw_line:
@@ -160,7 +174,7 @@ class LyricsService:
         parsed.sort(key=lambda item: item["timestamp"])
 
         # Deduplicate timestamps and drop empty payloads
-        cleaned: List[Dict[str, Any]] = []
+        cleaned: List[LyricLine] = []
         seen_ts = set()
         for item in parsed:
             ts = item["timestamp"]
@@ -172,7 +186,7 @@ class LyricsService:
         return cleaned
 
     # ------------------------------------------------------------------ formatting
-    def snippet(self, payload: Dict[str, Any], position_ms: int, window: int = 1) -> Optional[str]:
+    def snippet(self, payload: LyricsResult, position_ms: int, window: int = 1) -> Optional[str]:
         """Render a small lyrics window around ``position_ms``."""
         lines = payload.get("lines") or []
         if not lines:
@@ -199,7 +213,7 @@ class LyricsService:
         return snippet_text[:1024]
 
     @staticmethod
-    def _line_index(lines: List[Dict[str, Any]], position_ms: int) -> int:
+    def _line_index(lines: List[LyricLine], position_ms: int) -> int:
         if not lines:
             return 0
         index = 0

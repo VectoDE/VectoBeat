@@ -22,6 +22,7 @@ Use the shared root `.env` for both runtimes. No per-service `.env` files are su
   npm run test:server-settings
   ```
 - Build: `npm run build`; lint: `npm run lint`.
+- **Note:** Vercel Speed Insights and Web Analytics are enabled in production builds.
 
 ## Local stack
 - Use the root compose file for local work: `docker compose up -d --build`.

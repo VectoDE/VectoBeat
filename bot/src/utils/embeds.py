@@ -15,7 +15,7 @@ def set_branding_resolver(resolver: Callable[[Optional[int]], Optional[Dict[str,
 
 class EmbedFactory:
     """Centralized, branded embed factory for VectoBeat."""
-    def __init__(self, guild_id: Optional[int] = None):
+    def __init__(self, guild_id: Optional[int] = None) -> None:
         self.theme = CONFIG.theme
         self.guild_id = str(guild_id) if guild_id else None
         branding = self._resolve_branding()

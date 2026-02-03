@@ -15,7 +15,7 @@ const baseSnapshot: QueueSnapshot = {
 }
 
 test("queue store persists with tier-based TTL", async () => {
-  let persisted: { snapshot: QueueSnapshot; expiresAt: Date | null; tier: string } | null = null
+  let persisted: any = null
   const store = createQueueStore({
     fetchTier: async () => "growth",
     persist: async (snapshot, tier, expiresAt) => {
@@ -28,8 +28,8 @@ test("queue store persists with tier-based TTL", async () => {
 
   await store.setQueueSnapshot(baseSnapshot)
   assert(persisted)
-  assert.equal(persisted?.tier, "growth")
-  assert.equal(persisted?.expiresAt?.getTime(), 60 * 60 * 1000) // 60 minutes
+  assert.equal(persisted!.tier, "growth")
+  assert.equal(persisted!.expiresAt?.getTime(), 60 * 60 * 1000) // 60 minutes
 })
 
 test("queue store evicts expired snapshots", async () => {

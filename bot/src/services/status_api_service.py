@@ -10,11 +10,12 @@ from collections import deque
 import statistics
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import math
 import time
 
+import aiofiles
 import discord
 from discord import app_commands
 import lavalink
@@ -30,7 +31,7 @@ from src.services.lavalink_service import VectoPlayer
 class StatusAPIService:
     """Serve JSON snapshots of guild, player, and command data for the frontend."""
 
-    def __init__(self, bot: discord.Client, config: StatusAPIConfig):
+    def __init__(self, bot: discord.Client, config: StatusAPIConfig) -> None:
         self.bot = bot
         self.config = config
         self.enabled = getattr(config, "enabled", False)
@@ -58,11 +59,11 @@ class StatusAPIService:
         self._event_token = config.event_token or config.push_token or config.api_key or cp_api_key
         self._usage_endpoint = config.usage_endpoint or (f"{cp_base_url.rstrip('/')}/api/bot/usage" if cp_base_url else None)
         self._usage_token = config.usage_token or config.event_token or config.push_token or config.api_key or cp_api_key
-        self._push_task: Optional[asyncio.Task] = None
+        self._push_task: Optional[asyncio.Task[None]] = None
         self._event_queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
-        self._event_worker: Optional[asyncio.Task] = None
+        self._event_worker: Optional[asyncio.Task[None]] = None
         self._http_session: Optional[ClientSession] = None
-        self._usage_sync_task: Optional[asyncio.Task] = None
+        self._usage_sync_task: Optional[asyncio.Task[None]] = None
         self._usage_sync_inflight = False
         self._usage_sync_pending = False
         self._online_since = datetime.now(timezone.utc).isoformat()
@@ -93,10 +94,10 @@ class StatusAPIService:
             if self._usage_endpoint:
                 usage_bootstrapped = await self._load_usage_totals()
             if not usage_bootstrapped:
-                self._restore_usage_from_disk()
+                await self._restore_usage_from_disk()
             await self._bootstrap_counters()
         else:
-            self._restore_usage_from_disk()
+            await self._restore_usage_from_disk()
         if self._push_endpoint:
             self._push_task = asyncio.create_task(self._push_loop())
         if self._event_endpoint:
@@ -127,8 +128,8 @@ class StatusAPIService:
         if self._usage_endpoint and self._http_session:
             try:
                 await self._send_usage_totals()
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.warning("Failed to send usage totals on close: %s", e)
         if self._http_session:
             await self._http_session.close()
             self._http_session = None
@@ -138,7 +139,7 @@ class StatusAPIService:
         if self._runner:
             await self._runner.cleanup()
             self._runner = None
-        self._persist_usage()
+        await self._persist_usage(force=True)
         self._app = None
 
     # ------------------------------------------------------------------ lavalink hooks
@@ -149,7 +150,7 @@ class StatusAPIService:
         client.add_event_hooks(self)
 
     @lavalink.listener()  # type: ignore[misc]
-    async def on_track_start(self, event: TrackStartEvent):
+    async def on_track_start(self, event: TrackStartEvent) -> None:
         if not isinstance(event, TrackStartEvent):
             return
         player = getattr(event, "player", None)
@@ -183,9 +184,9 @@ class StatusAPIService:
             payload = self._build_payload()
             # Persist uptime frequently so offline gaps are reflected in uptimePercent after restarts.
             try:
-                HealthState.persist()
-            except Exception:
-                pass
+                await HealthState.persist_async()
+            except Exception as e:
+                self.logger.warning("Failed to persist health state: %s", e)
             ttl = max(1, int(self.config.cache_ttl_seconds or 5))
             self._cache = {
                 "payload": payload,
@@ -247,9 +248,12 @@ class StatusAPIService:
         player_states = self._player_states(players, listener_map)
         commands_24h = len(self._command_events)
         incidents_24h = len(self._incident_events)
+        predictive_health = getattr(self.bot, "predictive_health", None)
+        health_score = getattr(predictive_health, "health_score", 100) if predictive_health else 100
 
         payload: Dict[str, Any] = {
             "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "healthScore": health_score,
             "guildCount": len(guilds),
             "guildIds": guild_ids,
             "guilds": guild_payload,
@@ -421,7 +425,7 @@ class StatusAPIService:
 
     async def _send_usage_totals(self) -> None:
         if not self._usage_endpoint or not self._http_session:
-            self._persist_usage()
+            await self._persist_usage()
             return
         headers = {"Content-Type": "application/json"}
         if self._usage_token:
@@ -437,7 +441,7 @@ class StatusAPIService:
                     text = await resp.text()
                     self.logger.warning("Bot usage totals push failed (%s): %s", resp.status, text[:200])
                 else:
-                    self._persist_usage(force=True)
+                    await self._persist_usage(force=True)
         except Exception as exc:
             self.logger.warning("Bot usage totals transport error: %s", exc)
 
@@ -475,7 +479,7 @@ class StatusAPIService:
                 self._incidents_total = int(incidents_total)
         except Exception:
             return False
-        self._persist_usage(force=True)
+        await self._persist_usage(force=True)
         return True
 
     def _queue_event(self, payload: Dict[str, Any]) -> None:
@@ -843,7 +847,7 @@ class StatusAPIService:
         else:
             self.logger.warning("Bot does not expose _sync_application_commands; skipping resync.")
 
-    async def _run_or_fallback(self, command: Optional[str], fallback):
+    async def _run_or_fallback(self, command: Optional[str], fallback: Callable[[], Awaitable[None]]) -> None:
         """Run a shell command when provided, otherwise use a Python fallback."""
         if command:
             await self._run_shell(command)
@@ -1012,14 +1016,15 @@ class StatusAPIService:
         total = sum(count for _, count in self._listener_events)
         return peak, total
 
-    def _restore_usage_from_disk(self) -> bool:
+    async def _restore_usage_from_disk(self) -> bool:
         path = self._usage_storage_path
         if not path:
             return False
         try:
             if not path.exists():
                 return False
-            content = path.read_text(encoding="utf-8").strip()
+            async with aiofiles.open(path, "r", encoding="utf-8") as f:
+                content = (await f.read()).strip()
             if not content:
                 return False
             payload = json.loads(content)
@@ -1040,7 +1045,7 @@ class StatusAPIService:
             updated = True
         return updated
 
-    def _persist_usage(self, force: bool = False) -> None:
+    async def _persist_usage(self, force: bool = False) -> None:
         path = self._usage_storage_path
         if not path:
             return
@@ -1056,6 +1061,7 @@ class StatusAPIService:
         }
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps(payload), encoding="utf-8")
+            async with aiofiles.open(path, "w", encoding="utf-8") as f:
+                await f.write(json.dumps(payload))
         except Exception:
             pass

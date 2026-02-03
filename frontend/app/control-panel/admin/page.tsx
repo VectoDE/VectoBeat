@@ -7,6 +7,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { UserRole } from "@/lib/db"
 import appPackage from "../../../package.json"
+import { AdminPluginManager } from "@/components/admin-plugin-manager"
 
 interface BlogPost {
   id: string
@@ -33,6 +34,7 @@ type AdminTabKey =
   | "subscriptions"
   | "billing"
   | "apiKeys"
+  | "plugins"
   | "forum"
 
 type NewsletterSubscriber = {
@@ -199,6 +201,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "billing", label: "Billings", description: "Track invoices and manual billing workflows" },
   { key: "users", label: "Users", description: "Manage member accounts and access levels" },
   { key: "apiKeys", label: "API Keys", description: "Monitor system credentials and rotate secrets safely" },
+  { key: "plugins", label: "Plugins", description: "Manage marketplace plugins and server shard requirements" },
   { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
@@ -3751,6 +3754,9 @@ export default function AdminControlPanelPage() {
             </section>
           </>
         )
+      }
+      case "plugins": {
+        return <AdminPluginManager />
       }
       case "forum": {
         return (

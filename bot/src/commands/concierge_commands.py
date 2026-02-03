@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import discord
 from discord import app_commands
@@ -55,7 +55,7 @@ class ConciergeCommands(commands.Cog):
         member = inter.guild.get_member(user.id)
         return bool(member and member.guild_permissions.manage_guild)
 
-    def _log(self, inter: discord.Interaction, action: str, metadata: Optional[dict] = None) -> None:
+    def _log(self, inter: discord.Interaction, action: str, metadata: Optional[Dict[str, Any]] = None) -> None:
         log_sensitive_action(
             self.bot,
             scope=SensitiveScope.CONCIERGE,
@@ -71,7 +71,7 @@ class ConciergeCommands(commands.Cog):
         summary="What do you need help with?",
         hours="Number of hours you expect to need (integer).",
     )
-    async def request(self, inter: discord.Interaction, contact: str, summary: str, hours: app_commands.Range[int, 1, 24]):
+    async def request(self, inter: discord.Interaction, contact: str, summary: str, hours: app_commands.Range[int, 1, 24]) -> None:
         if not await self._ensure_growth_plan(inter):
             return
         service = _service(self.bot)
@@ -110,7 +110,7 @@ class ConciergeCommands(commands.Cog):
         self._log(inter, action="request", metadata={"hours": int(hours)})
 
     @concierge.command(name="usage", description="Show remaining concierge hours this cycle.")
-    async def usage(self, inter: discord.Interaction):
+    async def usage(self, inter: discord.Interaction) -> None:
         if not await self._ensure_growth_plan(inter):
             return
         service = _service(self.bot)
@@ -140,7 +140,7 @@ class ConciergeCommands(commands.Cog):
         request_id="Identifier returned by the concierge desk.",
         note="Optional resolution summary.",
     )
-    async def resolve(self, inter: discord.Interaction, request_id: str, note: Optional[str] = None):
+    async def resolve(self, inter: discord.Interaction, request_id: str, note: Optional[str] = None) -> None:
         if not self._is_staff(inter):
             await inter.response.send_message("Concierge staff privileges required.", ephemeral=True)
             return
@@ -165,5 +165,5 @@ class ConciergeCommands(commands.Cog):
         self._log(inter, action="resolve", metadata={"requestId": request_id})
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ConciergeCommands(bot))

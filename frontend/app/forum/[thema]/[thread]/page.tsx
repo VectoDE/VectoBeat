@@ -97,7 +97,6 @@ export default async function ForumThreadPage({ params }: { params: Promise<Para
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         className="sr-only"
-        aria-hidden="true"
       />
 
       <section className="w-full px-4 pt-24 pb-10 bg-linear-to-b from-primary/5 via-background to-background">

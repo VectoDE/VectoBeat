@@ -1,13 +1,14 @@
 """Abstractions for managing Lavalink connectivity and Discord voice sessions."""
 
-# pyright: reportMissingTypeStubs=false
+from __future__ import annotations
 
 import asyncio
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
-import aiohttp
+from aiohttp import ClientConnectorError, ClientResponseError, ContentTypeError
 import discord
 import lavalink
 from lavalink.errors import AuthenticationError
@@ -20,19 +21,20 @@ class VectoPlayer(lavalink.DefaultPlayer):
 
     __slots__ = ("text_channel_id",)
 
-    def __init__(self, guild_id: int, client: lavalink.Client):
+    def __init__(self, guild_id: int, client: lavalink.Client) -> None:
         super().__init__(guild_id, client)
-        self.text_channel_id: Optional[int] = None
+        self.text_channel_id: int | None = None
 
 
 class LavalinkVoiceClient(discord.VoiceProtocol):
     """Voice protocol bridging discord.py voice state with Lavalink."""
 
-    def __init__(self, client: discord.Client, channel: discord.abc.Connectable):
+    def __init__(self, client: discord.Client, channel: discord.abc.Connectable) -> None:
         self.client = client
         self.channel = channel
         self.guild_id = channel.guild.id
         self._destroyed = False
+        self.logger = logging.getLogger("VectoBeat.LavalinkVoice")
 
         if not hasattr(self.client, "lavalink"):
             raise RuntimeError("Lavalink client has not been initialised.")
@@ -53,14 +55,14 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
             channel=self.channel, self_deaf=self_deaf, self_mute=self_mute
         )
 
-    async def on_voice_server_update(self, data):
+    async def on_voice_server_update(self, data: dict[str, Any]) -> None:
         payload = {
             "t": "VOICE_SERVER_UPDATE",
             "d": data,
         }
         await self.lavalink.voice_update_handler(payload)
 
-    async def on_voice_state_update(self, data):
+    async def on_voice_state_update(self, data: dict[str, Any]) -> None:
         channel_id = data.get("channel_id")
 
         if not channel_id:
@@ -85,7 +87,7 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
         player.channel_id = None
         await self._destroy()
 
-    async def _destroy(self):
+    async def _destroy(self) -> None:
         self.cleanup()
 
         if self._destroyed:
@@ -96,7 +98,7 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
             await self.lavalink.player_manager.destroy(self.guild_id)
         except lavalink.ClientError:
             pass
-        except aiohttp.ContentTypeError as exc:
+        except ContentTypeError as exc:
             self.logger.warning(
                 "Ignoring Lavalink response while destroying player %s: %s",
                 self.guild_id,
@@ -107,17 +109,17 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
 class LavalinkManager:
     """Initialises and tears down Lavalink resources for the bot."""
 
-    def __init__(self, bot: discord.Client, nodes: Sequence[LavalinkConfig]):
+    def __init__(self, bot: discord.Client, nodes: Sequence[LavalinkConfig]) -> None:
         self.bot = bot
-        self.nodes: List[LavalinkConfig] = list(nodes)
+        self.nodes: list[LavalinkConfig] = list(nodes)
         if not self.nodes:
             raise RuntimeError("At least one Lavalink node must be configured.")
         self.logger = logging.getLogger("VectoBeat.Lavalink")
-        self._node_handles: Dict[str, lavalink.Node] = {}
-        self._nodes_by_region: Dict[str, List[str]] = defaultdict(list)
+        self._node_handles: dict[str, lavalink.Node] = {}
+        self._nodes_by_region: dict[str, list[str]] = defaultdict(list)
         self._node_priority = {cfg.name: idx for idx, cfg in enumerate(self.nodes)}
 
-    async def connect(self):
+    async def connect(self) -> None:
         if not hasattr(self.bot, "lavalink"):
             self.bot.lavalink = lavalink.Client(
                 self.bot.user.id, player=VectoPlayer  # type: ignore[arg-type]
@@ -127,7 +129,7 @@ class LavalinkManager:
         tasks = [self._register_node(client, config) for config in self.nodes]
         await asyncio.gather(*tasks)
 
-    async def _register_node(self, client: lavalink.Client[VectoPlayer], config: LavalinkConfig):
+    async def _register_node(self, client: lavalink.Client[VectoPlayer], config: LavalinkConfig) -> lavalink.Node:
         existing = next((node for node in client.node_manager.nodes if node.name == config.name), None)
         if existing:
             self.logger.info("Lavalink node '%s' already registered.", existing.name)
@@ -153,7 +155,7 @@ class LavalinkManager:
                 "Verify the password in config.yml/.env matches the server configuration.",
                 config.name,
             )
-        except aiohttp.ClientConnectorError as exc:
+        except ClientConnectorError as exc:
             self.logger.error(
                 "Could not reach Lavalink node '%s' at %s:%s (%s). Please ensure the server is running "
                 "and accessible from this host.",
@@ -189,7 +191,7 @@ class LavalinkManager:
         if name not in auto_bucket:
             auto_bucket.append(name)
 
-    async def ensure_ready(self):
+    async def ensure_ready(self) -> None:
         """Ensure all configured nodes are connected and available."""
         client: lavalink.Client | None = getattr(self.bot, "lavalink", None)
         if not client:
@@ -203,7 +205,7 @@ class LavalinkManager:
         if reconnect_tasks:
             await asyncio.gather(*reconnect_tasks, return_exceptions=True)
 
-    async def close(self):
+    async def close(self) -> None:
         if hasattr(self.bot, "lavalink"):
             try:
                 await self.bot.lavalink.close()
@@ -236,9 +238,9 @@ class LavalinkManager:
                 region,
             )
             player.store("migration_cooldown_until", None)
-        except (aiohttp.ClientResponseError, aiohttp.ContentTypeError) as exc:
+        except (ClientResponseError, ContentTypeError) as exc:
             status = getattr(exc, "status", None)
-            if status == 429 or isinstance(exc, aiohttp.ContentTypeError):
+            if status == 429 or isinstance(exc, ContentTypeError):
                 retry_in = 30.0
                 player.store("migration_cooldown_until", now + retry_in)
                 self.logger.warning(
@@ -257,9 +259,9 @@ class LavalinkManager:
                 "Failed to move guild %s to node %s: %s", player.guild_id, target.name, exc
             )
 
-    def _pick_node(self, region: str) -> Optional[lavalink.Node]:
+    def _pick_node(self, region: str) -> lavalink.Node | None:
         region_key = (region or "auto").lower()
-        order: List[str] = []
+        order: list[str] = []
         if region_key != "auto":
             order.extend(self._nodes_by_region.get(region_key, []))
         order.extend(self._nodes_by_region.get("auto", []))

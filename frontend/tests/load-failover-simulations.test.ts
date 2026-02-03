@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import { createQueueStore } from "@/lib/queue-sync-store"
 import { createConciergeHandlers } from "@/app/api/concierge/route"
 import { createApiTokenHandlers } from "@/app/api/control-panel/api-tokens/route"
+import { defaultServerFeatureSettings } from "@/lib/server-settings"
 import { NextRequest } from "next/server"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
@@ -51,13 +52,40 @@ test("concierge handles concurrent creation attempts", async () => {
     return { id: `req-${saved}`, ...payload } as any
   }
   const { POST } = createConciergeHandlers({
-    verifyUser: async () => ({ valid: true, token: "t", sessionHash: "h" }),
-    fetchUserSubscriptions: async () => [{ discordServerId: "g1", status: "active", tier: "scale" }],
+    verifyUser: async () => ({
+      valid: true,
+      token: "t",
+      sessionHash: "h",
+      user: {
+        id: "u1",
+        username: "tester",
+        email: "test@example.com",
+        displayName: "Tester",
+        avatarUrl: null,
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        guilds: [],
+      },
+    }),
+    fetchUserSubscriptions: async () => [
+      {
+        discordServerId: "g1",
+        status: "active",
+        tier: "scale",
+        id: "s1",
+        discordId: "u1",
+        name: "Scale Plan",
+        stripeCustomerId: "cus_1",
+        pricePerMonth: 99,
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: new Date().toISOString(),
+      },
+    ],
     fetchGuildTier: async () => "scale",
     fetchUsage: async () => ({ remaining: 10, total: 10, used: 0 }),
     saveRequest,
     fetchSettings: async () => ({} as any),
-    notify: async () => {},
+    notify: async () => ({ delivered: true }),
   })
 
   const payload = {
@@ -95,16 +123,26 @@ test("rapid API token churn keeps actor metadata", async () => {
       ok: true,
       tier: "pro",
       subscription: { id: "s1", discordServerId: "g1", tier: "pro", status: "active" } as any,
-      user: { id: "u1", username: "tester", email: "u@test" },
+      user: {
+        id: "u1",
+        username: "tester",
+        email: "u@test",
+        displayName: "Tester",
+        avatarUrl: "",
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+        guilds: [],
+      },
     }),
-    fetchSettings: async () => ({ apiTokens: tokens }),
+    fetchSettings: async () => ({ ...defaultServerFeatureSettings, apiTokens: tokens }),
     saveSettings: async (_guildId, _discordId, payload) => {
-      tokens = payload.apiTokens
+      tokens = payload.apiTokens || []
+      return payload as any
     },
     recordEvent: async (payload) => {
       events.push(payload)
     },
-    email: async () => {},
+    email: async () => ({ delivered: true }),
   })
 
   await Promise.all([
@@ -123,5 +161,5 @@ test("rapid API token churn keeps actor metadata", async () => {
   ])
 
   assert(events.length >= 2)
-  assert(events.every((e) => e.actorName === "tester"))
+  assert(events.every((e: any) => e.actorName === "tester"))
 })

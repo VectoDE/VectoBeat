@@ -39,7 +39,7 @@ class ChaosCommands(commands.Cog):
         return None
 
     @chaos.command(name="status", description="Show recent chaos drills and schedule info.")
-    async def status(self, inter: discord.Interaction):
+    async def status(self, inter: discord.Interaction) -> None:
         service = _service(self.bot)
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         embed = factory.primary("Chaos Playbook")
@@ -59,7 +59,7 @@ class ChaosCommands(commands.Cog):
 
     @chaos.command(name="run", description="Trigger a chaos scenario immediately.")
     @app_commands.describe(scenario="Scenario to run (leave empty for random).")
-    async def run(self, inter: discord.Interaction, scenario: Optional[str] = None):
+    async def run(self, inter: discord.Interaction, scenario: Optional[str] = None) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
         service = _service(self.bot)
@@ -76,5 +76,5 @@ class ChaosCommands(commands.Cog):
         await inter.followup.send(embed=embed, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ChaosCommands(bot))

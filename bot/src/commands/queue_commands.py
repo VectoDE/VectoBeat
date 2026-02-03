@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
 
 import discord
@@ -16,6 +16,28 @@ from src.services.server_settings_service import QueueCapacity
 from src.utils.embeds import EmbedFactory
 from src.utils.progress import SlashProgress
 from src.utils.pagination import EmbedPaginator
+
+if TYPE_CHECKING:
+    from src.services.dj_permission_service import DJPermissionManager
+    from src.services.server_settings_service import ServerSettingsService
+    from src.services.queue_sync_service import QueueSyncService
+    from src.services.shard_supervisor import ShardSupervisor
+    from src.services.alert_service import AlertService
+    from src.services.automation_audit_service import AutomationAuditService
+    from src.services.command_throttle_service import CommandThrottleService
+    from src.services.analytics_export_service import AnalyticsExportService
+    from src.services.queue_copilot_service import QueueCopilotService
+
+if TYPE_CHECKING:
+    from src.services.dj_permission_service import DJPermissionManager
+    from src.services.server_settings_service import ServerSettingsService
+    from src.services.queue_sync_service import QueueSyncService
+    from src.services.shard_supervisor import ShardSupervisor
+    from src.services.alert_service import AlertService
+    from src.services.automation_audit_service import AutomationAuditService
+    from src.services.command_throttle_service import CommandThrottleService
+    from src.services.analytics_export_service import AnalyticsExportService
+    from src.services.queue_copilot_service import QueueCopilotService
 
 
 def ms_to_clock(ms: int) -> str:
@@ -54,36 +76,34 @@ PLAN_LABELS = {
 class QueueCommands(commands.Cog):
     """Queue management commands."""
 
-    # pyright: reportMissingTypeStubs=false
-
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    def _dj_manager(self):
+    def _dj_manager(self) -> Optional[DJPermissionManager]:
         return getattr(self.bot, "dj_permissions", None)
 
-    def _settings_service(self):
+    def _settings_service(self) -> Optional[ServerSettingsService]:
         return getattr(self.bot, "server_settings", None)
 
-    def _queue_sync_service(self):
+    def _queue_sync_service(self) -> Optional[QueueSyncService]:
         return getattr(self.bot, "queue_sync", None)
 
-    def _shard_supervisor(self):
+    def _shard_supervisor(self) -> Optional[ShardSupervisor]:
         return getattr(self.bot, "shard_supervisor", None)
 
-    def _alert_service(self):
+    def _alert_service(self) -> Optional[AlertService]:
         return getattr(self.bot, "alerts", None)
 
-    def _automation_audit_service(self):
+    def _automation_audit_service(self) -> Optional[AutomationAuditService]:
         return getattr(self.bot, "automation_audit", None)
 
-    def _command_throttle_service(self):
+    def _command_throttle_service(self) -> Optional[CommandThrottleService]:
         return getattr(self.bot, "command_throttle", None)
 
-    def _analytics_export_service(self):
+    def _analytics_export_service(self) -> Optional[AnalyticsExportService]:
         return getattr(self.bot, "analytics_export", None)
 
-    def _queue_copilot_service(self):
+    def _queue_copilot_service(self) -> Optional[QueueCopilotService]:
         return getattr(self.bot, "queue_copilot", None)
 
     async def _publish_queue_state(
@@ -464,7 +484,7 @@ class QueueCommands(commands.Cog):
         return None
 
     @app_commands.command(name="queue", description="Show the current queue with details.")
-    async def queue(self, inter: discord.Interaction):
+    async def queue(self, inter: discord.Interaction) -> None:
         """Display the queue using an embed paginator."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
@@ -499,7 +519,7 @@ class QueueCommands(commands.Cog):
 
     @app_commands.command(name="remove", description="Remove a track by its 1-based position.")
     @app_commands.describe(index="1-based index in the queue")
-    async def remove(self, inter: discord.Interaction, index: app_commands.Range[int, 1, 9999]):
+    async def remove(self, inter: discord.Interaction, index: app_commands.Range[int, 1, 9999]) -> None:
         """Remove a track from the queue by its displayed index."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "queue_remove"):
@@ -536,7 +556,7 @@ class QueueCommands(commands.Cog):
         )
 
     @app_commands.command(name="clear", description="Clear the queue.")
-    async def clear(self, inter: discord.Interaction):
+    async def clear(self, inter: discord.Interaction) -> None:
         """Remove every queued track without affecting the currently playing track."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "queue_clear"):
@@ -565,7 +585,7 @@ class QueueCommands(commands.Cog):
         )
 
     @app_commands.command(name="shuffle", description="Shuffle the queue.")
-    async def shuffle(self, inter: discord.Interaction):
+    async def shuffle(self, inter: discord.Interaction) -> None:
         """Shuffle the current queue order."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "queue_shuffle"):
@@ -601,7 +621,7 @@ class QueueCommands(commands.Cog):
         inter: discord.Interaction,
         src: app_commands.Range[int, 1, 9999],
         dest: app_commands.Range[int, 1, 9999],
-    ):
+    ) -> None:
         """Reorder a track within the queue."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "queue_move"):
@@ -643,7 +663,7 @@ class QueueCommands(commands.Cog):
         )
 
     @app_commands.command(name="queueinfo", description="Detailed view of the queue with statistics.")
-    async def queueinfo(self, inter: discord.Interaction):
+    async def queueinfo(self, inter: discord.Interaction) -> None:
         """Return a concise summary of the queue including statistics."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
@@ -694,7 +714,7 @@ class QueueCommands(commands.Cog):
         name="Unique playlist name (case-insensitive).",
         include_current="Include the currently playing track in the saved playlist.",
     )
-    async def playlist_save(self, inter: discord.Interaction, name: str, include_current: bool = True):
+    async def playlist_save(self, inter: discord.Interaction, name: str, include_current: bool = True) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "playlist_save"):
             return
@@ -787,7 +807,7 @@ class QueueCommands(commands.Cog):
         name="Playlist name to load.",
         replace_queue="Clear the existing queue (and stop current track) before loading.",
     )
-    async def playlist_load(self, inter: discord.Interaction, name: str, replace_queue: bool = False):
+    async def playlist_load(self, inter: discord.Interaction, name: str, replace_queue: bool = False) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "playlist_load"):
             return
@@ -965,7 +985,7 @@ class QueueCommands(commands.Cog):
         name="Playlist name to create or update.",
         source_url="External playlist URL (YouTube/Spotify/etc.)",
     )
-    async def playlist_sync(self, inter: discord.Interaction, name: str, source_url: str):
+    async def playlist_sync(self, inter: discord.Interaction, name: str, source_url: str) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if inter.guild and not await self._throttle_command(inter, "playlist_sync"):
             return
@@ -1164,5 +1184,5 @@ class QueueCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot):
+async def setup(bot) -> None:
     await bot.add_cog(QueueCommands(bot))

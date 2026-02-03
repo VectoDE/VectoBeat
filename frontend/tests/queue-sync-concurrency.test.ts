@@ -15,7 +15,7 @@ const makeSnapshot = (guildId: string, updatedAt: string): QueueSnapshot => ({
 })
 
 test("concurrent writers do not clobber newer queue snapshots", async () => {
-  let stored: { snapshot: QueueSnapshot; expiresAt: Date | null } | null = null
+  let stored: any = null
 
   const sharedStore = createQueueStore({
     fetchTier: async () => "growth",
@@ -34,5 +34,5 @@ test("concurrent writers do not clobber newer queue snapshots", async () => {
   await Promise.all([sharedStore.setQueueSnapshot(older), sharedStore.setQueueSnapshot(newer)])
 
   assert(stored)
-  assert.equal(stored?.snapshot.updatedAt, newer.updatedAt)
+  assert.equal(stored!.snapshot.updatedAt, newer.updatedAt)
 })

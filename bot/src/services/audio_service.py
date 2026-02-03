@@ -51,7 +51,7 @@ class TrackInfo:
 
 
 class AudioService:
-    def __init__(self):
+    def __init__(self) -> None:
         self._ytdl = YTDL
 
     async def resolve(self, query: str, limit: int = 5, requester: Optional[str] = None) -> List[TrackInfo]:

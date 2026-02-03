@@ -11,6 +11,7 @@ import time
 from typing import Any, Dict, Optional
 
 import aiohttp
+import aiofiles
 
 from src.configs.schema import AnalyticsConfig
 
@@ -18,19 +19,19 @@ from src.configs.schema import AnalyticsConfig
 class CommandAnalyticsService:
     """Buffer slash command events and forward them to storage/HTTP sinks."""
 
-    def __init__(self, config: AnalyticsConfig):
+    def __init__(self, config: AnalyticsConfig) -> None:
         self.config = config
         self.enabled = config.enabled
         self.logger = logging.getLogger("VectoBeat.Analytics")
         self._queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[None]] = None
         self._session: Optional[aiohttp.ClientSession] = None
         self._flush_lock = asyncio.Lock()
 
     async def start(self) -> None:
         if not self.enabled or self._task:
             return
-        interval = max(5, self.config.flush_interval_seconds)
+        interval = self.config.flush_interval_seconds
         self._task = asyncio.create_task(self._loop(interval))
         self.logger.info("Command analytics enabled (interval=%ss, batch=%s).", interval, self.config.batch_size)
 
@@ -65,8 +66,6 @@ class CommandAnalyticsService:
             pass
 
     async def _flush(self, force: bool = False) -> None:
-        if not self.enabled:
-            return
         if self._queue.empty() and not force:
             return
         async with self._flush_lock:
@@ -82,7 +81,7 @@ class CommandAnalyticsService:
 
     async def _send_http(self, batch: list[Dict[str, Any]]) -> None:
         if not self._session or self._session.closed:
-            timeout = aiohttp.ClientTimeout(total=8)
+            timeout = aiohttp.ClientTimeout(total=15)
             self._session = aiohttp.ClientSession(timeout=timeout)
         headers = {"Content-Type": "application/json"}
         if self.config.api_key:
@@ -101,9 +100,9 @@ class CommandAnalyticsService:
         path = self.config.storage_path
         os.makedirs(os.path.dirname(path), exist_ok=True)
         try:
-            with open(path, "a", encoding="utf-8") as handle:
+            async with aiofiles.open(path, "a", encoding="utf-8") as handle:
                 for event in batch:
-                    handle.write(json.dumps(event) + "\n")
+                    await handle.write(json.dumps(event) + "\n")
         except OSError as exc:  # pragma: no cover - filesystem failure
             self.logger.error("Failed to append analytics events: %s", exc)
 
