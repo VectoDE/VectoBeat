@@ -1,6 +1,13 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+
+console.log('TEST FILE ENV CHECK:', {
+  NODE_ENV: process.env.NODE_ENV,
+  SKIP_API_AUTH: process.env.SKIP_API_AUTH
+});
+
 import { NextRequest } from "next/server"
+
 import { verifyRequestForUser } from "@/lib/auth"
 
 const buildRequest = (url: string, token?: string) =>

@@ -8,6 +8,7 @@ import {
   createForumThread,
   getUserRole,
   updateForumThreadStatus,
+  type SubscriptionSummary,
 } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       const role = await getUserRole(discordId)
       isTeam = ["admin", "operator"].includes(role)
       const subs = await getUserSubscriptions(discordId)
-      const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+      const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
       isPro = hasProPlus(tiers)
     }
   }
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   const subs = await getUserSubscriptions(discordId)
-  const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+  const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   const role = await getUserRole(discordId)
   const isTeam = ["admin", "operator"].includes(role)
   if (!isTeam && !hasProPlus(tiers)) {

@@ -9,6 +9,7 @@ import {
   getUserPrivacy,
   getUserSecurity,
   getUserSubscriptions,
+  type SubscriptionSummary,
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 
@@ -186,7 +187,7 @@ export async function GET(request: NextRequest) {
   if (!subscriptions.length) {
     drawText("No active subscriptions", { size: 11 })
   } else {
-    subscriptions.forEach((sub) => {
+    subscriptions.forEach((sub: SubscriptionSummary) => {
       drawText(`${sub.tier.toUpperCase()} - ${sub.name}`, { size: 12, bold: true })
       drawText(`Status: ${sub.status} | Monthly: $${sub.pricePerMonth.toFixed(2)}`, { size: 11 })
       drawText(

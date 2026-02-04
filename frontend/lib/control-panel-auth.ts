@@ -44,7 +44,7 @@ export const verifyControlPanelGuildAccess = async (
   const fetchSubscriptions = deps.fetchSubscriptions ?? getUserSubscriptions
   const subscriptions = await fetchSubscriptions(trimmedDiscordId)
   const activeMembership = subscriptions.find(
-    (entry) =>
+    (entry: SubscriptionSummary) =>
       entry.discordServerId === trimmedGuildId &&
       ACTIVE_SUBSCRIPTION_STATUSES.includes(entry.status as (typeof ACTIVE_SUBSCRIPTION_STATUSES)[number]),
   )

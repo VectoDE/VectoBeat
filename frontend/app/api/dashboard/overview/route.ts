@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions } from "@/lib/db"
+import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import { getBotStatus, getBotGuildPresence } from "@/lib/bot-status"
 
 const normalizeDate = (value?: string | Date | null) => {
@@ -34,14 +34,14 @@ export const createDashboardOverviewHandlers = (deps: RouteDeps = {}) => {
     }
 
     const subscriptions = await fetchSubscriptions(discordId)
-    const activeSubscriptions = subscriptions.filter((sub) => sub.status === "active")
-    const totalMonthlyRevenue = activeSubscriptions.reduce((sum, sub) => sum + sub.pricePerMonth, 0)
-    const nextRenewal = activeSubscriptions.reduce<string | null>((soonest, sub) => {
+    const activeSubscriptions = subscriptions.filter((sub: SubscriptionSummary) => sub.status === "active")
+    const totalMonthlyRevenue = activeSubscriptions.reduce((sum: number, sub: SubscriptionSummary) => sum + sub.pricePerMonth, 0)
+    const nextRenewal = activeSubscriptions.reduce((soonest: string | null, sub: SubscriptionSummary) => {
       const current = new Date(sub.currentPeriodEnd)
       if (Number.isNaN(current.getTime())) return soonest
       if (!soonest) return sub.currentPeriodEnd
       return new Date(soonest) > current ? sub.currentPeriodEnd : soonest
-    }, null)
+    }, null as string | null)
 
     const [botStatus, botGuildPresence] = await Promise.all([fetchBotStatus(), fetchBotGuilds()])
     const botGuildCount =

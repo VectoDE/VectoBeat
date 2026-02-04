@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import path from "node:path"
 import { promises as fs } from "node:fs"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions } from "@/lib/db"
+import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import type { MembershipTier } from "@/lib/memberships"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 const EXPORT_ROOT =
@@ -10,7 +10,7 @@ const EXPORT_ROOT =
 
 type ExportDeps = {
   verifyUser?: typeof verifyRequestForUser
-  fetchSubscriptions?: typeof getUserSubscriptions
+  fetchSubscriptions?: (discordId: string) => Promise<SubscriptionSummary[]>
   readFile?: typeof fs.readFile
 }
 
@@ -32,7 +32,7 @@ export const createAnalyticsExportHandlers = (deps: ExportDeps = {}) => {
     }
 
     const subscriptions = await fetchSubscriptions(discordId)
-    const membership = subscriptions.find((sub) => sub.discordServerId === guildId && sub.status === "active")
+    const membership = subscriptions.find((sub: SubscriptionSummary) => sub.discordServerId === guildId && sub.status === "active")
     if (!membership) {
       return NextResponse.json({ error: "guild_not_found" }, { status: 404 })
     }

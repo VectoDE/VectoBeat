@@ -9,6 +9,12 @@ The control panel is a Next.js App Router project that shares the root `.env` wi
 - Stripe for billing and entitlement provisioning
 - Vercel Speed Insights & Web Analytics for performance/usage telemetry
 
+## Key Features
+- **Dashboard**: Real-time control of the bot (volume, skip, pause).
+- **Concierge**: Request support or custom features.
+- **Domain Branding**: (Growth Tier) Configure CNAME and custom embed branding.
+- **Billing**: Stripe integration for subscription management.
+
 ## Running locally
 ```bash
 cd frontend

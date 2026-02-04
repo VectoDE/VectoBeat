@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getAutomationActionsForGuild, getUserSubscriptions } from "@/lib/db"
+import { getAutomationActionsForGuild, getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import type { MembershipTier } from "@/lib/memberships"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const subscriptions = await getUserSubscriptions(discordId)
   const membership = subscriptions.find(
-    (sub) => sub.discordServerId === guildId && sub.status === "active",
+    (sub: SubscriptionSummary) => sub.discordServerId === guildId && sub.status === "active",
   )
   if (!membership) {
     return NextResponse.json({ error: "guild_not_found" }, { status: 404 })
