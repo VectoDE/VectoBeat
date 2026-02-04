@@ -11,7 +11,6 @@
     <a href="https://discordbotlist.com/bots/vectobeat"><img src="https://img.shields.io/badge/DiscordBotList-View%20Listing-ff3366?style=for-the-badge&logo=discord&logoColor=white" alt="DiscordBotList listing"></a>
     <a href="https://discord.gg/DtHPAEHxZk"><img src="https://img.shields.io/badge/Discord-Join%20Support-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Support"></a>
     <a href="https://github.com/VectoDE/VectoBeat/releases"><img src="https://img.shields.io/github/v/release/VectoDE/VectoBeat?style=for-the-badge&display_name=tag&color=0A84FF" alt="Latest Release"></a>
-
     <a href="https://github.com/VectoDE/VectoBeat/stargazers"><img src="https://img.shields.io/github/stars/VectoDE/VectoBeat?style=for-the-badge&logo=github&color=yellow" alt="GitHub Stars"></a>
     <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.1+-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js"></a>
     <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"></a>
