@@ -14,8 +14,7 @@ services:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: "3060"
-    ports:
-      - "3060:3060"
+      BOT_API_BASE_URL: "http://bot:3061"
     networks:
       - mysql-phpmyadmin_mysql-internal
       - traefik-public
@@ -28,8 +27,11 @@ services:
       start_period: 20s
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.vectobeat-frontend.rule=Host(`vectobeat.uplytech.de`)"
       - "traefik.http.routers.vectobeat-frontend.entrypoints=web,websecure"
+      - "traefik.http.routers.vectobeat-frontend.tls=true"
+      - "traefik.http.routers.vectobeat-frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.vectobeat-frontend.loadbalancer.server.port=3060"
     deploy:
       resources:
@@ -63,9 +65,6 @@ services:
     volumes:
       - ./bot/config.yml:/app/config.yml:ro
       - ./bot/data:/app/data
-    ports:
-      - "3061:3061"
-      - "3062:3062"
     restart: unless-stopped
     networks:
       - mysql-phpmyadmin_mysql-internal
@@ -79,8 +78,11 @@ services:
       start_period: 30s
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.vectobeat-bot.rule=Host(`bot-vectobeat.uplytech.de`)"
       - "traefik.http.routers.vectobeat-bot.entrypoints=web,websecure"
+      - "traefik.http.routers.vectobeat-bot.tls=true"
+      - "traefik.http.routers.vectobeat-bot.tls.certresolver=letsencrypt"
       - "traefik.http.services.vectobeat-bot.loadbalancer.server.port=3061"
     deploy:
       resources:
