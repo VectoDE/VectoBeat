@@ -217,11 +217,12 @@ const initialForm = {
 }
 
 function stripMarkdown(content: string): string {
+  // Use non-greedy matchers and limit repetition to prevent ReDoS
   return content
-    .replaceAll(/```[\s\S]*?```/g, " ")
-    .replaceAll(/`[^`]*`/g, " ")
-    .replaceAll(/<[^>]*>/g, " ")
-    .replaceAll(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+    .replaceAll(/```[\s\S]{0,5000}?```/g, " ") // Limit code block size
+    .replaceAll(/`[^`\n]{0,200}`/g, " ") // Limit inline code size, no newlines
+    .replaceAll(/<[^>\n]{0,200}>/g, " ") // Limit tag size, no newlines
+    .replaceAll(/\[([^\]\n]{0,200})\]\([^\)\n]{0,200}\)/g, "$1") // Limit link text/url size
     .replaceAll(/[#>*_~]/g, " ")
 }
 
