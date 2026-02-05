@@ -125,7 +125,10 @@ class LifecycleEvents(commands.Cog):
     def _latency_lookup(self) -> dict[int, int]:
         monitor = getattr(self.bot, "latency_monitor", None)
         if monitor:
-            return {sid: int(lat) for sid, lat in monitor.snapshot().shards.items()}
+            return {
+                sid: int(lat) if lat != float("inf") else -1
+                for sid, lat in monitor.snapshot().shards.items()
+            }
         return {sid: int(lat * 1000) for sid, lat in getattr(self.bot, "latencies", [])}
 
 
