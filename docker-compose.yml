@@ -18,6 +18,7 @@ services:
       - "3060:3060"
     networks:
       - mysql-phpmyadmin_mysql-internal
+      - traefik-public
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3060/').then(()=>process.exit(0)).catch(()=>process.exit(1))\""]
@@ -68,6 +69,7 @@ services:
     restart: unless-stopped
     networks:
       - mysql-phpmyadmin_mysql-internal
+      - traefik-public
 
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys;sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:3061/status',timeout=5).status < 500 else sys.exit(1)\""]
@@ -88,6 +90,12 @@ services:
         reservations:
           cpus: "0.35"
           memory: 768M
+
+networks:
+  mysql-phpmyadmin_mysql-internal:
+    external: false
+  traefik-public:
+    external: true
 
 secrets:
   DATA_ENCRYPTION_KEY:
