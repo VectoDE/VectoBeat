@@ -677,6 +677,10 @@ model Plugin {
   verified    Boolean  @default(false)
   enabled     Boolean  @default(true)
   configSchema Json?   @map("config_schema")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  requiresDedicatedShard Boolean @default(false) @map("requires_dedicated_shard")
+  sources     PluginSource[]
+  installations PluginInstallation[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -686,6 +690,32 @@ model Plugin {
   @@map("plugins")
 }
 
+enum PluginLanguage {
+  PYTHON
+  JAVASCRIPT
+  TYPESCRIPT
+  LUA
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model PluginSource {
+  id        String   @id @default(uuid())
+  pluginId  String   @map("plugin_id")
+  language  PluginLanguage
+  filename  String
+  content   String   @db.LongText
+  entryPoint Boolean @default(false) @map("entry_point")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  plugin    Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  @@map("plugin_sources")
+}
+
 model PluginInstallation {
   id        String   @id @default(uuid())
   pluginId  String   @map("plugin_id")
@@ -693,6 +723,8 @@ model PluginInstallation {
   config    Json?
   enabled   Boolean  @default(true)
   installedAt DateTime @default(now()) @map("installed_at")
+
+  plugin    Plugin   @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 
   @@unique([pluginId, guildId])
   @@index([guildId])
