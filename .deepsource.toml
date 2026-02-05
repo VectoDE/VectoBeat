@@ -11,7 +11,7 @@ channel = "stable"
 
   # Files and directories to include/exclude
   [analyzers.meta]
-  runtime_version = "18.20.0" # Node.js version
+  runtime_version = "20.x" # Node.js version
   include = ["frontend/**/*.{js,jsx,ts,tsx}"]
   exclude = ["frontend/.next", "frontend/node_modules", "frontend/out"]
 
@@ -25,9 +25,9 @@ enabled = true
 channel = "stable"
 
   [analyzers.meta]
-  runtime_version = "3.11" # Python version
-  include = ["backend/**/*.py"]
-  exclude = ["backend/.venv", "backend/__pycache__"]
+  runtime_version = "3.12" # Python version
+  include = ["bot/**/*.py"]
+  exclude = ["bot/.venv", "bot/__pycache__"]
 
   [analyzers.python]
   linters = ["pylint", "mypy", "flake8", "bandit"]
@@ -73,6 +73,6 @@ paths = [
   "frontend/.next/**",
   "frontend/out/**",
   "frontend/node_modules/**",
-  "backend/__pycache__/**",
-  "backend/.venv/**",
+  "bot/__pycache__/**",
+  "bot/.venv/**",
 ]
