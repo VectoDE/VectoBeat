@@ -14,7 +14,7 @@ test("sanitizeDomain normalizes input correctly", () => {
   
   // Protocol stripping
   assert.equal(sanitizeDomain("https://status.living-bots.net"), "status.living-bots.net")
-  assert.equal(sanitizeDomain("http://status.living-bots.net"), "status.living-bots.net")
+  assert.equal(sanitizeDomain("http://status.living-bots.net"), "status.living-bots.net") // NOSONAR
   
   // Path stripping
   assert.equal(sanitizeDomain("status.living-bots.net/dashboard"), "status.living-bots.net")
@@ -32,7 +32,7 @@ test("sanitizeDomain normalizes input correctly", () => {
 test("sanitizeUrl enforces https and valid structure", () => {
   assert.equal(sanitizeUrl("https://assets.example.com/logo.png"), "https://assets.example.com/logo.png")
   assert.equal(sanitizeUrl("assets.example.com/logo.png"), "https://assets.example.com/logo.png")
-  assert.equal(sanitizeUrl("http://insecure.com/image.jpg"), "http://insecure.com/image.jpg")
+  assert.equal(sanitizeUrl("http://insecure.com/image.jpg"), "http://insecure.com/image.jpg") // NOSONAR
   
   // Invalid URLs
   assert.equal(sanitizeUrl("not a url"), "")

@@ -18,10 +18,13 @@ RUN npx prisma generate
 
 # Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
 ARG BUILD_STRIPE_KEY="dummy_stripe_key"
-ARG DATA_ENCRYPTION_KEY
-ENV DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY}
-RUN STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npx prisma generate && \
-    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npm run build
+RUN --mount=type=secret,id=DATA_ENCRYPTION_KEY \
+    DATA_ENCRYPTION_KEY="$(cat /run/secrets/DATA_ENCRYPTION_KEY)" \
+    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" \
+    npx prisma generate && \
+    DATA_ENCRYPTION_KEY="$(cat /run/secrets/DATA_ENCRYPTION_KEY)" \
+    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" \
+    npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app

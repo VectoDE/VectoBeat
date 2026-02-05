@@ -3,9 +3,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      secrets:
+        - DATA_ENCRYPTION_KEY
       args:
         DATABASE_URL: ${DATABASE_URL}
-        DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY}
         BUILD_STRIPE_KEY: ${BUILD_STRIPE_KEY}
     env_file:
       - ./.env
@@ -86,3 +87,7 @@ services:
         reservations:
           cpus: "0.35"
           memory: 768M
+
+secrets:
+  DATA_ENCRYPTION_KEY:
+    environment: "DATA_ENCRYPTION_KEY"

@@ -10,10 +10,10 @@ def mock_config():
         mock.theme.color_warning = 0xFFFF00
         mock.theme.color_error = 0xFF0000
         mock.theme.footer_text = "Footer"
-        mock.theme.footer_icon_url = "http://footer.icon"
+        mock.theme.footer_icon_url = "https://footer.icon"
         mock.theme.author_name = "Author"
-        mock.theme.author_icon_url = "http://author.icon"
-        mock.theme.thumbnail_url = "http://thumb.url"
+        mock.theme.author_icon_url = "https://author.icon"
+        mock.theme.thumbnail_url = "https://thumb.url"
         yield mock
 
 def test_embed_factory_defaults(mock_config):
@@ -24,12 +24,12 @@ def test_embed_factory_defaults(mock_config):
     assert embed.description == "Desc"
     assert embed.color.value == 0x123456
     assert embed.footer.text == "Footer"
-    assert embed.footer.icon_url == "http://footer.icon"
+    assert embed.footer.icon_url == "https://footer.icon"
 
 def test_embed_factory_branding(mock_config):
     resolver = MagicMock(return_value={
         "accent": 0xABCDEF,
-        "embed_logo": "http://logo.url"
+        "embed_logo": "https://logo.url"
     })
     set_branding_resolver(resolver)
     
@@ -38,7 +38,7 @@ def test_embed_factory_branding(mock_config):
     
     resolver.assert_called_with(123)
     assert embed.color.value == 0xABCDEF
-    assert embed.thumbnail.url == "http://logo.url"
+    assert embed.thumbnail.url == "https://logo.url"
 
 def test_branding_sanitization(mock_config):
     # Test hex string sanitization

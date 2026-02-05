@@ -42,10 +42,11 @@ jobs:
           push: false
           load: true
           tags: vectobeat-frontend:ci
+          secrets: |
+            DATA_ENCRYPTION_KEY=${{ env.DATA_ENCRYPTION_KEY }}
           build-args: |
             DATABASE_URL=${{ env.DATABASE_URL }}
             BUILD_STRIPE_KEY=${{ env.BUILD_STRIPE_KEY }}
-            DATA_ENCRYPTION_KEY=${{ env.DATA_ENCRYPTION_KEY }}
 
       - name: Smoke test frontend container
         run: docker run --rm vectobeat-frontend:ci node -v

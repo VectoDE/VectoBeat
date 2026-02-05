@@ -134,9 +134,12 @@ const packSecretValue = (value: string) => {
 
 const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
   if (record.iv === "__plain__" && record.authTag === "__plain__") {
-    // Legacy support: We throw error to force migration or manual intervention, or we can just log error.
-    // The plan says "Remove Base64-Fallback Logic", so strict removal.
-    throw new Error("Insecure stored value detected. Rotation required.")
+    // SECURITY: Legacy plain-text fallback has been strictly removed to prevent auth bypass.
+    // We intentionally return null here instead of throwing, so that upstream callers
+    // simply see "no secret" rather than crashing or treating an empty list as "allow all".
+    // Or better: log a critical error but return null to signify "invalid secret".
+    console.error("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+    return null
   }
   return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
 }
