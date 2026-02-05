@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import math
 import socket
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
@@ -51,10 +52,8 @@ class FederationService:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
 
     async def _heartbeat_loop(self) -> None:
         # Frontend expects "Bearer <token>"

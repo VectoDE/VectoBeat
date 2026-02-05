@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 
@@ -32,10 +33,8 @@ class PredictiveHealthService:
         """Stop the monitoring loop."""
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
     def get_score(self) -> float:
@@ -70,8 +69,6 @@ class PredictiveHealthService:
                 self._last_score = self._calculate_score(lag)
                 self._update_status_label()
 
-        except asyncio.CancelledError:
-            pass
         except Exception as exc:
             self.logger.error("Health monitor crashed: %s", exc)
 

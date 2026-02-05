@@ -13,37 +13,20 @@ exclude_patterns = [
 [[analyzers]]
 name = "javascript"
 enabled = true
-channel = "stable"
 
   [analyzers.meta]
-  runtime_version = "20.x"
-  include = ["frontend/**/*.{js,jsx,ts,tsx}"]
-  exclude = ["frontend/.next", "frontend/node_modules", "frontend/out"]
-
-  [analyzers.javascript]
-  rules = "recommended"
+  environment = "nodejs"
+  include = ["frontend/**/*.js", "frontend/**/*.jsx", "frontend/**/*.ts", "frontend/**/*.tsx"]
+  exclude = ["frontend/.next/**", "frontend/node_modules/**", "frontend/out/**"]
 
 [[analyzers]]
 name = "python"
 enabled = true
-channel = "stable"
 
   [analyzers.meta]
-  runtime_version = "3.12"
+  runtime_version = "3.11.x"
   include = ["bot/**/*.py"]
-  exclude = ["bot/.venv", "bot/__pycache__"]
-
-  [analyzers.python]
-  linters = ["pylint", "mypy", "flake8", "bandit"]
-  security_checks = true
-
-[[analyzers]]
-name = "prisma"
-enabled = true
-channel = "stable"
-
-  [analyzers.meta]
-  include = ["frontend/prisma/schema.prisma"]
+  exclude = ["bot/.venv/**", "bot/__pycache__/**"]
 
 [[transformers]]
 name = "black"
@@ -54,4 +37,4 @@ name = "prettier"
 enabled = true
 
   [transformers.meta]
-  include = ["frontend/**/*.{js,jsx,ts,tsx,css,scss,json}"]
+  include = ["frontend/**/*.js", "frontend/**/*.jsx", "frontend/**/*.ts", "frontend/**/*.tsx", "frontend/**/*.css", "frontend/**/*.scss", "frontend/**/*.json"]

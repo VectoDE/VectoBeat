@@ -31,6 +31,7 @@ class DJPermissionManager:
         self.path = Path(path)
         self.max_audit = max_audit
         self._configs: Dict[str, DJGuildConfig] = {}
+        self._background_tasks = set()
 
     # ------------------------------------------------------------------ persistence
     async def start(self) -> None:
@@ -133,7 +134,9 @@ class DJPermissionManager:
         config.audit.append(entry)
         config.audit = config.audit[-self.max_audit:]
         # Use asyncio.create_task to save in background to avoid blocking
-        asyncio.create_task(self.save())
+        task = asyncio.create_task(self.save())
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
 
     def recent_actions(self, guild_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         config = self.config(guild_id)

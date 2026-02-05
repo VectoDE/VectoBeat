@@ -65,6 +65,23 @@ class ConnectionCommands(commands.Cog):
                     self.bot.logger.debug("Failed to refresh Lavalink nodes: %s", exc)
 
     # ------------------------------------------------------------------ commands
+    async def _configure_player(self, player: lavalink.DefaultPlayer, guild: discord.Guild, channel: discord.abc.GuildChannel) -> None:
+        """Apply guild-specific settings to the player after connection."""
+        player.text_channel_id = channel.id
+        manager = getattr(self.bot, "profile_manager", None)
+        settings_service = getattr(self.bot, "server_settings", None)
+
+        if manager:
+            profile = manager.get(guild.id)
+            player.store("autoplay_enabled", profile.autoplay)
+            player.store("announcement_style", profile.announcement_style)
+            desired_volume = (
+                settings_service.global_default_volume() if settings_service else None
+            ) or profile.default_volume
+
+            if player.volume != desired_volume:
+                await player.set_volume(desired_volume)
+
     @app_commands.command(name="connect", description="Connect VectoBeat to your current voice channel.")
     async def connect(self, inter: discord.Interaction) -> None:
         """Connect the bot to the caller's voice channel with diagnostics."""
@@ -128,20 +145,10 @@ class ConnectionCommands(commands.Cog):
                     embed=factory.error("Unable to join the voice channel right now. Please try again shortly."),
                     ephemeral=True,
                 )
+            
             player = self._find_player(self.bot, inter.guild.id)
             if player:
-                player.text_channel_id = getattr(inter.channel, "id", None)
-                manager = getattr(self.bot, "profile_manager", None)
-                settings_service = getattr(self.bot, "server_settings", None)
-                if manager:
-                    profile = manager.get(inter.guild.id)
-                    player.store("autoplay_enabled", profile.autoplay)
-                    player.store("announcement_style", profile.announcement_style)
-                    desired_volume = (
-                        settings_service.global_default_volume() if settings_service else None
-                    ) or profile.default_volume
-                    if player.volume != desired_volume:
-                        await player.set_volume(desired_volume)
+                await self._configure_player(player, inter.guild, inter.channel)
 
             connection_details = f"Joined voice channel:\n{self._channel_info(channel)}"
             embed = factory.success("Connected", connection_details)
