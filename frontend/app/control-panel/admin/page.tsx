@@ -217,47 +217,12 @@ const initialForm = {
 }
 
 function stripMarkdown(content: string): string {
-  let result = ""
-  let i = 0
-  const len = content.length
-
-  while (i < len) {
-    if (content.startsWith("```", i)) {
-      i += 3
-      while (i < len && !content.startsWith("```", i)) i++
-      i += 3
-      result += " "
-      continue
-    }
-    if (content[i] === "`") {
-      i++
-      while (i < len && content[i] !== "`") i++
-      i++
-      result += " "
-      continue
-    }
-    if (content[i] === "<") {
-      while (i < len && content[i] !== ">") i++
-      i++
-      result += " "
-      continue
-    }
-    if (content[i] === "[") {
-      let endBracket = content.indexOf("]", i)
-      let startParen = content.indexOf("(", endBracket)
-      let endParen = content.indexOf(")", startParen)
-      if (endBracket !== -1 && startParen !== -1 && endParen !== -1) {
-        result += content.slice(i + 1, endBracket)
-        i = endParen + 1
-        continue
-      }
-    }
-    result += content[i]
-    i++
-  }
-
-  result = result.replace(/[#>*_~]/g, " ")
-  return result
+  return content
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+    .replace(/[#>*_~]/g, " ")
 }
 
 const estimateReadTime = (content: string | undefined | null) => {

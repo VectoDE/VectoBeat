@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import re
-import secrets
 from types import SimpleNamespace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple, TYPE_CHECKING

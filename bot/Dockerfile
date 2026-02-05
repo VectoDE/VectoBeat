@@ -22,7 +22,8 @@ COPY bot/config.yml ./config.yml
 ENV CONFIG_PATH=/app/config.yml
 
 FROM base AS production
-COPY . /app
+# Remove recursive copy to avoid including sensitive/unnecessary files (S6470)
+# All required files are already copied in the base stage.
 RUN chown -R vectode:vectode /app
 USER vectode
 CMD ["python", "-m", "src.main"]
