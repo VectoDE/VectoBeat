@@ -7,7 +7,7 @@ services:
         - DATA_ENCRYPTION_KEY
       args:
         DATABASE_URL: ${DATABASE_URL}
-        BUILD_STRIPE_KEY: ${BUILD_STRIPE_KEY}
+        BUILD_STRIPE_KEY: ${STRIPE_SECRET_KEY}
     env_file:
       - ./.env
     environment:
