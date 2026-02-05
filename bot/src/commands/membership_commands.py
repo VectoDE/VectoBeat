@@ -23,7 +23,7 @@ def _settings(bot: commands.Bot) -> ServerSettingsService:
 class MembershipCommands(commands.Cog):
     """Expose membership visibility + checkout flows directly in Discord."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._api_base = (CONFIG.control_panel_api.base_url or "http://127.0.0.1:3000").rstrip("/")
         timeout = max(6, CONFIG.control_panel_api.timeout_seconds)
@@ -36,7 +36,7 @@ class MembershipCommands(commands.Cog):
             self._http_session = aiohttp.ClientSession(timeout=self._http_timeout)
         return self._http_session
 
-    async def cog_unload(self):
+    async def cog_unload(self) -> None:
         if self._http_session and not self._http_session.closed:
             await self._http_session.close()
             self._http_session = None
@@ -89,8 +89,8 @@ class MembershipCommands(commands.Cog):
                 raise RuntimeError(data.get("error") or f"Checkout start failed ({resp.status}).")
             return data.get("url")
 
-    @membership.command(name="status", description="Show the current VectoBeat plan for this server.")
-    async def status(self, inter: discord.Interaction):
+    @membership.command(name="status", description="Show the current plan for this server.")
+    async def status(self, inter: discord.Interaction) -> None:
         if not inter.guild:
             return await inter.response.send_message("This command only works inside a server.", ephemeral=True)
         await inter.response.defer(ephemeral=True, thinking=True)
@@ -143,7 +143,7 @@ class MembershipCommands(commands.Cog):
         tier: app_commands.Choice[str],
         billing_cycle: app_commands.Choice[str],
         email: str,
-    ):
+    ) -> None:
         if not inter.guild:
             return await inter.response.send_message("Checkout only works inside a Discord server.", ephemeral=True)
         if "@" not in email or "." not in email:
@@ -185,5 +185,5 @@ class MembershipCommands(commands.Cog):
         await inter.followup.send(embed=embed, view=view, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(MembershipCommands(bot))

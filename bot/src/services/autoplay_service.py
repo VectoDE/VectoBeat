@@ -1,10 +1,9 @@
 """Autoplay recommendation service leveraging Redis history."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import json
+import logging
 import random
 import ssl
 import time
@@ -14,6 +13,8 @@ import lavalink
 import redis.asyncio as redis
 from redis import RedisError
 
+from src.configs.schema import RedisConfig
+
 
 class AutoplayError(RuntimeError):
     """Raised when autoplay recommendation or storage fails."""
@@ -22,7 +23,7 @@ class AutoplayError(RuntimeError):
 class AutoplayService:
     """Persist listening history and surface recommendations per guild."""
 
-    def __init__(self, config, *, logger=None):
+    def __init__(self, config: RedisConfig, *, logger: Optional[logging.Logger] = None) -> None:
         self.config = config
         self.logger = logger
         ssl_enabled = bool(getattr(config, "ca_path", None))

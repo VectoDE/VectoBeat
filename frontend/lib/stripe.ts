@@ -5,9 +5,9 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-11-17.clover",
+  apiVersion: "2026-01-28.clover" as any,
   appInfo: {
     name: "VectoBeat",
-    version: "2.3.2",
+    version: process.env.NEXT_PUBLIC_APP_VERSION || "2.3.2",
   },
 })

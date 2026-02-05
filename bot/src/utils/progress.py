@@ -18,7 +18,7 @@ class SlashProgress:
         title: str,
         *,
         ephemeral: bool = True,
-    ):
+    ) -> None:
         self.interaction: discord.Interaction = interaction
         self.title = title
         self.ephemeral = ephemeral

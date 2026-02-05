@@ -6,7 +6,7 @@ import { createSubscriptionsHandlers } from "@/app/api/subscriptions/route"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 
-const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null })
+const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null, user: null })
 const failIfCalled = () => {
   throw new Error("Handler should not hit data layer when unauthorized")
 }

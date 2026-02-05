@@ -6,6 +6,7 @@ import {
   getConciergeUsage,
   getServerSettings,
   getUserSubscriptions,
+  type SubscriptionSummary,
 } from "@/lib/db"
 import type { MembershipTier } from "@/lib/memberships"
 import { sendNotificationEmail } from "@/lib/mailer"
@@ -46,7 +47,7 @@ const resolveMembershipForGuild = async (
 ) => {
   const subscriptions = await fetchUserSubscriptions(discordId)
   const membership = subscriptions.find(
-    (sub) => sub.discordServerId === guildId && sub.status === "active",
+    (sub: SubscriptionSummary) => sub.discordServerId === guildId && sub.status === "active",
   )
   if (membership) {
     return { tier: membership.tier as MembershipTier, ok: true as const }

@@ -24,25 +24,25 @@ branding:
   guild_overrides: {} # future: per-guild brand overrides
 
 lavalink:
-  host: "lavalink"
-  port: 2333
-  password: "localpass"
-  https: false
-  name: "main"
-  region: "eu"
+  host: "${LAVALINK_HOST:lavalink}"
+  port: ${LAVALINK_PORT:2333}
+  password: "${LAVALINK_PASSWORD:default_password}"
+  https: ${LAVALINK_HTTPS:false}
+  name: "${LAVALINK_NAME:main}"
+  region: "${LAVALINK_REGION:eu}"
   # Deprecated single-node fallback. Prefer configuring multiple nodes via ``lavalink_nodes`` below.
 
 lavalink_nodes:
-  - host: "lavalink"
-    port: 2333
-    password: "localpass"
-    https: false
-    name: "main"
-    region: "eu"
+  - host: "${LAVALINK_HOST:lavalink}"
+    port: ${LAVALINK_PORT:2333}
+    password: "${LAVALINK_PASSWORD:default_password}"
+    https: ${LAVALINK_HTTPS:false}
+    name: "${LAVALINK_NAME:main}"
+    region: "${LAVALINK_REGION:eu}"
 
 spotify:  # Optional: Für Spotify Support
-  client_id: ""  # Setze deinen Spotify Client ID
-  client_secret: ""  # Setze deinen Spotify Client Secret
+  client_id: "${SPOTIFY_CLIENT_ID}"  # Setze deinen Spotify Client ID
+  client_secret: "${SPOTIFY_CLIENT_SECRET}"  # Setze deinen Spotify Client Secret
 
 limits:
   queue_max_length: 500
@@ -64,11 +64,11 @@ crossfade:
 
 redis:
   # Redis playlist persistence backend
-  host: "45.84.196.19"
-  port: 32768
-  password: ""
-  db: 0
-  ca_path: ""
+  host: "${REDIS_HOST:redis}"
+  port: ${REDIS_PORT:6379}
+  password: "${REDIS_PASSWORD:default_password}"
+  db: ${REDIS_DB:0}
+  ca_path: "${REDIS_CA_PATH}"
 
 metrics:
   enabled: true
@@ -80,19 +80,19 @@ status_api:
   enabled: true
   host: "0.0.0.0"
   port: 3051
-  api_key: ""
+  api_key: "${STATUS_API_KEY}"
   cache_ttl_seconds: 5
   push_endpoint: "http://localhost:3050/api/bot/metrics"
-  push_token: ""
+  push_token: "${STATUS_API_PUSH_TOKEN}"
   event_endpoint: "http://localhost:3050/api/bot/events"
-  event_token: ""
+  event_token: "${STATUS_API_EVENT_TOKEN}"
   usage_endpoint: "http://localhost:3050/api/bot/usage"
-  usage_token: ""
+  usage_token: "${STATUS_API_USAGE_TOKEN}"
 
 control_panel_api:
   enabled: true
   base_url: "http://localhost:3050"
-  api_key: "dev_control_panel_api_key"
+  api_key: "${CONTROL_PANEL_API_KEY:dev_control_panel_api_key}"
   timeout_seconds: 8
   cache_ttl_seconds: 120
 

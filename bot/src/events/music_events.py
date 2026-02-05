@@ -1,17 +1,15 @@
 """Music related event listeners used to broadcast playback updates."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import discord
 import lavalink
 from discord.ext import commands
-from lavalink.events import QueueEndEvent, TrackEndEvent, TrackStartEvent
+from lavalink.events import QueueEndEvent, TrackEndEvent, TrackStartEvent, TrackStuckEvent, TrackExceptionEvent
 
 from src.configs.settings import CONFIG
 from src.services.autoplay_service import AutoplayError
@@ -20,29 +18,35 @@ from src.services.server_settings_service import GuildSettingsState
 from src.utils.embeds import EmbedFactory
 from src.utils.tracks import source_name
 
+if TYPE_CHECKING:
+    from src.services.queue_telemetry_service import QueueTelemetryService
+    from src.services.queue_sync_service import QueueSyncService
+    from src.services.alert_service import AlertService
+    from src.services.analytics_export_service import AnalyticsExportService
+
 logger = logging.getLogger(__name__)
 
 
 class MusicEvents(commands.Cog):
     """React to Lavalink events and emit informative embeds."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._fade_tasks: dict[int, asyncio.Task] = {}
+        self._fade_tasks: Dict[int, asyncio.Task] = {}
         if hasattr(bot, "lavalink"):
             bot.lavalink.add_event_hooks(self)
         self._queue_copilot = getattr(bot, "queue_copilot", None)
 
-    def _telemetry(self):
+    def _telemetry(self) -> Optional[QueueTelemetryService]:
         return getattr(self.bot, "queue_telemetry", None)
 
-    def _queue_sync_service(self):
+    def _queue_sync_service(self) -> Optional[QueueSyncService]:
         return getattr(self.bot, "queue_sync", None)
 
-    def _alert_service(self):
+    def _alert_service(self) -> Optional[AlertService]:
         return getattr(self.bot, "alerts", None)
 
-    def _analytics_export_service(self):
+    def _analytics_export_service(self) -> Optional[AnalyticsExportService]:
         return getattr(self.bot, "analytics_export", None)
 
     async def _publish_queue_state(
@@ -70,7 +74,7 @@ class MusicEvents(commands.Cog):
         if service:
             await service.incident_alert(guild_id, message, priority=priority, **extras)
 
-    async def _notify_capacity_block(self, player: Optional[VectoPlayer], capacity) -> None:
+    async def _notify_capacity_block(self, player: Optional[VectoPlayer], capacity: Any) -> None:
         if not player:
             return
         await self._moderator_alert(
@@ -96,7 +100,7 @@ class MusicEvents(commands.Cog):
         await service.emit(event=event, guild_id=player.guild_id, shard_id=shard_id, payload=payload)
 
     @staticmethod
-    def _queue_metrics(player: VectoPlayer) -> Dict[str, Any]:
+    def _queue_metrics(player: VectoPlayer) -> Dict[str, int]:
         queue = list(getattr(player, "queue", []))
         queue_length = len(queue)
         queue_duration = 0
@@ -105,7 +109,7 @@ class MusicEvents(commands.Cog):
             queue_duration += max(0, int(duration))
         return {"queue_length": queue_length, "queue_duration_ms": queue_duration}
 
-    def _requester_name(self, guild: discord.Guild | None, track: lavalink.AudioTrack) -> Optional[str]:
+    def _requester_name(self, guild: Optional[discord.Guild], track: lavalink.AudioTrack) -> Optional[str]:
         """Resolve the display name for the requester stored on the track metadata."""
         requester_id = getattr(track, "requester", None)
         if not requester_id:
@@ -199,7 +203,7 @@ class MusicEvents(commands.Cog):
                 return
             await asyncio.sleep(delay)
 
-    async def _schedule_fade_out(self, player: VectoPlayer, track: lavalink.AudioTrack):
+    async def _schedule_fade_out(self, player: VectoPlayer, track: lavalink.AudioTrack) -> None:
         """Wait until the end of the track and fade out before transition."""
         duration = getattr(track, "duration", 0) or 0
         fade_ms = min(CONFIG.crossfade.duration_ms, max(0, duration))
@@ -215,10 +219,39 @@ class MusicEvents(commands.Cog):
         await self._ramp_volume(player, start_volume, floor)
         player.store("crossfade_restore_volume", start_volume)
 
-    @lavalink.listener()
-    async def on_track_start(self, event: TrackStartEvent):
+    async def _apply_adaptive_mastering(self, player: VectoPlayer) -> None:
+        """Apply adaptive mastering EQ if enabled in guild profile."""
+        profile_manager = getattr(self.bot, "profile_manager", None)
+        if not profile_manager:
+            return
+
+        profile = profile_manager.get(player.guild_id)
+        enabled = getattr(profile, "adaptive_mastering", False)
+
+        cached = player.fetch("adaptive_mastering_enabled")
+        if cached == enabled:
+            return
+
+        player.store("adaptive_mastering_enabled", enabled)
+        try:
+            if enabled:
+                # "Mastering" EQ: Slight V-shape for clarity and punch
+                bands = [
+                    (0, 0.15), (1, 0.1), (2, 0.05),   # Lows
+                    (12, 0.05), (13, 0.1), (14, 0.15) # Highs
+                ]
+                await player.set_filter(lavalink.Equalizer(bands=bands))
+                logger.debug("Applied adaptive mastering for guild %s", player.guild_id)
+            else:
+                await player.remove_filter(lavalink.Equalizer)
+                logger.debug("Removed adaptive mastering for guild %s", player.guild_id)
+        except Exception as exc:
+            logger.warning("Failed to toggle adaptive mastering for guild %s: %s", player.guild_id, exc)
+
+    @lavalink.listener(TrackStartEvent)
+    async def on_track_start(self, event: TrackStartEvent) -> None:
         """Announce when a new track begins, unless suppressed by manual play."""
-        if not isinstance(event, TrackStartEvent) or not getattr(event, "player", None):
+        if not getattr(event, "player", None):
             return
 
         player: VectoPlayer = event.player  # type: ignore[assignment]
@@ -228,6 +261,7 @@ class MusicEvents(commands.Cog):
 
         settings_state = await self._get_server_settings_state(player)
         await self._apply_playback_quality(player, settings_state, fetch_if_missing=False)
+        await self._apply_adaptive_mastering(player)
         crossfade_enabled = self._crossfade_enabled(settings_state)
         previous_crossfade = bool(player.fetch("auto_crossfade_active"))
         player.store("auto_crossfade_active", crossfade_enabled)
@@ -367,10 +401,26 @@ class MusicEvents(commands.Cog):
             {"title": track.title, "duration": getattr(track, "duration", 0)},
         )
 
-    @lavalink.listener()
-    async def on_queue_end(self, event: QueueEndEvent):
+    @lavalink.listener(TrackStuckEvent)
+    async def on_track_stuck(self, event: TrackStuckEvent) -> None:
+        if not getattr(event, "player", None):
+            return
+        logger.warning("Track stuck: %s", event.track.title)
+        player: VectoPlayer = event.player  # type: ignore[assignment]
+        await player.skip()
+
+    @lavalink.listener(TrackExceptionEvent)
+    async def on_track_exception(self, event: TrackExceptionEvent) -> None:
+        if not getattr(event, "player", None):
+            return
+        logger.error("Track exception: %s", event.message)
+        player: VectoPlayer = event.player  # type: ignore[assignment]
+        await player.skip()
+
+    @lavalink.listener(QueueEndEvent)
+    async def on_queue_end(self, event: QueueEndEvent) -> None:
         """Notify the channel when the queue has been exhausted."""
-        if not isinstance(event, QueueEndEvent) or not getattr(event, "player", None):
+        if not getattr(event, "player", None):
             return
 
         player: VectoPlayer = event.player  # type: ignore[assignment]
@@ -550,7 +600,7 @@ class MusicEvents(commands.Cog):
         )
 
     @lavalink.listener()
-    async def on_track_end(self, event: TrackEndEvent):
+    async def on_track_end(self, event: TrackEndEvent) -> None:
         """Report load failures so users understand why playback stopped."""
         if not isinstance(event, TrackEndEvent) or not getattr(event, "player", None):
             return

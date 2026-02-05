@@ -23,7 +23,7 @@ class LatencySnapshot:
         shards: Dict[int, float],
         loop_lag_ms: Optional[float],
         updated_at: float,
-    ):
+    ) -> None:
         self.best = best
         self.average = average
         self.p95 = p95
@@ -41,7 +41,7 @@ class LatencyMonitor:
         *,
         sample_interval: float = 2.0,
         max_samples: int = 60,
-    ):
+    ) -> None:
         self.bot = bot
         self.sample_interval = sample_interval
         self._latency_samples: Deque[float] = deque(maxlen=max_samples)

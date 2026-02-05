@@ -7,6 +7,7 @@ import Link from "next/link"
 import Image from "next/image"
 import type { UserRole } from "@/lib/db"
 import appPackage from "../../../package.json"
+import { AdminPluginManager } from "@/components/admin-plugin-manager"
 
 interface BlogPost {
   id: string
@@ -33,6 +34,7 @@ type AdminTabKey =
   | "subscriptions"
   | "billing"
   | "apiKeys"
+  | "plugins"
   | "forum"
 
 type NewsletterSubscriber = {
@@ -199,6 +201,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "billing", label: "Billings", description: "Track invoices and manual billing workflows" },
   { key: "users", label: "Users", description: "Manage member accounts and access levels" },
   { key: "apiKeys", label: "API Keys", description: "Monitor system credentials and rotate secrets safely" },
+  { key: "plugins", label: "Plugins", description: "Manage marketplace plugins and server shard requirements" },
   { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
@@ -214,47 +217,13 @@ const initialForm = {
 }
 
 function stripMarkdown(content: string): string {
-  let result = ""
-  let i = 0
-  const len = content.length
-
-  while (i < len) {
-    if (content.startsWith("```", i)) {
-      i += 3
-      while (i < len && !content.startsWith("```", i)) i++
-      i += 3
-      result += " "
-      continue
-    }
-    if (content[i] === "`") {
-      i++
-      while (i < len && content[i] !== "`") i++
-      i++
-      result += " "
-      continue
-    }
-    if (content[i] === "<") {
-      while (i < len && content[i] !== ">") i++
-      i++
-      result += " "
-      continue
-    }
-    if (content[i] === "[") {
-      let endBracket = content.indexOf("]", i)
-      let startParen = content.indexOf("(", endBracket)
-      let endParen = content.indexOf(")", startParen)
-      if (endBracket !== -1 && startParen !== -1 && endParen !== -1) {
-        result += content.slice(i + 1, endBracket)
-        i = endParen + 1
-        continue
-      }
-    }
-    result += content[i]
-    i++
-  }
-
-  result = result.replace(/[#>*_~]/g, " ")
-  return result
+  // Use non-greedy matchers and limit repetition to prevent ReDoS
+  return content
+    .replaceAll(/```[\s\S]{0,5000}?```/g, " ") // Limit code block size
+    .replaceAll(/`[^`\n]{0,200}`/g, " ") // Limit inline code size, no newlines
+    .replaceAll(/<[^>\n]{0,200}>/g, " ") // Limit tag size, no newlines
+    .replaceAll(/\[([^\]\n]{0,200})\]\([^\)\n]{0,200}\)/g, "$1") // Limit link text/url size
+    .replaceAll(/[#>*_~]/g, " ")
 }
 
 const estimateReadTime = (content: string | undefined | null) => {
@@ -3751,6 +3720,9 @@ export default function AdminControlPanelPage() {
             </section>
           </>
         )
+      }
+      case "plugins": {
+        return <AdminPluginManager />
       }
       case "forum": {
         return (

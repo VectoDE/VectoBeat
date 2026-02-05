@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import discord
+from discord.ext import commands
 
 from src.configs.settings import CONFIG
 
@@ -24,7 +25,7 @@ def _scope_ids(scope: str) -> list[int]:
     return mapping.get(scope, [])
 
 
-def has_scope(user: discord.abc.User | discord.Member | None, scope: str) -> bool:
+def has_scope(user: Optional[Union[discord.abc.User, discord.Member]], scope: str) -> bool:
     """Return True if ``user`` is in the configured allow-list for ``scope``."""
     if user is None:
         return False
@@ -37,7 +38,7 @@ def has_scope(user: discord.abc.User | discord.Member | None, scope: str) -> boo
 
 
 def log_sensitive_action(
-    bot: Any,
+    bot: commands.Bot | discord.Client,
     *,
     scope: str,
     action: str,

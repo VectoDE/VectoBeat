@@ -20,6 +20,7 @@ jobs:
       # Prefer secret value, fall back to repo/environment variable or runner env for local debugging.
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       BUILD_STRIPE_KEY: ${{ secrets.BUILD_STRIPE_KEY || 'dummy_stripe_key' }}
+      DATA_ENCRYPTION_KEY: ${{ secrets.DATA_ENCRYPTION_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,6 +42,8 @@ jobs:
           push: false
           load: true
           tags: vectobeat-frontend:ci
+          secrets: |
+            DATA_ENCRYPTION_KEY=${{ env.DATA_ENCRYPTION_KEY }}
           build-args: |
             DATABASE_URL=${{ env.DATABASE_URL }}
             BUILD_STRIPE_KEY=${{ env.BUILD_STRIPE_KEY }}

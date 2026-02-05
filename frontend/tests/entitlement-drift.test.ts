@@ -51,6 +51,8 @@ test("flags entitlement exceedance for free guild with queue sync and API tokens
           lastFour: "abcd",
           createdAt: new Date().toISOString(),
           scopes: ["queue.read"],
+          status: "active",
+          leakDetected: false,
         },
       ],
     },

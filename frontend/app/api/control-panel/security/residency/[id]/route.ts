@@ -20,9 +20,10 @@ const buildSignature = (payload: string) => {
 export async function GET(
   request: NextRequest,
   context: {
-    params: { id: string }
+    params: Promise<{ id: string }>
   },
 ) {
+  const { id } = await context.params
   const guildId = request.nextUrl.searchParams.get("guildId")?.trim()
   const discordId = request.nextUrl.searchParams.get("discordId")?.trim()
   if (!guildId || !discordId) {
@@ -38,7 +39,7 @@ export async function GET(
     return NextResponse.json({ error: "plan_required" }, { status: 403 })
   }
 
-  const proof = DATA_RESIDENCY_PROOFS.find((entry) => entry.id === context.params.id)
+  const proof = DATA_RESIDENCY_PROOFS.find((entry) => entry.id === id)
   if (!proof) {
     return NextResponse.json({ error: "not_found" }, { status: 404 })
   }

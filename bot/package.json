@@ -1,0 +1,6 @@
+{
+    "name": "vectobeat-bot",
+    "version": "2.3.2",
+    "description": "Discord music bot for VectoBeat",
+    "private": true
+}

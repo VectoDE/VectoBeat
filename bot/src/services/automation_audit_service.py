@@ -16,7 +16,7 @@ GROWTH_ENABLED_TIERS = {"growth", "scale", "enterprise"}
 class AutomationAuditService:
     """Forward automation actions to the control panel for auditing."""
 
-    def __init__(self, config: ControlPanelAPIConfig, settings: ServerSettingsService):
+    def __init__(self, config: ControlPanelAPIConfig, settings: ServerSettingsService) -> None:
         self.config = config
         self.settings = settings
         self.enabled = bool(config.enabled and config.base_url)
@@ -45,7 +45,7 @@ class AutomationAuditService:
         action: str,
         category: str,
         description: str,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[dict[str, Any]] = None,
         shard_id: Optional[int] = None,
     ) -> None:
         """Push an automation action for auditing."""

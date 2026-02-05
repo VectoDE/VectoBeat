@@ -18,7 +18,7 @@ def _module_to_category(module: Optional[str]) -> str:
 
 
 class HelpPaginationView(discord.ui.View):
-    def __init__(self, pages: Sequence[discord.Embed], categories: Sequence[str]):
+    def __init__(self, pages: Sequence[discord.Embed], categories: Sequence[str]) -> None:
         super().__init__(timeout=180)
         self.pages = list(pages)
         self.index = 0
@@ -29,9 +29,9 @@ class HelpPaginationView(discord.ui.View):
         # Category selector to jump directly to a section.
         if categories:
             options = [discord.SelectOption(label=cat, value=str(i)) for i, cat in enumerate(categories)]
-            select = discord.ui.Select(placeholder="Jump to category", options=options, min_values=1, max_values=1)
+            select = discord.ui.Select(placeholder="Kategorie auswählen", options=options, min_values=1, max_values=1)
 
-            async def _on_select(interaction: discord.Interaction):
+            async def _on_select(interaction: discord.Interaction) -> None:
                 try:
                     target = int(select.values[0])
                     self.index = max(0, min(target, len(self.pages) - 1))
@@ -46,15 +46,15 @@ class HelpPaginationView(discord.ui.View):
         embed = self.pages[self.index]
         await interaction.response.edit_message(embed=embed, view=self)
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
-    async def previous_button(self, interaction: discord.Interaction, _: discord.ui.Button):
+    @discord.ui.button(label="Zurück", style=discord.ButtonStyle.secondary)
+    async def previous_button(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
         if not self.pages:
             return
         self.index = (self.index - 1) % len(self.pages)
         await self._update(interaction)
 
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.secondary)
-    async def next_button(self, interaction: discord.Interaction, _: discord.ui.Button):
+    @discord.ui.button(label="Weiter", style=discord.ButtonStyle.secondary)
+    async def next_button(self, interaction: discord.Interaction, _: discord.ui.Button) -> None:
         if not self.pages:
             return
         self.index = (self.index + 1) % len(self.pages)
@@ -69,7 +69,7 @@ class HelpPaginationView(discord.ui.View):
 class HelpCommands(commands.Cog):
     """Dynamic help command that introspects registered slash commands."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     def _flatten_command(
@@ -92,7 +92,7 @@ class HelpCommands(commands.Cog):
         yield (category, full_name, description)
 
     def _build_pages(self) -> List[discord.Embed]:
-        entries: list[Tuple[str, str, str]] = []
+        entries: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
             entries.extend(self._flatten_command(command))
 
@@ -124,7 +124,7 @@ class HelpCommands(commands.Cog):
 
     def _command_details_embed(self, name: str) -> Optional[discord.Embed]:
         """Return a detailed embed for a specific command name."""
-        targets = []
+        targets: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
             targets.extend(self._flatten_command(command))
         lookup = {full.lower(): (category, desc) for category, full, desc in targets}
@@ -138,7 +138,7 @@ class HelpCommands(commands.Cog):
             return None
 
         cmd_obj = next((c for c in self.bot.tree.get_commands() if match[0].lstrip("/") == c.qualified_name), None)
-        parameters = []
+        parameters: List[str] = []
         if cmd_obj:
             for param in cmd_obj.parameters:
                 param_name = f"<{param.name}>"
@@ -160,7 +160,7 @@ class HelpCommands(commands.Cog):
 
     @app_commands.command(name="help", description="Show available commands grouped by category.")
     @app_commands.describe(command="Optional: show details for a specific command")
-    async def help(self, interaction: discord.Interaction, command: Optional[str] = None):
+    async def help(self, interaction: discord.Interaction, command: Optional[str] = None) -> None:
         if command:
             detail = self._command_details_embed(command)
             if not detail:
@@ -172,13 +172,13 @@ class HelpCommands(commands.Cog):
             return
 
         pages = self._build_pages()
-        categories = [page.title for page in pages]
+        categories = [page.title or "General" for page in pages]
         view = HelpPaginationView(pages, categories)
         await interaction.response.send_message(embed=pages[0], view=view, ephemeral=True)
 
     @help.autocomplete("command")
-    async def help_autocomplete(self, interaction: discord.Interaction, current: str):
-        entries: list[Tuple[str, str, str]] = []
+    async def help_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
+        entries: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
             entries.extend(self._flatten_command(command))
         values = [name for _, name, _ in entries]
@@ -187,5 +187,5 @@ class HelpCommands(commands.Cog):
         return [app_commands.Choice(name=v, value=v) for v in filtered]
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(HelpCommands(bot))

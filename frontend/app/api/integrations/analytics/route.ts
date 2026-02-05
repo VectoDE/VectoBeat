@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions } from "@/lib/db"
+import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import { getAnalyticsOverview } from "@/lib/metrics"
 import type { MembershipTier } from "@/lib/memberships"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   const subscriptions = await getUserSubscriptions(discordId)
-  const hasIntegrationAccess = subscriptions.some((sub) => {
+  const hasIntegrationAccess = subscriptions.some((sub: SubscriptionSummary) => {
     const plan = getPlanCapabilities(sub.tier as MembershipTier)
     return plan.serverSettings.exportWebhooks
   })

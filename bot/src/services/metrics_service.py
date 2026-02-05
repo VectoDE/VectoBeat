@@ -1,29 +1,29 @@
 """Prometheus metrics exporter and helper utilities."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
 import logging
 from typing import Optional
 
+import discord
 import lavalink
 from prometheus_client import CollectorRegistry, Counter, Gauge, start_http_server
 
+from src.configs.schema import MetricsConfig
 from src.services.health_service import HealthState
 
 
 class MetricsService:
     """Continuously export bot metrics for Prometheus scraping."""
 
-    def __init__(self, bot, config):
+    def __init__(self, bot: discord.Client, config: MetricsConfig) -> None:
         self.bot = bot
         self.config = config
         self.enabled = getattr(config, "enabled", False)
         self.logger = logging.getLogger("VectoBeat.Metrics")
         self.registry = CollectorRegistry()
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[None]] = None
         self._started = False
 
         self.uptime_gauge = Gauge("vectobeat_uptime_seconds", "Bot uptime in seconds", registry=self.registry)

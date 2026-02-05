@@ -69,7 +69,6 @@ export default async function ForumPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         className="sr-only"
-        aria-hidden="true"
       />
 
       <section className="relative w-full pt-28 pb-12 px-4 overflow-hidden">

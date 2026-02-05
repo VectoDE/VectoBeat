@@ -26,7 +26,7 @@ class QueueCopilotService:
         "enterprise": None,
     }
 
-    def __init__(self, settings: ServerSettingsService):
+    def __init__(self, settings: ServerSettingsService) -> None:
         self.settings = settings
         self.logger = logging.getLogger("VectoBeat.QueueCopilot")
 
@@ -41,7 +41,7 @@ class QueueCopilotService:
     def _dedupe_queue(self, player: lavalink.DefaultPlayer) -> int:
         queue = list(getattr(player, "queue", []))
         seen = set()
-        deduped: List[Any] = []
+        deduped: List[lavalink.AudioTrack] = []
         removed = 0
         for track in queue:
             identifier = getattr(track, "identifier", None) or getattr(track, "uri", None)
@@ -62,7 +62,7 @@ class QueueCopilotService:
             return 0
 
         queue = list(getattr(player, "queue", []))
-        kept: List[Any] = []
+        kept: List[lavalink.AudioTrack] = []
         trimmed = 0
         for track in queue:
             duration = getattr(track, "duration", 0) or 0
@@ -82,8 +82,8 @@ class QueueCopilotService:
         if not queue:
             return 0, 0
 
-        reserved: List[Any] = []
-        spill: List[Any] = []
+        reserved: List[lavalink.AudioTrack] = []
+        spill: List[lavalink.AudioTrack] = []
         seen_requesters = set()
         moves = 0
 
@@ -109,7 +109,7 @@ class QueueCopilotService:
         return len(reserved), moves
 
     async def on_tracks_added(
-        self, player: lavalink.DefaultPlayer, added_tracks: Iterable[Any], guild_id: Optional[int] = None
+        self, player: lavalink.DefaultPlayer, added_tracks: Iterable[lavalink.AudioTrack], guild_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Apply hygiene immediately after tracks are added."""
         guild_id = guild_id or getattr(player, "guild_id", None) or 0
@@ -131,7 +131,7 @@ class QueueCopilotService:
             summary["actions"] = actions
         return summary
 
-    async def on_track_start(self, player: lavalink.DefaultPlayer, track: Any) -> None:
+    async def on_track_start(self, player: lavalink.DefaultPlayer, _track: lavalink.AudioTrack) -> None:
         """Smooth volume and re-run hygiene when a track starts."""
         tier = await self._tier(getattr(player, "guild_id", 0))
         self._dedupe_queue(player)

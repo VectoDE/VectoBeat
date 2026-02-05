@@ -1,7 +1,5 @@
 """Voice connection command set."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
@@ -67,13 +65,31 @@ class ConnectionCommands(commands.Cog):
                     self.bot.logger.debug("Failed to refresh Lavalink nodes: %s", exc)
 
     # ------------------------------------------------------------------ commands
+    async def _configure_player(self, player: lavalink.DefaultPlayer, guild: discord.Guild, channel: discord.abc.GuildChannel) -> None:
+        """Apply guild-specific settings to the player after connection."""
+        player.text_channel_id = channel.id
+        manager = getattr(self.bot, "profile_manager", None)
+        settings_service = getattr(self.bot, "server_settings", None)
+
+        if manager:
+            profile = manager.get(guild.id)
+            player.store("autoplay_enabled", profile.autoplay)
+            player.store("announcement_style", profile.announcement_style)
+            desired_volume = (
+                settings_service.global_default_volume() if settings_service else None
+            ) or profile.default_volume
+
+            if player.volume != desired_volume:
+                await player.set_volume(desired_volume)
+
     @app_commands.command(name="connect", description="Connect VectoBeat to your current voice channel.")
-    async def connect(self, inter: discord.Interaction):
+    async def connect(self, inter: discord.Interaction) -> None:
         """Connect the bot to the caller's voice channel with diagnostics."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
 
         if not inter.guild:
             return await inter.response.send_message("This command can only be used within a guild.", ephemeral=True)
+        assert inter.guild is not None
 
         member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
         if not member or not member.voice or not member.voice.channel:
@@ -94,8 +110,11 @@ class ConnectionCommands(commands.Cog):
                     embed=factory.error("Lavalink node is offline. Please check connectivity."), ephemeral=True
                 )
 
-            me = inter.guild.me or inter.guild.get_member(self.bot.user.id)  # type: ignore
-            channel: discord.VoiceChannel = member.voice.channel  # type: ignore
+            me = inter.guild.me or inter.guild.get_member(self.bot.user.id)
+            channel = member.voice.channel
+            if not isinstance(channel, discord.VoiceChannel):
+                return await inter.response.send_message("I can only join standard voice channels.", ephemeral=True)
+
             if not me:
                 return await inter.response.send_message("Unable to resolve bot member.", ephemeral=True)
 
@@ -126,20 +145,10 @@ class ConnectionCommands(commands.Cog):
                     embed=factory.error("Unable to join the voice channel right now. Please try again shortly."),
                     ephemeral=True,
                 )
+            
             player = self._find_player(self.bot, inter.guild.id)
             if player:
-                player.text_channel_id = getattr(inter.channel, "id", None)
-                manager = getattr(self.bot, "profile_manager", None)
-                settings_service = getattr(self.bot, "server_settings", None)
-                if manager:
-                    profile = manager.get(inter.guild.id)
-                    player.store("autoplay_enabled", profile.autoplay)
-                    player.store("announcement_style", profile.announcement_style)
-                    desired_volume = (
-                        settings_service.global_default_volume() if settings_service else None
-                    ) or profile.default_volume
-                    if player.volume != desired_volume:
-                        await player.set_volume(desired_volume)
+                await self._configure_player(player, inter.guild, inter.channel)
 
             connection_details = f"Joined voice channel:\n{self._channel_info(channel)}"
             embed = factory.success("Connected", connection_details)
@@ -147,7 +156,7 @@ class ConnectionCommands(commands.Cog):
             await inter.response.send_message(embed=embed)
 
     @app_commands.command(name="disconnect", description="Disconnect VectoBeat from the voice channel.")
-    async def disconnect(self, inter: discord.Interaction):
+    async def disconnect(self, inter: discord.Interaction) -> None:
         """Disconnect from voice and destroy the Lavalink player."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
@@ -176,7 +185,7 @@ class ConnectionCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="voiceinfo", description="Show VectoBeat's current voice connection status.")
-    async def voiceinfo(self, inter: discord.Interaction):
+    async def voiceinfo(self, inter: discord.Interaction) -> None:
         """Display diagnostics for the current voice session."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
@@ -205,5 +214,5 @@ class ConnectionCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ConnectionCommands(bot))

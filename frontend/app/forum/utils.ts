@@ -1,6 +1,6 @@
 import { cookies } from "next/headers"
 
-import { getUserRole, getUserSubscriptions } from "@/lib/db"
+import { getUserRole, getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
@@ -24,7 +24,7 @@ export const getForumViewerContext = async (): Promise<ForumViewerContext> => {
   try {
     if (discordId) {
       const subs = await getUserSubscriptions(discordId)
-      const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+      const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
       proAccess = hasProPlus(tiers)
       role = await getUserRole(discordId)
       isTeam = ["admin", "operator"].includes(role)

@@ -1,7 +1,5 @@
 """Scheduled chaos engineering drills to validate resiliency."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
@@ -23,18 +21,18 @@ class ChaosService:
 
     SUPPORTED_SCENARIOS = {"disconnect_voice", "disconnect_node", "inject_error"}
 
-    def __init__(self, bot: discord.Client, config: ChaosConfig):
+    def __init__(self, bot: discord.Client, config: ChaosConfig) -> None:
         self.bot = bot
         self.config = config
         self.enabled = config.enabled
         self.logger = logging.getLogger("VectoBeat.Chaos")
-        self._task: Optional[asyncio.Task] = None
+        self._task: Optional[asyncio.Task[None]] = None
         self.history: Deque[ScenarioResult] = deque(maxlen=20)
 
     async def start(self) -> None:
-        if not self.enabled or self._task:
+        if not self.config.enabled or self._task:
             return
-        interval = max(300, int(self.config.interval_minutes) * 60)
+        interval = int(self.config.interval_minutes * 60)
         self.logger.info("Chaos drills enabled (interval=%ss).", interval)
         self._task = asyncio.create_task(self._loop(interval))
 

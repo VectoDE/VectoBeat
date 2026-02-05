@@ -2,6 +2,7 @@
 
 import traceback
 
+from discord import app_commands
 from discord.ext import commands
 
 from src.utils.embeds import EmbedFactory
@@ -11,12 +12,16 @@ from src.utils.exceptions import UserFacingError
 class ErrorEvents(commands.Cog):
     """Log unexpected errors and surface friendly messages to users."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_app_command_error(self, interaction, error):
-        """Handle slash command exceptions with user friendly messaging."""
+    async def on_tree_error(
+        self,
+        interaction: discord.Interaction,
+        error: app_commands.AppCommandError
+    ) -> None:
+        """Global error handler for app commands (slash commands)."""
         factory = EmbedFactory(getattr(interaction.guild, "id", None))
         if isinstance(error, UserFacingError):
             try:
@@ -42,6 +47,6 @@ class ErrorEvents(commands.Cog):
             pass
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     """Entry point used by ``discord.ext.commands`` to register the cog."""
     await bot.add_cog(ErrorEvents(bot))

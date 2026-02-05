@@ -117,6 +117,7 @@ export default function Navigation() {
     { href: "/", label: "Home" },
     { href: "/pricing", label: "Pricing" },
     { href: "/features", label: "Features" },
+    { href: "/commands", label: "Commands" },
     { href: "/blog", label: "Blog" },
     { href: "/forum", label: "Forum" },
   ]

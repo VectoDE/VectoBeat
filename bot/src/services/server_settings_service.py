@@ -8,15 +8,21 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Set, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, TYPE_CHECKING
 
+import aiofiles
 import aiohttp
 
 from src.configs.schema import ControlPanelAPIConfig
 from src.utils.plan_capabilities import get_plan_capabilities
 from src.utils.tracks import source_name
 
-DEFAULT_SERVER_SETTINGS: Dict[str, Any] = {
+if TYPE_CHECKING:
+    import lavalink
+
+SettingValue = Union[str, int, bool, List[str], None]
+
+DEFAULT_SERVER_SETTINGS: Dict[str, SettingValue] = {
     "multiSourceStreaming": False,
     "sourceAccessLevel": "core",
     "playbackQuality": "standard",
@@ -82,7 +88,7 @@ class GuildSettingsState:
     """Cached per-guild settings."""
 
     tier: str
-    settings: Dict[str, Any]
+    settings: Dict[str, SettingValue]
     signature: Optional[str]
 
 
@@ -123,7 +129,7 @@ class PanelParitySnapshot:
 class ServerSettingsService:
     """Fetch and cache server configuration exposed via the control panel."""
 
-    def __init__(self, config: ControlPanelAPIConfig, default_prefix: str = "!"):
+    def __init__(self, config: ControlPanelAPIConfig, default_prefix: str = "!") -> None:
         self.config = config
         self.enabled = bool(config.enabled and config.base_url)
         self.logger = logging.getLogger("VectoBeat.ServerSettings")
@@ -133,7 +139,7 @@ class ServerSettingsService:
         self._endpoint = "/api/bot/server-settings"
         self.default_prefix = default_prefix or "!"
         self._default_brand_color = DEFAULT_SERVER_SETTINGS["brandingAccentColor"]
-        self._global_defaults: Dict[str, Any] = {}
+        self._global_defaults: Dict[str, SettingValue] = {}
         self._defaults_path = Path("data/bot_defaults.json")
         self._restore_global_defaults()
         self._incident_endpoint = "/api/bot/incident-mirror"
@@ -158,11 +164,11 @@ class ServerSettingsService:
         self._locks.clear()
         self._global_defaults.clear()
 
-    def invalidate_all(self) -> None:
+    async def invalidate_all(self) -> None:
         """Drop all cached guild settings and global defaults."""
         self._cache.clear()
         self._global_defaults.clear()
-        self._persist_global_defaults()
+        await self._persist_global_defaults()
 
     async def fetch_incident_mirror(self, guild_id: int, label: str = "staging") -> Optional[GuildSettingsState]:
         """Retrieve a mirrored settings snapshot for a guild if available."""
@@ -224,19 +230,23 @@ class ServerSettingsService:
         tier = state.tier or "free"
         return tier.lower()
 
-    async def refresh_global_defaults(self, discord_id: Optional[str], settings: Dict[str, Any]) -> None:
+    async def refresh_global_defaults(self, discord_id: Optional[str], settings: Dict[str, SettingValue]) -> None:
         """Update in-memory defaults pushed from the control panel."""
         self._global_defaults = settings or {}
-        self._persist_global_defaults()
+        await self._persist_global_defaults()
         self.logger.info("Updated global defaults from control panel for user=%s", discord_id)
 
     def global_default_volume(self) -> Optional[int]:
         """Return global default volume if configured via control panel defaults."""
         value = self._global_defaults.get("defaultVolume") or self._global_defaults.get("default_volume")
+        if value is None:
+            return None
+        if isinstance(value, (list, bool)):
+            return None
         try:
-            number = int(value)  # type: ignore[arg-type]
+            number = int(value)
             return max(0, min(200, number))
-        except Exception:
+        except (ValueError, TypeError):
             return None
 
     async def allows_ai_recommendations(self, guild_id: int) -> bool:
@@ -354,7 +364,7 @@ class ServerSettingsService:
             return level, None
         return level, set(allowed)
 
-    async def filter_tracks_for_guild(self, guild_id: int, tracks: Iterable[Any]) -> Tuple[list[Any], Optional[Set[str]], str]:
+    async def filter_tracks_for_guild(self, guild_id: int, tracks: Iterable["lavalink.AudioTrack"]) -> Tuple[List["lavalink.AudioTrack"], Optional[Set[str]], str]:
         snapshot = list(tracks)
         level, allowed = await self.source_policy(guild_id)
         if not allowed:
@@ -418,7 +428,7 @@ class ServerSettingsService:
             return allowed
         return value if value_index <= allowed_index else allowed
 
-    async def update_settings(self, guild_id: int, updates: Dict[str, Any]) -> Optional[GuildSettingsState]:
+    async def update_settings(self, guild_id: int, updates: Dict[str, SettingValue]) -> Optional[GuildSettingsState]:
         """Persist updates via the control-panel API and refresh the cache."""
         if not self.enabled or not self._session or not updates:
             return None
@@ -612,11 +622,12 @@ class ServerSettingsService:
         except Exception as exc:  # pragma: no cover - defensive
             self.logger.warning("Failed to restore global defaults: %s", exc)
 
-    def _persist_global_defaults(self) -> None:
+    async def _persist_global_defaults(self) -> None:
         """Persist global defaults to disk for reuse after bot restarts."""
         try:
             if not self._defaults_path.parent.exists():
                 self._defaults_path.parent.mkdir(parents=True, exist_ok=True)
-            self._defaults_path.write_text(json.dumps(self._global_defaults, indent=2, sort_keys=True), "utf-8")
+            async with aiofiles.open(self._defaults_path, "w", encoding="utf-8") as f:
+                await f.write(json.dumps(self._global_defaults, indent=2, sort_keys=True))
         except Exception as exc:  # pragma: no cover - best-effort persistence
             self.logger.debug("Unable to persist global defaults: %s", exc)

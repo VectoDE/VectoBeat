@@ -1402,7 +1402,7 @@ const profileShareUrl = profileShareSlug
                         <label className="block text-sm font-semibold">Display name</label>
                         <input
                           type="text"
-                          value={profileSettings.displayName}
+                          value={profileSettings.displayName ?? ""}
                           onChange={(e) =>
                             setProfileSettings((prev) => ({ ...prev, displayName: e.target.value }))
                           }
@@ -1415,7 +1415,7 @@ const profileShareUrl = profileShareSlug
                         <label className="block text-sm font-semibold">Headline</label>
                         <input
                           type="text"
-                          value={profileSettings.headline}
+                          value={profileSettings.headline ?? ""}
                           onChange={(e) =>
                             setProfileSettings((prev) => ({ ...prev, headline: e.target.value }))
                           }
@@ -1428,7 +1428,7 @@ const profileShareUrl = profileShareSlug
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold">Bio</label>
                       <textarea
-                        value={profileSettings.bio}
+                        value={profileSettings.bio ?? ""}
                         onChange={(e) =>
                           setProfileSettings((prev) => ({ ...prev, bio: e.target.value }))
                         }
@@ -1442,7 +1442,7 @@ const profileShareUrl = profileShareSlug
                         <label className="block text-sm font-semibold">Location</label>
                         <input
                           type="text"
-                          value={profileSettings.location}
+                          value={profileSettings.location ?? ""}
                           onChange={(e) =>
                             setProfileSettings((prev) => ({ ...prev, location: e.target.value }))
                           }
@@ -1455,7 +1455,7 @@ const profileShareUrl = profileShareSlug
                         <label className="block text-sm font-semibold">Website</label>
                         <input
                           type="text"
-                          value={profileSettings.website}
+                          value={profileSettings.website ?? ""}
                           onChange={(e) =>
                             setProfileSettings((prev) => ({ ...prev, website: e.target.value }))
                           }
@@ -1471,7 +1471,7 @@ const profileShareUrl = profileShareSlug
                         <span className="text-sm text-foreground/50">/profile/</span>
                         <input
                           type="text"
-                          value={profileSettings.handle}
+                          value={profileSettings.handle ?? ""}
                           onChange={(e) => {
                             const sanitized = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 32)
                             setProfileSettings((prev) => ({
@@ -1620,7 +1620,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">Full name</label>
                           <input
                             type="text"
-                            value={preferences.fullName}
+                            value={preferences.fullName ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, fullName: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="Jane Doe"
@@ -1638,7 +1638,7 @@ const profileShareUrl = profileShareSlug
                             <input
                               type="text"
                               inputMode="numeric"
-                              pattern="\\d{4}-\\d{2}-\\d{2}"
+                              pattern="\d{4}-\d{2}-\d{2}"
                               placeholder="YYYY-MM-DD"
                               value={preferences.birthDate || ""}
                               onChange={(e) => setPreferences((prev) => ({ ...prev, birthDate: e.target.value }))}
@@ -1651,7 +1651,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">Country</label>
                           <input
                             type="text"
-                            value={preferences.addressCountry}
+                            value={preferences.addressCountry ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressCountry: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="Germany"
@@ -1661,7 +1661,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">State / Region</label>
                           <input
                             type="text"
-                            value={preferences.addressState}
+                            value={preferences.addressState ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressState: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="Schleswig-Holstein"
@@ -1671,7 +1671,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">City</label>
                           <input
                             type="text"
-                            value={preferences.addressCity}
+                            value={preferences.addressCity ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressCity: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="Itzehoe"
@@ -1681,7 +1681,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">Street</label>
                           <input
                             type="text"
-                            value={preferences.addressStreet}
+                            value={preferences.addressStreet ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressStreet: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="Breitenburger Strasse"
@@ -1691,7 +1691,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">House number</label>
                           <input
                             type="text"
-                            value={preferences.addressHouseNumber}
+                            value={preferences.addressHouseNumber ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressHouseNumber: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="15"
@@ -1701,7 +1701,7 @@ const profileShareUrl = profileShareSlug
                           <label className="block text-sm font-semibold mb-1">Postal code</label>
                           <input
                             type="text"
-                            value={preferences.addressPostalCode}
+                            value={preferences.addressPostalCode ?? ""}
                             onChange={(e) => setPreferences((prev) => ({ ...prev, addressPostalCode: e.target.value }))}
                             className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"
                             placeholder="25524"
@@ -1730,7 +1730,7 @@ const profileShareUrl = profileShareSlug
                     <div className="space-y-2">
                       <label className="block text-sm font-semibold mb-1">Language</label>
                       <select
-                        value={preferences.preferredLanguage}
+                        value={preferences.preferredLanguage ?? "en"}
                         onChange={(e) => handleLanguageChange(e.target.value)}
                         disabled={languageSaving}
                         className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 focus:outline-none transition-colors text-sm"

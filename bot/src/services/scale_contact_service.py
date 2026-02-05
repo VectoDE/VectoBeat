@@ -13,7 +13,7 @@ from src.configs.schema import ControlPanelAPIConfig
 class ScaleContactService:
     """Expose account manager contact + escalation details."""
 
-    def __init__(self, config: ControlPanelAPIConfig):
+    def __init__(self, config: ControlPanelAPIConfig) -> None:
         self.config = config
         self.enabled = bool(config.enabled and config.base_url)
         self.logger = logging.getLogger("VectoBeat.ScaleContact")
@@ -85,7 +85,7 @@ class ScaleContactService:
                     text = (await resp.text())[:200]
                     self.logger.warning("Scale contact update failed (%s): %s", resp.status, text)
                     return None
-                data = await resp.json()
+                data: Dict[str, Any] = await resp.json()
                 return data.get("contact")
         except aiohttp.ClientError as exc:  # pragma: no cover - network guard
             self.logger.error("Scale contact transport error: %s", exc)

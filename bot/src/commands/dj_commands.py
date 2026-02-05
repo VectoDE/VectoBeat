@@ -54,7 +54,7 @@ class DJCommands(commands.Cog):
 
     # ------------------------------------------------------------------ commands
     @dj.command(name="show", description="Display configured DJ roles and recent actions.")
-    async def show(self, inter: discord.Interaction):
+    async def show(self, inter: discord.Interaction) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             return await inter.response.send_message("Guild only command.", ephemeral=True)
@@ -86,14 +86,15 @@ class DJCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
     @dj.command(name="add-role", description="Grant DJ permissions to a role.")
-    async def add_role(self, inter: discord.Interaction, role: discord.Role):
+    async def add_role(self, inter: discord.Interaction, role: discord.Role) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
+        assert inter.guild is not None
 
         manager = _manager(self.bot)
-        manager.add_role(inter.guild.id, role.id)  # type: ignore[union-attr]
-        manager.record_action(
-            inter.guild.id,  # type: ignore[union-attr]
+        await manager.add_role(inter.guild.id, role.id)
+        await manager.record_action(
+            inter.guild.id,
             inter.user,
             "config:add-role",
             details=f"Granted {role.name}",
@@ -103,14 +104,15 @@ class DJCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
     @dj.command(name="remove-role", description="Revoke DJ permissions from a role.")
-    async def remove_role(self, inter: discord.Interaction, role: discord.Role):
+    async def remove_role(self, inter: discord.Interaction, role: discord.Role) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
+        assert inter.guild is not None
 
         manager = _manager(self.bot)
-        manager.remove_role(inter.guild.id, role.id)  # type: ignore[union-attr]
-        manager.record_action(
-            inter.guild.id,  # type: ignore[union-attr]
+        await manager.remove_role(inter.guild.id, role.id)
+        await manager.record_action(
+            inter.guild.id,
             inter.user,
             "config:remove-role",
             details=f"Revoked {role.name}",
@@ -120,14 +122,15 @@ class DJCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
     @dj.command(name="clear", description="Allow anyone to control the queue by clearing DJ roles.")
-    async def clear(self, inter: discord.Interaction):
+    async def clear(self, inter: discord.Interaction) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
             return await inter.response.send_message(error, ephemeral=True)
+        assert inter.guild is not None
 
         manager = _manager(self.bot)
-        manager.set_roles(inter.guild.id, [])  # type: ignore[union-attr]
-        manager.record_action(
-            inter.guild.id,  # type: ignore[union-attr]
+        await manager.set_roles(inter.guild.id, [])
+        await manager.record_action(
+            inter.guild.id,
             inter.user,
             "config:clear-roles",
             details="All DJ roles cleared",
@@ -137,5 +140,5 @@ class DJCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(DJCommands(bot))

@@ -8,7 +8,7 @@ import os
 import platform
 import statistics
 import time
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import discord
 from discord import app_commands
@@ -16,6 +16,7 @@ from discord.ext import commands
 
 from src.services.health_service import HealthState
 from src.utils.embeds import EmbedFactory
+from src.configs.settings import VERSION
 
 try:  # Optional dependency for richer process metrics
     import psutil  # type: ignore
@@ -52,7 +53,8 @@ class InfoCommands(commands.Cog):
         """Return a formatted integer with thin-space group separators."""
         return f"{value:,}".replace(",", "\u2009")  # thin space separators
 
-    def _process_metrics(self) -> Tuple[Optional[float], Optional[float]]:
+    @staticmethod
+    def _process_metrics() -> Tuple[Optional[float], Optional[float]]:
         """Return a tuple of (cpu_percent, memory_mb)."""
         if psutil:
             proc = psutil.Process(os.getpid())
@@ -80,13 +82,13 @@ class InfoCommands(commands.Cog):
         queued_tracks = sum(len(getattr(p, "queue", [])) for p in players)
         return total_players, active_players, queued_tracks
 
-    def _lavalink_nodes(self):
+    def _lavalink_nodes(self) -> list[dict[str, Any]]:
         """Return a list of node statistics dictionaries."""
         lavalink = getattr(self.bot, "lavalink", None)
         if not lavalink:
             return []
 
-        def _stat(source, key, default=None):
+        def _stat(source: Any, key: str, default: Any = None) -> Any:
             if source is None:
                 return default
             if isinstance(source, dict):
@@ -212,12 +214,13 @@ class InfoCommands(commands.Cog):
 
     # ------------------------------------------------------------------ commands
     @app_commands.command(name="ping", description="Quick latency & uptime snapshot for VectoBeat.")
-    async def ping(self, inter: discord.Interaction):
+    async def ping(self, inter: discord.Interaction) -> None:
         """Provide a quick glance at latency, uptime and shard information."""
         started_at = time.perf_counter()
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         uptime_seconds = int(HealthState.uptime())
         embed = factory.primary("🏓 VectoBeat Ping")
+        embed.set_footer(text=f"VectoBeat v{VERSION} | {self.bot.user.name if self.bot.user else 'Bot'}")
 
         shard_total = self.bot.shard_count or max(1, len(getattr(self.bot, "shards", {})) or 1)
         shard_id = inter.guild.shard_id + 1 if inter.guild else "N/A"
@@ -278,7 +281,7 @@ class InfoCommands(commands.Cog):
         await inter.response.send_message(embed=embed)
 
     @app_commands.command(name="status", description="Show detailed diagnostics for VectoBeat.")
-    async def status(self, inter: discord.Interaction):
+    async def status(self, inter: discord.Interaction) -> None:
         """Provide deep diagnostics including latencies, guild footprint and process metrics."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
 
@@ -321,6 +324,7 @@ class InfoCommands(commands.Cog):
                         backends.append(f"⚠️ {label} timeout/failed")
 
             embed = factory.primary("📊 VectoBeat Diagnostics")
+            embed.set_footer(text=f"VectoBeat v{VERSION} | {self.bot.user.name if self.bot.user else 'Bot'}")
             embed.description = "Comprehensive runtime metrics for monitoring and support."
 
             shard_lines = [f"`#{sid}` {lat:.1f} ms" for sid, lat in shard_latencies] or ["`#1` n/a"]
@@ -412,7 +416,7 @@ class InfoCommands(commands.Cog):
             await inter.response.send_message(embed=embed)
 
     @app_commands.command(name="uptime", description="Show bot uptime with start timestamp.")
-    async def uptime(self, inter: discord.Interaction):
+    async def uptime(self, inter: discord.Interaction) -> None:
         """Display bot uptime along with the start timestamp."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         uptime_seconds = HealthState.uptime()
@@ -435,7 +439,7 @@ class InfoCommands(commands.Cog):
         await inter.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="botinfo", description="Comprehensive information about the running bot.")
-    async def botinfo(self, inter: discord.Interaction):
+    async def botinfo(self, inter: discord.Interaction) -> None:
         """Present application metadata, reach and runtime environment information."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         app_info = await self.bot.application_info()
@@ -518,7 +522,7 @@ class InfoCommands(commands.Cog):
 
     @app_commands.command(name="guildinfo", description="Detailed information about this guild.")
     @app_commands.checks.has_permissions(manage_guild=True)
-    async def guildinfo(self, inter: discord.Interaction):
+    async def guildinfo(self, inter: discord.Interaction) -> None:
         """Show information about the guild the command is run in."""
         if not inter.guild:
             return await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
@@ -643,7 +647,7 @@ class InfoCommands(commands.Cog):
         await inter.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="lavalink", description="Inspect Lavalink node performance.")
-    async def lavalink(self, inter: discord.Interaction):
+    async def lavalink(self, inter: discord.Interaction) -> None:
         """Display per-node Lavalink metrics such as CPU and memory usage."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         nodes = self._lavalink_nodes()
@@ -702,7 +706,7 @@ class InfoCommands(commands.Cog):
         await inter.response.send_message(embed=embed)
 
     @app_commands.command(name="permissions", description="Show the bot's permissions in this channel.")
-    async def permissions(self, inter: discord.Interaction):
+    async def permissions(self, inter: discord.Interaction) -> None:
         """Display the bot's effective permissions for the current channel."""
         if not inter.guild or not inter.channel:
             message = "This command must be invoked inside a guild channel."
@@ -777,5 +781,5 @@ class InfoCommands(commands.Cog):
         await inter.response.send_message(embed=embed, view=view, ephemeral=True)
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(InfoCommands(bot))

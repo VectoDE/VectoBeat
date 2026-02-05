@@ -8,6 +8,7 @@ import {
   createForumThread,
   getUserRole,
   updateForumThreadStatus,
+  type SubscriptionSummary,
 } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       const role = await getUserRole(discordId)
       isTeam = ["admin", "operator"].includes(role)
       const subs = await getUserSubscriptions(discordId)
-      const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+      const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
       isPro = hasProPlus(tiers)
     }
   }
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
   const category = request.nextUrl.searchParams.get("category") || undefined
   const categories = await listForumCategories()
   const threads = await listForumThreads(category)
-  let posts = []
+  let posts: any[] = []
   const threadId = request.nextUrl.searchParams.get("threadId")
   if (threadId) {
     posts = await listForumPosts(threadId)
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await parseBody(request)
+  const body: any = await parseBody(request)
   const discordId = typeof body?.discordId === "string" ? body.discordId : null
   if (!discordId) {
     return NextResponse.json({ error: "discordId required" }, { status: 400 })
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   const subs = await getUserSubscriptions(discordId)
-  const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+  const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   const role = await getUserRole(discordId)
   const isTeam = ["admin", "operator"].includes(role)
   if (!isTeam && !hasProPlus(tiers)) {
@@ -77,10 +78,10 @@ export async function POST(request: NextRequest) {
   const title = typeof body?.title === "string" ? body.title : null
   const summary = typeof body?.summary === "string" ? body.summary : null
   const tags =
-    Array.isArray(body?.tags) && body.tags.every((entry) => typeof entry === "string")
+    Array.isArray(body?.tags) && body.tags.every((entry: any) => typeof entry === "string")
       ? (body.tags as string[])
       : typeof body?.tags === "string"
-        ? body.tags.split(",").map((tag) => tag.trim())
+        ? (body.tags as string).split(",").map((tag) => tag.trim())
         : []
   const content = typeof body?.body === "string" ? body.body : null
 

@@ -19,6 +19,7 @@ flowchart LR
     QueueStore[(Durable Queue Sync Store\nRedis / MySQL)]:::queue
     Database[(MySQL + Prisma ORM)]:::datastore
     Mailer[SMTP / Notifications]:::service
+    Branding[Domain Branding / CNAME]:::service
   end
 
   subgraph BotRuntime["Bot Runtime (discord.py + Lavalink client)"]
@@ -30,9 +31,11 @@ flowchart LR
     StatusAPI[Status API :3051]:::service
     Metrics[Prometheus Metrics :3052]:::service
     Config["Configuration (.env + config.yml)"]:::service
+    EmbedFactory[Embed Factory / Branding Resolver]:::service
   end
 
   subgraph Media["Media Sources"]
+
     class Media boundary
     YouTube["YouTube / yt-dlp"]:::external
     SoundCloud["SoundCloud"]:::external
@@ -57,6 +60,7 @@ flowchart LR
   NextAPI -->|Prisma read/write| Database
   Dashboard -->|REST calls| NextAPI
   NextAPI -->|Notifications| Mailer
+  Branding -->|DNS Verification| NextAPI
 
   %% Lavalink path
   Bot -->|WebSocket + REST| Lavalink[Lavalink Node]:::service
@@ -70,3 +74,5 @@ flowchart LR
   %% Observability
   Bot --> Metrics
   Bot -->|Structured logs| Observability[Logging / APM]:::service
+  EmbedFactory -->|Fetch Branding| NextAPI
+

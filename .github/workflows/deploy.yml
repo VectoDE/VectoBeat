@@ -55,8 +55,23 @@ jobs:
             -e "ssh -o StrictHostKeyChecking=no" \
             ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
 
-      - name: Run deploy.sh on server
+      - name: Create .env file
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE }}
+        run: |
+          if [ -n "$ENV_FILE_CONTENT" ]; then
+            echo "$ENV_FILE_CONTENT" > .env
+            scp -o StrictHostKeyChecking=no .env "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/.env"
+            rm .env
+          else
+            echo "No ENV_FILE secret provided, skipping .env creation."
+          fi
+
+      - name: Run deploy.sh as root
+        env:
+          ROOT_USER: ${{ secrets.DEPLOY_SSH_ROOT_USER }}
+          ROOT_PASS: ${{ secrets.DEPLOY_SSH_ROOT_PASSWORD }}
         run: |
           ssh -o StrictHostKeyChecking=no \
             "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
-            "cd '${DEPLOY_TARGET_PATH}' && chmod +x deploy.sh && ./deploy.sh"
+            "cd '${DEPLOY_TARGET_PATH}' && chmod +x deploy.sh && echo '$ROOT_PASS' | su -c 'PROJECT_ROOT=\"${DEPLOY_TARGET_PATH}\" FILE_OWNER=\"${DEPLOY_SSH_USER}\" ./deploy.sh' '$ROOT_USER'"

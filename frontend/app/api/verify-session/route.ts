@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions, getUserRole } from "@/lib/db"
+import { getUserSubscriptions, getUserRole, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const resolveDiscordId = async (request: NextRequest) => {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
   const guilds = await resolveGuilds(verification)
   const subscriptions = await getUserSubscriptions(discordId)
-  const tiers = subscriptions.map((sub) => normalizeTierId(sub.tier))
+  const tiers = subscriptions.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   const role = await getUserRole(discordId)
   const user = verification.user || null
   const username = (user as any)?.username || (user as any)?.displayName || discordId

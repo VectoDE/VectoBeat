@@ -1,13 +1,19 @@
 import crypto from "crypto"
 import { Prisma } from "@prisma/client"
-import type { ScaleAccountContact } from "@prisma/client"
 import { decryptJson, decryptText, encryptJson, encryptText, isEncryptionAvailable } from "./encryption"
+
+// Explicitly define types from Prisma namespace to avoid import issues
+type ContactMessage = Prisma.ContactMessageGetPayload<Prisma.ContactMessageDefaultArgs>
+type ContactMessageThread = Prisma.ContactMessageThreadGetPayload<Prisma.ContactMessageThreadDefaultArgs>
+type ScaleAccountContact = Prisma.ScaleAccountContactGetPayload<Prisma.ScaleAccountContactDefaultArgs>
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
 import { getPrismaClient, handlePrismaError } from "./prisma"
 import { normalizeTierId, type MembershipTier } from "./memberships"
 import type { AnalyticsOverview, HomeMetrics } from "./metrics"
 import type { QueueSnapshot } from "@/types/queue-sync"
+
+export { getPrismaClient, handlePrismaError }
 
 const getPool = () => getPrismaClient()
 
@@ -83,8 +89,11 @@ const normalizeWebsite = (url?: string | null) => {
   }
 }
 
-const USER_API_KEY_SECRET =
-  process.env.DATA_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || process.env.SECRET_KEY || "vectobeat"
+const USER_API_KEY_SECRET = process.env.DATA_ENCRYPTION_KEY
+
+if (!USER_API_KEY_SECRET) {
+  throw new Error("DATA_ENCRYPTION_KEY is required in environment variables.")
+}
 const USER_API_KEY_PREFIX = "vbk_"
 
 const deriveUserApiKey = (discordId: string) => {
@@ -120,18 +129,17 @@ const packSecretValue = (value: string) => {
   if (encrypted) {
     return { encryptedValue: encrypted.payload, iv: encrypted.iv, authTag: encrypted.tag, valueHash: hashSecretValue(value) }
   }
-  const fallback = Buffer.from(value, "utf8").toString("base64")
-  // Flag the IV/tag so we can decode later even when encryption is unavailable.
-  return { encryptedValue: fallback, iv: "__plain__", authTag: "__plain__", valueHash: hashSecretValue(value) }
+  throw new Error("Encryption failed. DATA_ENCRYPTION_KEY might be invalid or missing.")
 }
 
 const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
   if (record.iv === "__plain__" && record.authTag === "__plain__") {
-    try {
-      return Buffer.from(record.encryptedValue, "base64").toString("utf8")
-    } catch {
-      return null
-    }
+    // SECURITY: Legacy plain-text fallback has been strictly removed to prevent auth bypass.
+    // We intentionally return null here instead of throwing, so that upstream callers
+    // simply see "no secret" rather than crashing or treating an empty list as "allow all".
+    // Or better: log a critical error but return null to signify "invalid secret".
+    console.error("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+    return null
   }
   return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
 }
@@ -4333,6 +4341,7 @@ export interface BlogPost {
   views: number
   featured: boolean
   publishedAt: string
+  updatedAt: string
   image?: string | null
 }
 
@@ -4403,6 +4412,7 @@ const mapBlogPost = (row: BlogPostRow): BlogPost => ({
   views: row.views ?? 0,
   featured: row.featured ?? false,
   publishedAt: row.publishedAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
 })
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
@@ -4941,7 +4951,7 @@ export const listNewsletterSubscribers = async () => {
   }
 }
 
-interface ContactMessageRecord {
+export interface SerializedContactMessage {
   id: string
   name: string
   email: string
@@ -4953,23 +4963,16 @@ interface ContactMessageRecord {
   status: string
   response: string | null
   respondedBy: string | null
-  respondedAt: Date | null
-  createdAt: Date
-  updatedAt: Date
+  respondedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-interface ContactMessageThreadRecord {
-  id: string
-  ticketId: string
-  authorId: string | null
-  authorName: string | null
-  role: string
-  body: string
-  attachments: Prisma.JsonValue | null
-  createdAt: Date
+export interface SerializedTicket extends SerializedContactMessage {
+  messages: SerializedContactMessageThread[]
 }
 
-const mapContactMessage = (row: ContactMessageRecord) => ({
+const mapContactMessage = (row: ContactMessage): SerializedContactMessage => ({
   id: row.id,
   name: row.name,
   email: row.email,
@@ -5024,7 +5027,18 @@ const buildContactCategoryWhere = (
   }
 }
 
-const mapContactMessageThread = (row: ContactMessageThreadRecord) => ({
+export interface SerializedContactMessageThread {
+  id: string
+  ticketId: string
+  authorId: string | null
+  authorName: string | null
+  role: string
+  body: string
+  attachments: Prisma.JsonValue | null
+  createdAt: string
+}
+
+const mapContactMessageThread = (row: ContactMessageThread): SerializedContactMessageThread => ({
   id: row.id,
   ticketId: row.ticketId,
   authorId: row.authorId,
@@ -5063,8 +5077,8 @@ export const createContactMessage = async ({
       return text.length > limit ? text.slice(0, limit) : text
     }
     // Reduce lengths to fit varchar columns in the current schema.
-    const MAX_MESSAGE_LENGTH = 180
-    const MAX_SUBJECT_LENGTH = 180
+    const MAX_MESSAGE_LENGTH = 190
+    const MAX_SUBJECT_LENGTH = 190
 
     const result = await db.contactMessage.create({
       data: {
@@ -5230,7 +5244,7 @@ export const listContactMessagesByEmail = async (
 
 export const updateContactMessage = async (
   id: string,
-  updates: { status?: string; response?: string; respondedBy?: string | null; priority?: string | null },
+  updates: { status?: string; response?: string; respondedBy?: string | null; priority?: string },
 ) => {
   try {
     const db = getPool()
@@ -5269,7 +5283,7 @@ export const updateContactMessage = async (
   }
 }
 
-export const getContactMessageThread = async (id: string) => {
+export const getContactMessageThread = async (id: string): Promise<SerializedTicket | null> => {
   try {
     const db = getPool()
     if (!db) return null

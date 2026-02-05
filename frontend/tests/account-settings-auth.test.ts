@@ -10,7 +10,7 @@ import { createLinkedAccountHandlers } from "@/app/api/account/linked-accounts/r
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 
-const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null })
+const invalidVerifier = async () => ({ valid: false, token: null, sessionHash: null, user: null })
 const failIfCalled = () => {
   throw new Error("Data layer should not be hit for invalid sessions")
 }

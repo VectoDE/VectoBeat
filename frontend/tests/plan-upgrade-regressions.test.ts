@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { provisionDefaultsForTier } from "@/lib/db"
 import { sanitizeSettingsForTier } from "@/app/api/bot/server-settings/route"
-import { defaultServerFeatureSettings } from "@/lib/server-settings"
+import { defaultServerFeatureSettings, ServerFeatureSettings } from "@/lib/server-settings"
 import { getPlanCapabilities } from "@/lib/plan-capabilities"
 import type { MembershipTier } from "@/lib/memberships"
 
@@ -54,7 +54,7 @@ test("plan downgrades clamp quotas and UI gates to tier policies", () => {
   }
 
   const downgradePath: MembershipTier[] = ["scale", "growth", "pro", "starter", "free"]
-  let current = optimisticSettings
+  let current: ServerFeatureSettings = optimisticSettings
 
   for (const tier of downgradePath) {
     const plan = getPlanCapabilities(tier)

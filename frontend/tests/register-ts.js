@@ -15,6 +15,17 @@ if (!process.env.NEXT_PUBLIC_PLAN_CAPABILITIES) {
 process.env.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || 'sk_test_dummy'
 process.env.STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_dummy'
 process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy'
+process.env.DATA_ENCRYPTION_KEY = process.env.DATA_ENCRYPTION_KEY || 'test_encryption_key_32_chars_exactly_!!!!'
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'test_nextauth_secret'
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'mysql://mock:mock@localhost:3306/mock'
+
+// Enforce test environment and disable auth bypass
+process.env.NODE_ENV = 'test'
+process.env.SKIP_API_AUTH = ''
+process.env.DISABLE_API_AUTH = ''
+process.env.ALLOW_UNAUTHENTICATED = ''
+
+
 
 const originalResolveFilename = Module._resolveFilename
 Module._resolveFilename = function resolveWithAlias(request, parent, isMain, options) {

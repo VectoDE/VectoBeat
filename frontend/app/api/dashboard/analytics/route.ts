@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authorizeRequest } from "@/lib/api-auth"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions } from "@/lib/db"
+import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import { getQueueSnapshot } from "@/lib/queue-sync-store"
 import type { MembershipTier } from "@/lib/memberships"
 import type { AnalyticsOverview } from "@/lib/metrics"
@@ -46,7 +46,7 @@ export const createAnalyticsHandlers = (deps: RouteDeps = {}) => {
 
       const subscriptions = await fetchSubscriptions(discordId!)
       const guildSubscription = subscriptions.find(
-        (sub) => sub.discordServerId === guildId && sub.status === "active",
+        (sub: SubscriptionSummary) => sub.discordServerId === guildId && sub.status === "active",
       )
       if (!guildSubscription) {
         return NextResponse.json({ error: "guild_not_found" }, { status: 404 })

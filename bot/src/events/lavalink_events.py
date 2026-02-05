@@ -1,7 +1,5 @@
 """Lavalink node lifecycle observers with basic failover handling."""
 
-# pyright: reportMissingTypeStubs=false
-
 from __future__ import annotations
 
 import asyncio
@@ -24,7 +22,7 @@ logger = logging.getLogger(__name__)
 class LavalinkNodeEvents(commands.Cog):
     """React to Lavalink node events to keep playback resilient."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         if hasattr(bot, "lavalink"):
             bot.lavalink.add_event_hooks(self)
@@ -34,7 +32,8 @@ class LavalinkNodeEvents(commands.Cog):
         self._last_skip_notice = {}
 
     # ------------------------------------------------------------------ helpers
-    def _available_nodes(self, *, exclude=None) -> List:
+    def _available_nodes(self, *, exclude: Optional[lavalink.Node] = None) -> List[lavalink.Node]:
+        """Return a list of available (connected) Lavalink nodes."""
         client = getattr(self.bot, "lavalink", None)
         if not client:
             return []
@@ -51,7 +50,7 @@ class LavalinkNodeEvents(commands.Cog):
         return nodes
 
     @staticmethod
-    def _node_load(node) -> float:
+    def _node_load(node: lavalink.Node) -> float:
         stats = getattr(node, "stats", None)
         if not stats:
             return 0.0
@@ -83,7 +82,7 @@ class LavalinkNodeEvents(commands.Cog):
                 logger.warning("Failed to rejoin voice channel %s: %s", channel_id, exc)
 
     async def _pick_target_node(
-        self, failed_node, player: lavalink.DefaultPlayer, candidates: List[lavalink.Node]
+        self, failed_node: lavalink.Node, player: lavalink.DefaultPlayer, candidates: List[lavalink.Node]
     ) -> Optional[lavalink.Node]:
         """Choose the best replacement node, preferring the guild's region when available."""
         manager = getattr(self.bot, "lavalink_manager", None)
@@ -106,14 +105,14 @@ class LavalinkNodeEvents(commands.Cog):
         return None
 
     @staticmethod
-    def _player_cooldown_remaining(player) -> float:
+    def _player_cooldown_remaining(player: lavalink.DefaultPlayer) -> float:
         cooldown_until = player.fetch("migration_cooldown_until")
         now = time.monotonic()
         if isinstance(cooldown_until, (int, float)) and cooldown_until > now:
             return cooldown_until - now
         return 0.0
 
-    async def _migrate_players(self, failed_node) -> None:
+    async def _migrate_players(self, failed_node: lavalink.Node) -> None:
         client = getattr(self.bot, "lavalink", None)
         if not client:
             return
@@ -217,7 +216,7 @@ class LavalinkNodeEvents(commands.Cog):
 
     # ------------------------------------------------------------------ listeners
     @lavalink.listener()
-    async def on_node_ready(self, event: NodeReadyEvent):
+    async def on_node_ready(self, event: NodeReadyEvent) -> None:
         node = getattr(event, "node", None)
         if not node:
             logger.debug(
@@ -235,7 +234,7 @@ class LavalinkNodeEvents(commands.Cog):
             asyncio.create_task(routing.reconcile_all())
 
     @lavalink.listener()
-    async def on_node_disconnected(self, event: NodeDisconnectedEvent):
+    async def on_node_disconnected(self, event: NodeDisconnectedEvent) -> None:
         node = getattr(event, "node", None)
         if not node:
             logger.debug(
@@ -281,5 +280,5 @@ class LavalinkNodeEvents(commands.Cog):
             asyncio.create_task(routing.reconcile_all())
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(LavalinkNodeEvents(bot))

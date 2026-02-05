@@ -2,42 +2,57 @@
 
 from __future__ import annotations
 
-import time
 import logging
+import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, TypedDict
 
 import lavalink
 
 from src.configs.schema import CacheConfig
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("VectoBeat.SearchCache")
+
+
+class TrackInfo(TypedDict, total=False):
+    identifier: str
+    isSeekable: bool
+    author: str
+    length: int
+    isStream: bool
+    position: int
+    title: str
+    uri: str
+    sourceName: str
+    artworkUrl: str | None
+    isrc: str | None
 
 
 @dataclass
 class CachedTrack:
     track: str
-    info: Dict[str, Any]
+    info: TrackInfo
 
 
 class SearchCacheService:
     """Store lavalink search responses for a short time."""
 
-    def __init__(self, config: CacheConfig):
+    def __init__(self, config: CacheConfig) -> None:
         self.enabled = config.search_enabled
         self.ttl = max(1, config.search_ttl_seconds)
         self.max_entries = max(10, config.search_max_entries)
-        self._store: Dict[str, Tuple[float, str, List[CachedTrack]]] = {}
+        # Key -> (timestamp, load_type, tracks)
+        self._store: dict[str, tuple[float, str, list[CachedTrack]]] = {}
 
     @staticmethod
-    def _coerce_info(track: Any) -> Optional[Dict[str, Any]]:
+    def _coerce_info(track: Any) -> TrackInfo | None:
         """Attempt to extract a dict payload from a Lavalink track-like object."""
 
-        def to_dict(payload: Any) -> Optional[Dict[str, Any]]:
+        def to_dict(payload: Any) -> TrackInfo | None:
             if isinstance(payload, dict):
-                return dict(payload)
+                return payload  # type: ignore[return-value]
             if hasattr(payload, "__dict__"):
-                return dict(payload.__dict__)
+                return payload.__dict__  # type: ignore[return-value]
             return None
 
         info = to_dict(getattr(track, "info", None))
@@ -47,7 +62,10 @@ class SearchCacheService:
         raw = getattr(track, "raw", None)
         raw_dict = to_dict(raw)
         if raw_dict:
-            return raw_dict.get("info") if isinstance(raw_dict.get("info"), dict) else raw_dict
+            info_data = raw_dict.get("info")
+            if isinstance(info_data, dict):
+                return info_data  # type: ignore[return-value]
+            return raw_dict
         return None
 
     def _clean_expired(self) -> None:
@@ -56,7 +74,7 @@ class SearchCacheService:
         for key in expired:
             self._store.pop(key, None)
 
-    def get(self, query: str) -> Optional[Tuple[str, List[lavalink.AudioTrack]]]:
+    def get(self, query: str) -> tuple[str, list[lavalink.AudioTrack]] | None:
         if not self.enabled:
             return None
         self._clean_expired()
@@ -65,7 +83,7 @@ class SearchCacheService:
         if not entry:
             return None
         _, load_type, tracks = entry
-        reconstructed: List[lavalink.AudioTrack] = []
+        reconstructed: list[lavalink.AudioTrack] = []
         for item in tracks:
             info = item.info
             if not isinstance(info, dict):
@@ -76,8 +94,10 @@ class SearchCacheService:
                 )
                 continue
             try:
+                # Reconstruct AudioTrack from cached data
+                # Lavalink.py AudioTrack expects (track_id, info_dict, ...)
                 reconstructed.append(lavalink.AudioTrack(item.track, info))
-            except Exception as exc:  # pragma: no cover - defensive
+            except Exception as exc:
                 logger.debug("Failed to rebuild cached track for query '%s': %s", key, exc)
         if not reconstructed:
             self._store.pop(key, None)
@@ -88,7 +108,7 @@ class SearchCacheService:
         if not self.enabled or not result or not getattr(result, "tracks", None):
             return
         key = query.lower()
-        tracks: List[CachedTrack] = []
+        tracks: list[CachedTrack] = []
         for track in result.tracks:
             identifier = getattr(track, "track", None)
             info = self._coerce_info(track)

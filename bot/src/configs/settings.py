@@ -6,6 +6,7 @@ objects the rest of the code base can rely on.
 """
 
 import os
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -51,6 +52,24 @@ if not _loaded:
         load_dotenv()  # Allows local development without exporting environment variables.
 
 
+def _expand_env_vars(content: str) -> str:
+    """Expand environment variables of form ${VAR} or ${VAR:default}."""
+    pattern = re.compile(r'\$\{(\w+)(?::([^}]*))?\}')
+
+    def replace(match):
+        var_name = match.group(1)
+        default_value = match.group(2)
+        value = os.getenv(var_name)
+
+        if value is not None:
+            return value
+        if default_value is not None:
+            return default_value
+        return ""
+
+    return pattern.sub(replace, content)
+
+
 def _load_yaml(path: str) -> Dict:
     """Load a YAML config file, returning an empty dict if the file is blank."""
     raw_path = Path(path)
@@ -70,12 +89,27 @@ def _load_yaml(path: str) -> Dict:
         raise FileNotFoundError(f"Config file not found; tried: {[str(c) for c in candidates]}")
 
     with resolved.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
+        content = handle.read()
+        expanded_content = _expand_env_vars(content)
+        data = yaml.safe_load(expanded_content)
         return data or {}
 
 
 _raw = _load_yaml(os.getenv("CONFIG_PATH", "config.yml"))
 CONFIG = AppConfig(**_raw)
+
+# Load version from package.json
+try:
+    with (_base_dir / "package.json").open("r", encoding="utf-8") as f:
+        _pkg = json.load(f)
+        VERSION = _pkg.get("version", "2.3.2")
+except (FileNotFoundError, json.JSONDecodeError):
+    VERSION = "2.3.2"
+
+# .env overrides for Bot Intents
+intents_members = os.getenv("BOT_INTENTS_MEMBERS")
+if intents_members:
+    CONFIG.bot.intents.members = (intents_members.lower() == "true")
 
 # .env overrides for Lavalink (if provided)
 host = os.getenv("LAVALINK_HOST")

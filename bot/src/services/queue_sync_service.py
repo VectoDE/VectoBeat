@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 import aiohttp
 import lavalink
@@ -17,18 +17,42 @@ SNAPSHOT_TIERS = {"starter", "pro", "growth", "scale", "enterprise"}
 REALTIME_TIERS = {"pro", "growth", "scale", "enterprise"}
 
 
+class TrackSnapshot(TypedDict):
+    title: str
+    author: str
+    duration: int
+    uri: Optional[str]
+    artworkUrl: Optional[str]
+    source: Optional[str]
+    requester: Optional[str]
+
+
+class QueueSnapshot(TypedDict):
+    nowPlaying: Optional[TrackSnapshot]
+    queue: List[TrackSnapshot]
+    paused: bool
+    volume: Optional[int]
+
+
+class SyncPayload(QueueSnapshot):
+    guildId: str
+    updatedAt: str
+    reason: str
+    metadata: Dict[str, Any]
+
+
 class QueueSyncService:
     """Send queue state snapshots to the control panel for real-time sync."""
 
     MAX_QUEUE_DEPTH = 500
 
-    def __init__(self, config: QueueSyncConfig, settings: ServerSettingsService):
+    def __init__(self, config: QueueSyncConfig, settings: ServerSettingsService) -> None:
         self.config = config
         self.settings = settings
         self.enabled = bool(config.enabled and config.endpoint)
         self.logger = logging.getLogger("VectoBeat.QueueSync")
         self._session: Optional[aiohttp.ClientSession] = None
-        self._queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self._queue: asyncio.Queue[SyncPayload] = asyncio.Queue()
         self._worker: Optional[asyncio.Task[None]] = None
 
     async def start(self) -> None:
@@ -71,7 +95,7 @@ class QueueSyncService:
         payload_metadata: Dict[str, Any] = dict(metadata or {})
         payload_metadata.setdefault("tier", tier)
         payload_metadata.setdefault("syncMode", "realtime" if realtime else "snapshot")
-        payload = {
+        payload: SyncPayload = {
             "guildId": str(guild_id),
             "updatedAt": datetime.now(timezone.utc).isoformat(),
             "reason": reason,
@@ -95,7 +119,7 @@ class QueueSyncService:
         except asyncio.CancelledError:
             pass
 
-    async def _post(self, payload: Dict[str, Any]) -> None:
+    async def _post(self, payload: SyncPayload) -> None:
         if not self._session or not self.config.endpoint:
             return
         headers = {"Content-Type": "application/json"}
@@ -116,8 +140,8 @@ class QueueSyncService:
             self.logger.error("Queue sync transport error for guild %s: %s", payload.get("guildId"), exc)
 
     @staticmethod
-    def _snapshot(player: lavalink.DefaultPlayer) -> Dict[str, Any]:
-        def serialize(track: Optional[lavalink.AudioTrack]) -> Optional[Dict[str, Any]]:
+    def _snapshot(player: lavalink.DefaultPlayer) -> QueueSnapshot:
+        def serialize(track: Optional[lavalink.AudioTrack]) -> Optional[TrackSnapshot]:
             if not track:
                 return None
             return {
@@ -130,7 +154,7 @@ class QueueSyncService:
                 "requester": str(getattr(track, "requester", "")) if getattr(track, "requester", None) else None,
             }
 
-        queue: List[Dict[str, Any]] = []
+        queue: List[TrackSnapshot] = []
         for track in list(getattr(player, "queue", []))[:50]:
             serialized = serialize(track)
             if serialized:

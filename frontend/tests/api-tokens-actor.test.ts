@@ -9,21 +9,31 @@ let settingsStore: Record<string, any> = {}
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 
-const happyAccess: GuildAccessResult = {
-  ok: true,
-  tier: "pro",
+const happyAccess = {
+  ok: true as const,
+  tier: "pro" as const,
   subscription: { id: "sub1", discordServerId: "g1", tier: "pro", status: "active" } as any,
-  user: { id: "u1", username: "tester", email: "tester@test.tld" },
-} as const
+  user: {
+    id: "u1",
+    username: "tester",
+    email: "tester@test.tld",
+    displayName: "Tester",
+    avatarUrl: null,
+    createdAt: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+    guilds: [] as any[],
+  },
+}
 
 const fetchSettings = async (guildId: string) => settingsStore[guildId] || { apiTokens: [] }
 const saveSettings = async (guildId: string, _discordId: string, payload: any) => {
   settingsStore[guildId] = { ...(settingsStore[guildId] || {}), ...payload }
+  return settingsStore[guildId]
 }
 const recordEvent = async (payload: any) => {
   events.push(payload)
 }
-const email = async () => {}
+const email = async () => ({ delivered: true, reason: "sent" })
 
 const handlers = createApiTokenHandlers({
   verifyAccess: async () => happyAccess,

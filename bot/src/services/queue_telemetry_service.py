@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple, Set
+from typing import Any, Dict, Optional, Tuple, Set, TypedDict
 
 import aiohttp
 
@@ -13,16 +13,24 @@ from src.configs.schema import QueueTelemetryConfig
 from src.services.server_settings_service import ServerSettingsService
 
 
+class TelemetryEnvelope(TypedDict):
+    ts: int
+    event: str
+    guild_id: Optional[int]
+    shard_id: Optional[int]
+    data: Optional[Dict[str, Any]]
+
+
 class QueueTelemetryService:
     """Push queue lifecycle events (play, skip, finish) to an external consumer."""
 
     MODE_CACHE_TTL = 300
 
-    def __init__(self, config: QueueTelemetryConfig, settings: ServerSettingsService):
+    def __init__(self, config: QueueTelemetryConfig, settings: ServerSettingsService) -> None:
         self.config = config
         self.enabled = config.enabled and bool(config.endpoint)
         self.logger = logging.getLogger("VectoBeat.QueueTelemetry")
-        self._queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue()
+        self._queue: asyncio.Queue[TelemetryEnvelope] = asyncio.Queue()
         self._task: Optional[asyncio.Task[None]] = None
         self._session: Optional[aiohttp.ClientSession] = None
         self._endpoint: Optional[str] = config.endpoint
@@ -33,7 +41,7 @@ class QueueTelemetryService:
     async def start(self) -> None:
         if not self.enabled or self._task:
             return
-        timeout = aiohttp.ClientTimeout(total=5)
+        timeout = aiohttp.ClientTimeout(total=10)
         self._session = aiohttp.ClientSession(timeout=timeout)
         self._task = asyncio.create_task(self._worker())
         self.logger.info("Queue telemetry enabled. Endpoint=%s", self.config.endpoint)
@@ -61,7 +69,7 @@ class QueueTelemetryService:
     ) -> None:
         if not self.enabled:
             return
-        envelope = {
+        envelope: TelemetryEnvelope = {
             "ts": int(time.time()),
             "event": event,
             "guild_id": guild_id if self.config.include_guild_metadata else None,
@@ -90,7 +98,7 @@ class QueueTelemetryService:
         except asyncio.CancelledError:
             pass
 
-    async def _send(self, envelope: Dict[str, Any]) -> None:
+    async def _send(self, envelope: TelemetryEnvelope) -> None:
         if not self._session or not self._endpoint:
             return
         headers = {"Content-Type": "application/json"}

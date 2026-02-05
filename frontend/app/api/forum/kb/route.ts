@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions, listSupportKnowledgeBase, getUserRole } from "@/lib/db"
+import { getUserSubscriptions, listSupportKnowledgeBase, getUserRole, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   const subs = await getUserSubscriptions(discordId)
-  const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+  const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   if (!hasProPlus(tiers)) {
     return NextResponse.json({ error: "pro_required" }, { status: 403 })
   }

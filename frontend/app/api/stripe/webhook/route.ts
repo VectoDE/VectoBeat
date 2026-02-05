@@ -11,15 +11,19 @@ if (!stripeSecret) {
 }
 
 const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2025-11-17.clover",
-  appInfo: { name: "VectoBeat", version: "2.3.0" },
+  apiVersion: "2026-01-28.clover",
+  appInfo: { name: "VectoBeat", version: process.env.NEXT_PUBLIC_APP_VERSION || "2.3.2" },
 })
 
 const parseTier = (subscription: Stripe.Subscription): string => {
+  const product = subscription.items?.data?.[0]?.price?.product
+  const productMetadata =
+    typeof product === "object" && product !== null && "metadata" in product ? (product as Stripe.Product).metadata : null
+
   const metaTier =
     (subscription.metadata?.tier as string | undefined) ||
     (subscription.items?.data?.[0]?.price?.metadata?.tier as string | undefined) ||
-    (subscription.items?.data?.[0]?.price?.product as any)?.metadata?.tier
+    productMetadata?.tier
   if (metaTier && typeof metaTier === "string") {
     return metaTier.toLowerCase()
   }
@@ -69,8 +73,8 @@ const buildPayload = (subscription: Stripe.Subscription) => {
     monthlyPrice,
     currency,
     // Stripe types omit these on Subscription in TS; they are present in payloads
-    currentPeriodStart: new Date((((subscription as any)?.current_period_start ?? Date.now()) as number) * 1000),
-    currentPeriodEnd: new Date((((subscription as any)?.current_period_end ?? Date.now()) as number) * 1000),
+    currentPeriodStart: new Date((((subscription as any).current_period_start ?? Date.now() / 1000) * 1000)),
+    currentPeriodEnd: new Date((((subscription as any).current_period_end ?? Date.now() / 1000) * 1000)),
   }
 }
 
@@ -80,7 +84,7 @@ const handleSubscriptionEvent = async (subscription: Stripe.Subscription) => {
     return { ok: false, error: "missing_metadata" }
   }
   const record = await upsertSubscription(payload)
-  const guildId = (record as any)?.discordServerId || payload.guildId
+  const guildId = record?.discordServerId || payload.guildId
   if (guildId) {
     void deliverTelemetryWebhook({
       guildId,

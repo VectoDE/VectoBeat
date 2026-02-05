@@ -56,7 +56,6 @@ export const getPrismaClient = () => {
 
   if (!prismaClient) {
     prismaClient = new PrismaClient({
-      datasourceUrl: process.env.DATABASE_URL,
       log: process.env.NODE_ENV === "production" ? ["error"] : ["error", "warn"],
     })
 

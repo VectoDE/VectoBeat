@@ -2,57 +2,97 @@
 
 from __future__ import annotations
 
+import logging
+from typing import Optional, TYPE_CHECKING
+
 import discord
 from discord import InteractionType, app_commands
 from discord.ext import commands
+
+if TYPE_CHECKING:
+    from src.services.metrics_service import MetricsService
+    from src.services.command_analytics_service import CommandAnalyticsService
+    from src.services.status_api_service import StatusApiService
+
+logger = logging.getLogger(__name__)
 
 
 class ObservabilityEvents(commands.Cog):
     """Emit metrics for command completions and failures."""
 
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    def _metrics(self):
-        return getattr(self.bot, "metrics_service", None)
+    def _metrics(self) -> Optional[MetricsService]:
+        return getattr(self.bot, "metrics", None)
 
-    def _analytics(self):
+    def _analytics(self) -> Optional[CommandAnalyticsService]:
         return getattr(self.bot, "analytics_service", None)
 
-    def _status_api(self):
+    def _status_api(self) -> Optional[StatusApiService]:
         return getattr(self.bot, "status_api", None)
 
-    @staticmethod
-    def _duration_ms(interaction: discord.Interaction) -> float:
-        if not getattr(interaction, "created_at", None):
+    def _duration_ms(self, interaction: discord.Interaction) -> float:
+        """Calculate execution duration in milliseconds."""
+        try:
+            diff = discord.utils.utcnow() - interaction.created_at
+            return diff.total_seconds() * 1000.0
+        except Exception:
             return 0.0
-        delta = discord.utils.utcnow() - interaction.created_at
-        return delta.total_seconds() * 1000
 
     @commands.Cog.listener()
-    async def on_app_command_completion(self, interaction: discord.Interaction, command: app_commands.Command) -> None:
+    async def on_app_command_completion(
+        self,
+        interaction: discord.Interaction,
+        command: app_commands.Command | app_commands.ContextMenu
+    ) -> None:
+        """Log successful slash command executions."""
+        cmd_name = command.qualified_name if hasattr(command, "qualified_name") else command.name
+        
         metrics = self._metrics()
         if metrics:
-            metrics.record_command(command.qualified_name, success=True)
+            metrics.record_command(cmd_name, success=True)
+
         analytics = self._analytics()
         if analytics:
             payload = analytics.event_payload(
-                command=command.qualified_name,
+                command=cmd_name,
                 success=True,
                 duration_ms=self._duration_ms(interaction),
                 guild_id=getattr(interaction.guild, "id", None),
                 shard_id=getattr(interaction.guild, "shard_id", None) if interaction.guild else None,
                 user_id=getattr(interaction.user, "id", None),
+                metadata={}
             )
             await analytics.record(payload)
+
         status_api = self._status_api()
         if status_api:
             status_api.record_command_event(
-                name=command.qualified_name,
+                name=cmd_name,
                 success=True,
                 guild_id=getattr(interaction.guild, "id", None),
                 shard_id=getattr(interaction.guild, "shard_id", None) if interaction.guild else None,
+                metadata={}
             )
+
+        user = interaction.user
+        guild = interaction.guild
+        
+        logger.info(
+            "Slash command '%s' used by %s (ID: %s) in guild %s (ID: %s)",
+            cmd_name,
+            user,
+            user.id,
+            guild,
+            guild.id if guild else "DM"
+        )
+
+    @commands.Cog.listener()
+    async def on_command_completion(self, ctx: commands.Context) -> None:
+        """Log successful prefix command executions."""
+        # Prefix commands are legacy/admin-only, no op for now.
+        pass
 
     @commands.Cog.listener()
     async def on_app_command_error(
@@ -87,7 +127,7 @@ class ObservabilityEvents(commands.Cog):
             )
 
     @commands.Cog.listener()
-    async def on_interaction(self, interaction: discord.Interaction):
+    async def on_interaction(self, interaction: discord.Interaction) -> None:
         if interaction.type != InteractionType.component:
             return
         status_api = self._status_api()
@@ -105,5 +145,5 @@ class ObservabilityEvents(commands.Cog):
         )
 
 
-async def setup(bot: commands.Bot):
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(ObservabilityEvents(bot))

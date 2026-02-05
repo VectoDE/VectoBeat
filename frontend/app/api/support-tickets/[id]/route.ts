@@ -8,6 +8,8 @@ import {
   recordBotActivityEvent,
   getUserSubscriptions,
   setUserRole,
+  type SubscriptionSummary,
+  type SerializedContactMessageThread,
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 import { sendTicketEventEmail } from "@/lib/email-notifications"
@@ -35,7 +37,9 @@ export async function GET(
   }
 
   let subscription: { tier: string; serverName: string | null } | null = null
-  const memberMessage = ticket.messages?.find((msg) => msg.role === "member" && msg.authorId)
+  const memberMessage = ticket.messages?.find(
+    (msg: SerializedContactMessageThread) => msg.role === "member" && msg.authorId,
+  )
   const requesterId = memberMessage?.authorId || null
   if (requesterId) {
     try {
@@ -44,7 +48,7 @@ export async function GET(
       const tierOrder = ["free", "starter", "pro", "growth", "scale", "enterprise"]
       let best = "free"
       let bestServer: string | null = null
-      for (const sub of subs) {
+      for (const sub of subs as SubscriptionSummary[]) {
         if (!activeStatuses.has((sub.status || "").toLowerCase())) continue
         const tier = normalizeTierId(sub.tier)
         const currentIdx = tierOrder.indexOf(best)

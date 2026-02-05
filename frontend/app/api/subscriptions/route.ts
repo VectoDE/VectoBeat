@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions, getUserContact, upsertSubscription, upsertUserContact } from "@/lib/db"
+import {
+  getUserSubscriptions,
+  getUserContact,
+  upsertSubscription,
+  upsertUserContact,
+  type SubscriptionSummary,
+} from "@/lib/db"
 import { stripe } from "@/lib/stripe"
 
 const centsToMonthly = (unitAmount?: number | null, interval?: string | null) => {
@@ -121,7 +127,7 @@ export const createSubscriptionsHandlers = (deps: RouteDeps = {}) => {
       return NextResponse.json({
         subscriptions,
         total: subscriptions.length,
-        activeCount: subscriptions.filter((sub: any) => sub.status === "active").length,
+        activeCount: subscriptions.filter((sub: SubscriptionSummary) => sub.status === "active").length,
       })
     } catch (error) {
       console.error("[VectoBeat] Get subscriptions error:", error)

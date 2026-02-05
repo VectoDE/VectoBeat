@@ -14,13 +14,17 @@ RUN [ -n "$DATABASE_URL" ] || (echo "DATABASE_URL build arg is required for Pris
 COPY frontend ./
 COPY plan-capabilities.json ./plan-capabilities.json
 # Run Prisma with provided DATABASE_URL before building.
-RUN npx prisma generate && \
-    npx prisma db push
+RUN npx prisma generate
 
 # Provide a non-secret placeholder for STRIPE at build time to satisfy Next.js/Stripe checks.
 ARG BUILD_STRIPE_KEY="dummy_stripe_key"
-RUN STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npx prisma generate && \
-    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" npm run build
+RUN --mount=type=secret,id=DATA_ENCRYPTION_KEY \
+    DATA_ENCRYPTION_KEY="$(cat /run/secrets/DATA_ENCRYPTION_KEY)" \
+    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" \
+    npx prisma generate && \
+    DATA_ENCRYPTION_KEY="$(cat /run/secrets/DATA_ENCRYPTION_KEY)" \
+    STRIPE_SECRET_KEY="${BUILD_STRIPE_KEY}" \
+    npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -33,6 +37,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
 EXPOSE 3060
-CMD ["npm", "run", "start", "--", "-p", "3060"]
+CMD ["sh", "-c", "npx prisma db push && npm start"]

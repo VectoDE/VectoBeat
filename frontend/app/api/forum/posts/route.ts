@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { createForumPost, getUserSubscriptions, getUserRole } from "@/lib/db"
+import { createForumPost, getUserSubscriptions, getUserRole, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const parseBody = async (request: NextRequest) => {
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
   }
 
   const subs = await getUserSubscriptions(discordId)
-  const tiers = subs.map((sub) => normalizeTierId(sub.tier))
-  const isPro = tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+  const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
+  const isPro = tiers.some((tier: string) => ["pro", "growth", "scale", "enterprise"].includes(tier))
   const roleName = await getUserRole(discordId)
   const isTeam = ["admin", "operator"].includes(roleName)
   const hasPostingRights = isTeam || isPro

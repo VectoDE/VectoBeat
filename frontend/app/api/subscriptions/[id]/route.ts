@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { deleteSubscriptionById, getSubscriptionById, updateSubscriptionById } from "@/lib/db"
 
-type SubscriptionRouteParams = { params: { id: string } }
+type SubscriptionRouteParams = { params: Promise<{ id: string }> }
 
 const parseDateInput = (value: unknown) => {
   if (typeof value !== "string" && !(value instanceof Date)) {
@@ -30,7 +30,8 @@ const parseString = (value: unknown) => {
 
 export async function GET(_request: NextRequest, { params }: SubscriptionRouteParams) {
   try {
-    const subscription = await getSubscriptionById(params.id)
+    const { id } = await params
+    const subscription = await getSubscriptionById(id)
     if (!subscription) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
     }
@@ -44,6 +45,8 @@ export async function GET(_request: NextRequest, { params }: SubscriptionRoutePa
 
 export async function PUT(request: NextRequest, { params }: SubscriptionRouteParams) {
   try {
+    const { id } = await params
+
     const payload = await request.json().catch(() => null)
     if (!payload || typeof payload !== "object") {
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
@@ -98,38 +101,26 @@ export async function PUT(request: NextRequest, { params }: SubscriptionRoutePar
       updates.guildId = value
     }
 
-    if ("currentPeriodStart" in payload || "current_period_start" in payload) {
-      const value = parseDateInput(
-        (payload as Record<string, unknown>).currentPeriodStart ??
-          (payload as Record<string, unknown>).current_period_start,
-      )
-      if (!value) {
-        return NextResponse.json({ error: "currentPeriodStart must be a valid date" }, { status: 400 })
+    if ("currentPeriodStart" in payload) {
+      const value = parseDateInput((payload as Record<string, unknown>).currentPeriodStart)
+      if (value) {
+        updates.currentPeriodStart = value
       }
-      updates.currentPeriodStart = value
     }
 
-    if ("currentPeriodEnd" in payload || "current_period_end" in payload) {
-      const value = parseDateInput(
-        (payload as Record<string, unknown>).currentPeriodEnd ??
-          (payload as Record<string, unknown>).current_period_end,
-      )
-      if (!value) {
-        return NextResponse.json({ error: "currentPeriodEnd must be a valid date" }, { status: 400 })
+    if ("currentPeriodEnd" in payload) {
+      const value = parseDateInput((payload as Record<string, unknown>).currentPeriodEnd)
+      if (value) {
+        updates.currentPeriodEnd = value
       }
-      updates.currentPeriodEnd = value
     }
 
-    if (!Object.keys(updates).length) {
-      return NextResponse.json({ error: "No valid fields provided for update" }, { status: 400 })
-    }
-
-    const subscription = await updateSubscriptionById(params.id, updates)
-    if (!subscription) {
+    const updated = await updateSubscriptionById(id, updates)
+    if (!updated) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
     }
 
-    return NextResponse.json(subscription)
+    return NextResponse.json(updated)
   } catch (error) {
     console.error("[VectoBeat] Update subscription error:", error)
     return NextResponse.json({ error: "Failed to update subscription" }, { status: 500 })
@@ -138,12 +129,13 @@ export async function PUT(request: NextRequest, { params }: SubscriptionRoutePar
 
 export async function DELETE(_request: NextRequest, { params }: SubscriptionRouteParams) {
   try {
-    const deleted = await deleteSubscriptionById(params.id)
-    if (!deleted) {
+    const { id } = await params
+    const success = await deleteSubscriptionById(id)
+    if (!success) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, deletedId: params.id })
+    return new NextResponse(null, { status: 204 })
   } catch (error) {
     console.error("[VectoBeat] Delete subscription error:", error)
     return NextResponse.json({ error: "Failed to delete subscription" }, { status: 500 })

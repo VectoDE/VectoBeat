@@ -1,6 +1,13 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+
+console.log('TEST FILE ENV CHECK:', {
+  NODE_ENV: process.env.NODE_ENV,
+  SKIP_API_AUTH: process.env.SKIP_API_AUTH
+});
+
 import { NextRequest } from "next/server"
+
 import { verifyRequestForUser } from "@/lib/auth"
 
 const buildRequest = (url: string, token?: string) =>
@@ -14,6 +21,10 @@ test("verifyRequestForUser returns profile when session is valid", async () => {
       id: "u1",
       username: "tester",
       email: "u1@test.tld",
+      displayName: "Tester",
+      avatarUrl: "https://example.com/avatar.png",
+      createdAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
       guilds: [{ id: "g1", name: "Guild One" }],
     }),
   })
@@ -44,6 +55,10 @@ test("verifyRequestForUser rejects when no token present", async () => {
       id: "u1",
       username: "tester",
       email: "u1@test.tld",
+      displayName: "Tester",
+      avatarUrl: "https://example.com/avatar.png",
+      createdAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
       guilds: [],
     }),
   })

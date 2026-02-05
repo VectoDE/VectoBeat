@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
-import { getUserSecurity, recordLoginSession } from "@/lib/db"
+import { getUserSecurity, persistUserProfile, recordLoginSession } from "@/lib/db"
 import { resolveClientLocation } from "@/lib/request-metadata"
 import { hashSessionToken } from "@/lib/session"
 
@@ -223,6 +223,37 @@ export async function GET(request: NextRequest) {
     })
 
     const guilds = await guildsResponse.json()
+
+    // Persist user profile and guilds
+    const mappedGuilds = Array.isArray(guilds)
+      ? guilds.map((g: any) => {
+          const perms = typeof g.permissions === "string" ? Number(g.permissions) : 0
+          const isAdmin = Boolean(g.owner) || (Number.isFinite(perms) && ((perms & 0x20) !== 0 || (perms & 0x8) !== 0))
+          return {
+            id: g.id,
+            name: g.name,
+            icon: g.icon,
+            owner: g.owner,
+            permissions: g.permissions,
+            isAdmin,
+            hasBot: true, // Assume true initially; validated by control panel
+          }
+        })
+      : []
+
+    await persistUserProfile({
+      id: userData.id,
+      username: userData.username,
+      displayName: userData.global_name || userData.username,
+      discriminator: userData.discriminator,
+      email: userData.email || null,
+      phone: userData.phone || null,
+      avatar: userData.avatar,
+      avatarUrl: userData.avatar
+        ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+        : null,
+      guilds: mappedGuilds,
+    })
 
     const security = await getUserSecurity(userData.id)
     const redirectPath = security.twoFactorEnabled ? "/two-factor?context=login" : "/control-panel"

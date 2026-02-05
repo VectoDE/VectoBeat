@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions } from "@/lib/db"
+import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const macros = [
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 
   const subs = await getUserSubscriptions(discordId)
-  const tiers = subs.map((sub) => normalizeTierId(sub.tier))
+  const tiers = subs.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   if (!hasProPlus(tiers)) {
     return NextResponse.json({ error: "pro_required" }, { status: 403 })
   }

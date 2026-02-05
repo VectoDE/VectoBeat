@@ -69,6 +69,9 @@ test("env files are anchored to the repo root", () => {
     ...allowedNames.map((name) => path.join(repoRoot, name)),
     path.join(repoRoot, "bot", ".env"),
     path.join(repoRoot, "frontend", ".env"),
+    // Local overrides are allowed
+    path.join(repoRoot, "bot", ".env.local"),
+    path.join(repoRoot, "frontend", ".env.local"),
   ].filter((file) => fs.existsSync(file));
 
   assert.deepStrictEqual(

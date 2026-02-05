@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 
+from discord.ext import commands
 import lavalink
 
 from src.services.lavalink_service import LavalinkManager, VectoPlayer
@@ -17,18 +17,18 @@ class RegionalRoutingService:
 
     def __init__(
         self,
-        bot,
+        bot: commands.Bot,
         settings: ServerSettingsService,
         lavalink_manager: LavalinkManager,
         interval_seconds: int = 30,
-    ):
+    ) -> None:
         self.bot = bot
         self.settings = settings
         self.manager = lavalink_manager
         self.interval = max(10, int(interval_seconds))
         self.logger = logging.getLogger("VectoBeat.RegionalRouting")
         self.enabled = bool(self.settings and self.manager)
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Begin the reconciliation loop."""
@@ -44,7 +44,7 @@ class RegionalRoutingService:
         self._task.cancel()
         try:
             await self._task
-        except asyncio.CancelledError:  # pragma: no cover - expected during shutdown
+        except asyncio.CancelledError:
             pass
         self._task = None
 
@@ -52,13 +52,20 @@ class RegionalRoutingService:
         """Re-evaluate routing for every active player."""
         if not self.enabled:
             return
-        client = getattr(self.bot, "lavalink", None)
+
+        client: lavalink.Client | None = getattr(self.bot, "lavalink", None)
         if not client:
             return
+
         players = list(client.player_manager.players.values())
         if not players:
             return
-        tasks = [self._reconcile_player(player) for player in players if getattr(player, "guild_id", None)]
+
+        tasks = [
+            self._reconcile_player(player)
+            for player in players
+            if isinstance(player, VectoPlayer) and player.guild_id
+        ]
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -66,12 +73,15 @@ class RegionalRoutingService:
         """Immediately reconcile routing for a single guild."""
         if not self.enabled:
             return
-        client = getattr(self.bot, "lavalink", None)
+
+        client: lavalink.Client | None = getattr(self.bot, "lavalink", None)
         if not client:
             return
-        player: Optional[VectoPlayer] = client.player_manager.get(guild_id)
-        if not player:
+
+        player = client.player_manager.get(guild_id)
+        if not player or not isinstance(player, VectoPlayer):
             return
+
         await self._reconcile_player(player)
 
     async def _run(self) -> None:
@@ -79,10 +89,10 @@ class RegionalRoutingService:
             while True:
                 try:
                     await self.reconcile_all()
-                except Exception as exc:  # pragma: no cover - defensive logging
+                except Exception as exc:
                     self.logger.warning("Regional routing reconcile failed: %s", exc)
                 await asyncio.sleep(self.interval)
-        except asyncio.CancelledError:  # pragma: no cover - expected during shutdown
+        except asyncio.CancelledError:
             raise
 
     async def _reconcile_player(self, player: VectoPlayer) -> None:
@@ -93,5 +103,8 @@ class RegionalRoutingService:
         try:
             return await self.settings.lavalink_region(guild_id)
         except Exception:
-            self.logger.debug("Falling back to auto Lavalink region for guild %s after settings error.", guild_id)
+            self.logger.debug(
+                "Falling back to auto Lavalink region for guild %s after settings error.",
+                guild_id,
+            )
             return "auto"
