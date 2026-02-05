@@ -1,48 +1,35 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# Absolute paths as requested
-PROJECT_ROOT="/home/vectode/vectobeat"
-ENV_DIR="/home/vectode/vectobeat_env"
-ENV_FILE="${ENV_DIR}/.env"
-USER="vectode"
-GROUP="vectode"
+# Configuration via environment variables
+: "${PROJECT_ROOT:?PROJECT_ROOT environment variable required}"
+: "${FILE_OWNER:?FILE_OWNER environment variable required}"
+FILE_GROUP="${FILE_GROUP:-$FILE_OWNER}"
+
+ENV_FILE="${PROJECT_ROOT}/.env"
 
 echo "Starting deployment for VectoBeat..."
 
-# Ensure target directory exists
-if [ ! -d "$PROJECT_ROOT" ]; then
-    echo "Creating project root: $PROJECT_ROOT"
-    mkdir -p "$PROJECT_ROOT"
+# Ensure we are running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run as root." >&2
+    exit 1
 fi
 
-# Switch to project directory
+# Ensure project root exists
+if [ ! -d "$PROJECT_ROOT" ]; then
+    echo "Directory $PROJECT_ROOT does not exist. Something went wrong with the upload." >&2
+    exit 1
+fi
+
+# Switch to project directory explicitly
 cd "$PROJECT_ROOT"
 
-# Check for .env file in the environment directory
+# Check for .env file
 if [ ! -f "$ENV_FILE" ]; then
   echo "Error: Environment file not found at $ENV_FILE" >&2
   exit 1
 fi
-
-copy_env() {
-  local target=$1
-  local dir
-  dir=$(dirname "$target")
-  mkdir -p "$dir"
-  cp "$ENV_FILE" "$target"
-  # Ensure permissions are correct
-  chmod 600 "$target"
-  if [ "$(id -u)" -eq 0 ]; then
-      chown "$USER:$GROUP" "$target"
-  fi
-  echo "Placed env at $target"
-}
-
-# Copy .env to required locations
-copy_env "$PROJECT_ROOT/frontend/.env"
-copy_env "$PROJECT_ROOT/bot/.env"
-copy_env "$PROJECT_ROOT/.env"
 
 # Determine docker compose command
 if docker compose version >/dev/null 2>&1; then
@@ -50,19 +37,20 @@ if docker compose version >/dev/null 2>&1; then
 elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE=(docker-compose)
 else
-  echo "docker compose is required" >&2
+  echo "docker compose is required but not found." >&2
   exit 1
 fi
 
-# Pull latest changes (assuming git is initialized)
-echo "Pulling latest code..."
-git pull || echo "Git pull failed or not a git repo, continuing..."
-
-# Fix permissions if running as root
-if [ "$(id -u)" -eq 0 ]; then
-    echo "Fixing permissions for $PROJECT_ROOT..."
-    chown -R "$USER:$GROUP" "$PROJECT_ROOT"
+# Pull latest changes if git is available
+if [ -d ".git" ]; then
+    echo "Pulling latest code..."
+    # Pull as the file owner to avoid permission issues with .git
+    sudo -u "$FILE_OWNER" git pull || echo "Git pull failed, continuing..."
 fi
+
+# Fix permissions ensuring vectode owns the files, but we run as root
+echo "Fixing permissions for $PROJECT_ROOT..."
+chown -R "$FILE_OWNER:$FILE_GROUP" "$PROJECT_ROOT"
 
 # Build and start services
 echo "Building and starting services..."
