@@ -218,11 +218,11 @@ const initialForm = {
 
 function stripMarkdown(content: string): string {
   return content
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`[^`]*`/g, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-    .replace(/[#>*_~]/g, " ")
+    .replaceAll(/```[\s\S]*?```/g, " ")
+    .replaceAll(/`[^`]*`/g, " ")
+    .replaceAll(/<[^>]*>/g, " ")
+    .replaceAll(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+    .replaceAll(/[#>*_~]/g, " ")
 }
 
 const estimateReadTime = (content: string | undefined | null) => {

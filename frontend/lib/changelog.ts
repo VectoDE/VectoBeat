@@ -56,12 +56,7 @@ const parseReleaseBody = (body: string | null) => {
   let inHighlightSection = false
 
   lines.forEach((line) => {
-    let headingMatch: string | null = null
-    for (let i = 1; i <= 6 && line[i - 1] === "#"; i++) {
-      const rest = line.slice(i).trim()
-      headingMatch = rest ? rest : null
-      break
-    }
+    const headingMatch = line.match(/^#{1,6}\s*(.*)/)
     if (headingMatch) {
       inHighlightSection = headingMatch[1].toLowerCase().includes("highlight")
       return
@@ -75,11 +70,12 @@ const parseReleaseBody = (body: string | null) => {
     const bulletMatch = line.match(/^[-*+]\s+(.*)/)
     if (bulletMatch) {
       const content = bulletMatch[1].trim()
-      if (!content) return
-      if (inHighlightSection) {
-        highlights.push(content)
-      } else {
-        changeLines.push(content)
+      if (content) {
+        if (inHighlightSection) {
+          highlights.push(content)
+        } else {
+          changeLines.push(content)
+        }
       }
       return
     }
