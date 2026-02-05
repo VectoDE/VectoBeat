@@ -75,6 +75,7 @@ class VectoBeat(commands.AutoShardedBot):
             intents=INTENTS,
             help_command=None,
             shard_count=CONFIG.bot.shard_count,
+            shard_ids=CONFIG.bot.shard_ids,
             chunk_guilds_at_startup=False,
             member_cache_flags=MEMBER_CACHE_FLAGS,
             max_messages=MESSAGE_CACHE_LIMIT,

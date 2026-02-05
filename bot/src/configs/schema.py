@@ -37,6 +37,7 @@ class BotConfig(BaseModel):
     intents: BotIntents = BotIntents()
     sync_commands_on_start: bool = True
     shard_count: Optional[int] = None
+    shard_ids: Optional[List[int]] = None
 
 
 class ThemeConfig(BaseModel):
