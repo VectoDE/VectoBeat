@@ -48,10 +48,19 @@ jobs:
           echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
           echo "key_path=$key_file" >> "$GITHUB_OUTPUT"
 
+      - name: Fix permissions before sync
+        env:
+          ROOT_USER: ${{ secrets.DEPLOY_SSH_ROOT_USER }}
+          ROOT_PASS: ${{ secrets.DEPLOY_SSH_ROOT_PASSWORD }}
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+            "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+            "echo '$ROOT_PASS' | su -c 'chown -R ${DEPLOY_SSH_USER}:${DEPLOY_SSH_USER} ${DEPLOY_TARGET_PATH}' '$ROOT_USER'"
+
       - name: Sync repository to server
         run: |
           ssh -o StrictHostKeyChecking=no "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" "mkdir -p '${DEPLOY_TARGET_PATH}'"
-          rsync -az --delete --exclude '.git' \
+          rsync -az --delete --exclude '.git' --exclude 'bot/data' \
             -e "ssh -o StrictHostKeyChecking=no" \
             ./ "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:${DEPLOY_TARGET_PATH}/"
 
