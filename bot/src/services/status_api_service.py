@@ -222,16 +222,26 @@ class StatusAPIService:
     def _build_payload(self) -> Dict[str, Any]:
         self._prune_events()
         guilds = getattr(self.bot, "guilds", [])
-        guild_ids = [str(guild.id) for guild in guilds]
-        guild_payload = [
-            {
-                "id": str(guild.id),
-                "name": guild.name,
-                "memberCount": guild.member_count or len(getattr(guild, "members", [])) or 0,
-                "icon": guild.icon.url if getattr(guild, "icon", None) else None,
-            }
-            for guild in guilds
-        ]
+        guild_ids = []
+        guild_payload = []
+        
+        for guild in guilds:
+            try:
+                g_id = str(guild.id)
+                guild_ids.append(g_id)
+                icon_url = None
+                if getattr(guild, "icon", None):
+                    icon_url = guild.icon.url
+                
+                guild_payload.append({
+                    "id": g_id,
+                    "name": guild.name,
+                    "memberCount": guild.member_count or len(getattr(guild, "members", [])) or 0,
+                    "icon": icon_url,
+                })
+            except Exception:
+                continue
+
         lavalink_client = getattr(self.bot, "lavalink", None)
         players = list(lavalink_client.player_manager.players.values()) if lavalink_client else []
         active_players = sum(1 for player in players if getattr(player, "is_playing", False))
@@ -256,6 +266,7 @@ class StatusAPIService:
             "healthScore": health_score,
             "guildCount": len(guilds),
             "guildIds": guild_ids,
+            "knownGuildIds": guild_ids,
             "guilds": guild_payload,
             "servers": guild_payload,
             "players": self._safe_int(len(players)),

@@ -189,11 +189,11 @@ export default async function BlogPage() {
         </div>
       </section>
 
-      <section className="w-full py-16 px-4 border-b border-border bg-background/70">
+      <section className="sr-only" aria-labelledby="blog-intro-heading">
         <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-[1.2fr_0.8fr] items-center">
           <div>
             <p className="text-xs uppercase tracking-[0.4em] text-primary/70 mb-3">Why read?</p>
-            <h2 className="text-3xl font-bold mb-4">VectoBeat stories anchored in telemetry</h2>
+            <h2 id="blog-intro-heading" className="text-3xl font-bold mb-4">VectoBeat stories anchored in telemetry</h2>
             <p className="text-foreground/70 mb-4">
               Each publication references real SLOs, automations, and forum threads so readers get product-proof insights—always linked
               to <Link href="/features" className="text-primary underline">Features</Link>,{" "}

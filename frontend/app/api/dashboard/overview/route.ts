@@ -73,6 +73,7 @@ export const createDashboardOverviewHandlers = (deps: RouteDeps = {}) => {
         activePlayers: typeof activePlayers === "number" ? activePlayers : null,
         uptime: botStatus?.uptime ?? botStatus?.uptimeSeconds ?? null,
         raw: botStatus ?? null,
+        knownGuildIds: Array.from(botGuildPresence),
       },
     })
   }

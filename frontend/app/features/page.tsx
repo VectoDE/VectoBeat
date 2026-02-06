@@ -235,7 +235,8 @@ export default async function FeaturesPage() {
         </div>
       </section>
 
-      <section className="w-full py-16 px-4 border-b border-border bg-background" data-animate-on-scroll="off">
+      <section className="sr-only" aria-labelledby="features-pillar-heading" data-animate-on-scroll="off">
+        <h2 id="features-pillar-heading" className="sr-only">VectoBeat Pillars</h2>
         <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-3">
           {featurePillars.map((pillar) => (
             <article key={pillar.title} className="p-6 rounded-2xl border border-border/40 bg-card/30 h-full flex flex-col gap-4">
@@ -252,7 +253,8 @@ export default async function FeaturesPage() {
         </div>
       </section>
 
-      <section className="w-full py-12 px-4 border-b border-border bg-card/5" data-animate-on-scroll="off">
+      <section className="sr-only" aria-labelledby="core-capabilities-heading" data-animate-on-scroll="off">
+        <h2 id="core-capabilities-heading" className="sr-only">Core Capabilities</h2>
         <div className="max-w-6xl mx-auto grid gap-6 md:grid-cols-3">
           <div className="p-5 rounded-2xl border border-border/40 bg-background/70">
             <p className="text-xs uppercase tracking-[0.3em] text-primary/70 mb-2">Observability</p>

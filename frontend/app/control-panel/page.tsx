@@ -442,7 +442,7 @@ export default function ControlPanelPage() {
 
   const fetchOverviewData = useCallback(async (discordId: string) => {
     try {
-      const response = await fetch(`/api/dashboard/overview?discordId=${discordId}`, {
+      const response = await fetch(`/api/dashboard/overview?discordId=${discordId}&t=${Date.now()}`, {
         cache: "no-store",
       })
       if (!response.ok) {
@@ -519,7 +519,15 @@ export default function ControlPanelPage() {
   const subscribedGuildIds = useMemo(() => new Set(subscriptions.map((sub) => sub.discordServerId)), [subscriptions])
   const botGuildIdSet = useMemo(() => {
     const raw = overviewData?.bot?.raw
+    const known = overviewData?.bot?.knownGuildIds
     const ids = new Set<string>()
+
+    if (Array.isArray(known)) {
+      known.forEach((id) => {
+        if (id) ids.add(String(id))
+      })
+    }
+
     if (raw) {
       const candidateLists = [
         (Array.isArray(raw.guildIds) && raw.guildIds) || [],
@@ -529,30 +537,33 @@ export default function ControlPanelPage() {
       ]
       for (const list of candidateLists) {
         for (const entry of list as any[]) {
-          if (typeof entry === "string") {
+          if (typeof entry === "string" && entry) {
             ids.add(entry)
+          } else if (typeof entry === "number") {
+            ids.add(String(entry))
           } else if (entry && typeof entry === "object") {
-            if (typeof (entry as any).id === "string") ids.add((entry as any).id)
-            if (typeof (entry as any).guildId === "string") ids.add((entry as any).guildId)
+            if ((entry as any).id) ids.add(String((entry as any).id))
+            else if ((entry as any).guildId) ids.add(String((entry as any).guildId))
           }
         }
       }
     }
     return ids
-  }, [overviewData?.bot?.raw])
+  }, [overviewData?.bot?.raw, overviewData?.bot?.knownGuildIds])
+
   const guildsWithBot = useMemo(
     () =>
       adminGuilds.filter(
-        (guild) => guild.hasBot || subscribedGuildIds.has(guild.id) || botGuildIdSet.has(guild.id),
+        (guild) => guild.hasBot || botGuildIdSet.has(String(guild.id)),
       ),
-    [adminGuilds, subscribedGuildIds, botGuildIdSet],
+    [adminGuilds, botGuildIdSet],
   )
   const guildsWithoutBot = useMemo(
     () =>
       adminGuilds.filter(
-        (guild) => !(guild.hasBot || subscribedGuildIds.has(guild.id) || botGuildIdSet.has(guild.id)),
+        (guild) => !(guild.hasBot || botGuildIdSet.has(String(guild.id))),
       ),
-    [adminGuilds, subscribedGuildIds, botGuildIdSet],
+    [adminGuilds, botGuildIdSet],
   )
   const subscriptionTierByGuild = useMemo(() => {
     const map = new Map<string, MembershipTier>()
@@ -571,7 +582,7 @@ export default function ControlPanelPage() {
   const tierIndex = TIER_SEQUENCE.indexOf(selectedGuildTier)
   const tierDefinition = MEMBERSHIP_TIERS[selectedGuildTier]
   const selectedGuildHasBot = Boolean(
-    selectedGuild && (selectedGuild.hasBot || subscribedGuildIds.has(selectedGuild.id)),
+    selectedGuild && (selectedGuild.hasBot || botGuildIdSet.has(String(selectedGuild.id))),
   )
   const selectedPlan = useMemo(() => getPlanCapabilities(selectedGuildTier), [selectedGuildTier])
   const planAllowsApiTokens = selectedPlan.features.apiTokens

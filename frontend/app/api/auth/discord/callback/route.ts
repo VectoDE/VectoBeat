@@ -236,7 +236,7 @@ export async function GET(request: NextRequest) {
             owner: g.owner,
             permissions: g.permissions,
             isAdmin,
-            hasBot: true, // Assume true initially; validated by control panel
+            hasBot: false, // Assume false initially; actual presence checked via bot status/subscriptions
           }
         })
       : []
