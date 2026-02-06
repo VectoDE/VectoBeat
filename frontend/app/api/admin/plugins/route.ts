@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
     if (!prisma) return NextResponse.json({ error: "Database unavailable" }, { status: 500 })
 
     const plugins = await prisma.plugin.findMany({
+      include: { sources: true },
       orderBy: { createdAt: 'desc' }
     })
     
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { name, description, version, author, price, verified, enabled, configSchema } = body
+    const { name, description, version, author, price, verified, enabled, configSchema, sources } = body
     
     const prisma = getPrismaClient()
     if (!prisma) return NextResponse.json({ error: "Database unavailable" }, { status: 500 })
@@ -62,6 +63,14 @@ export async function POST(req: NextRequest) {
         verified: verified ?? false,
         enabled: enabled ?? true,
         configSchema: configSchema ?? undefined,
+        sources: {
+          create: sources?.map((s: any) => ({
+            language: s.language,
+            filename: s.filename,
+            content: s.content,
+            entryPoint: s.entryPoint ?? false
+          }))
+        }
       }
     })
     
@@ -79,12 +88,19 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { id, name, description, version, author, price, verified, enabled, configSchema } = body
+    const { id, name, description, version, author, price, verified, enabled, configSchema, sources } = body
     
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 })
 
     const prisma = getPrismaClient()
     if (!prisma) return NextResponse.json({ error: "Database unavailable" }, { status: 500 })
+
+    // First delete existing sources if sources are provided in update
+    if (sources) {
+      await prisma.pluginSource.deleteMany({
+        where: { pluginId: id }
+      })
+    }
 
     const plugin = await prisma.plugin.update({
       where: { id },
@@ -97,6 +113,14 @@ export async function PUT(req: NextRequest) {
         verified,
         enabled,
         configSchema: configSchema ?? undefined,
+        sources: sources ? {
+          create: sources.map((s: any) => ({
+            language: s.language,
+            filename: s.filename,
+            content: s.content,
+            entryPoint: s.entryPoint ?? false
+          }))
+        } : undefined
       }
     })
     

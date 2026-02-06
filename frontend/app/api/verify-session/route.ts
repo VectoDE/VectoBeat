@@ -62,7 +62,7 @@ const mapDiscordGuilds = (raw: any[]): Array<{ id: string; name: string; hasBot:
       return {
         id: g.id,
         name: g.name,
-        hasBot: true, // assume bot present; corrected by status/plan data later
+        hasBot: false,
         isAdmin,
       }
     })
@@ -90,8 +90,9 @@ const resolveGuilds = async (verification: any): Promise<ResolvedGuild[]> => {
       const prior = existingById.get(guild.id)
       return {
         ...guild,
-        // preserve bot presence flag if we already tracked it for this guild id
-        hasBot: typeof prior?.hasBot === "boolean" ? prior.hasBot : guild.hasBot,
+        // We do not preserve prior.hasBot because it might be stale or incorrect (e.g. defaulted to true).
+        // The frontend will determine actual bot presence via the bot status API and subscription data.
+        hasBot: false, 
       }
     })
     return fresh

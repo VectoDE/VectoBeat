@@ -21,21 +21,23 @@ const getCategoryIcon = (category: string) => {
 
 export default async function CommandsPage() {
   const commandGroups = await getBotCommands()
+  const totalCategories = commandGroups.length
+  const totalCommands = commandGroups.reduce((acc, group) => acc + group.commands.length, 0)
 
   return (
     <main className="min-h-screen bg-background" suppressHydrationWarning>
       <Navigation />
       
-      <section className="w-full pt-32 pb-12 px-4 border-b border-border bg-card/20">
+      <section className="w-full pt-32 pb-12 px-4 border-b border-border bg-card/20" data-animate-on-scroll="off">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Command Reference</h1>
           <p className="text-xl text-foreground/70 max-w-2xl mx-auto">
-            Everything you need to control VectoBeat. From high-fidelity playback to advanced server automation.
+            Browse <span className="text-primary font-semibold">{totalCommands}</span> commands across <span className="text-primary font-semibold">{totalCategories}</span> categories. Everything you need to control VectoBeat. From high-fidelity playback to advanced server automation.
           </p>
         </div>
       </section>
 
-      <section className="w-full py-12 px-4">
+      <section className="w-full py-12 px-4" data-animate-on-scroll="off">
         <div className="max-w-6xl mx-auto space-y-12">
           {commandGroups.length === 0 ? (
             <div className="text-center py-12">

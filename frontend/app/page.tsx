@@ -323,7 +323,7 @@ export default async function Home() {
         </section>
 
         <section
-          className="w-full py-12 px-4 border-y border-border"
+          className="sr-only"
           aria-labelledby="search-visibility-heading"
         >
           <div className="max-w-5xl mx-auto space-y-6">

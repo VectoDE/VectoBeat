@@ -1,6 +1,14 @@
 
 import { useState, useEffect } from 'react'
 
+interface PluginSource {
+  id?: string
+  language: 'PYTHON' | 'JAVASCRIPT' | 'TYPESCRIPT' | 'LUA'
+  filename: string
+  content: string
+  entryPoint: boolean
+}
+
 interface Plugin {
   id: string
   name: string
@@ -13,6 +21,7 @@ interface Plugin {
   verified: boolean
   enabled: boolean
   configSchema?: any
+  sources?: PluginSource[]
   createdAt: string
   updatedAt: string
 }
@@ -24,7 +33,18 @@ export function AdminPluginManager() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    id: string
+    name: string
+    description: string
+    version: string
+    author: string
+    price: number
+    verified: boolean
+    enabled: boolean
+    requiresDedicatedInstance: boolean
+    sources: PluginSource[]
+  }>({
     id: '',
     name: '',
     description: '',
@@ -33,7 +53,8 @@ export function AdminPluginManager() {
     price: 0,
     verified: false,
     enabled: true,
-    requiresDedicatedInstance: false
+    requiresDedicatedInstance: false,
+    sources: []
   })
 
   useEffect(() => {
@@ -65,7 +86,14 @@ export function AdminPluginManager() {
       price: plugin.price !== undefined && plugin.price !== null ? Number(plugin.price) : 0,
       verified: plugin.verified ?? false,
       enabled: plugin.enabled ?? true,
-      requiresDedicatedInstance: plugin.configSchema?.requirements?.dedicatedShard ?? false
+      requiresDedicatedInstance: plugin.configSchema?.requirements?.dedicatedShard ?? false,
+      sources: plugin.sources?.map(s => ({
+        id: s.id,
+        language: s.language as any,
+        filename: s.filename,
+        content: s.content,
+        entryPoint: s.entryPoint
+      })) ?? []
     })
     setModalOpen(true)
   }
@@ -80,9 +108,55 @@ export function AdminPluginManager() {
       price: 0,
       verified: false,
       enabled: true,
-      requiresDedicatedInstance: false
+      requiresDedicatedInstance: false,
+      sources: []
     })
     setModalOpen(true)
+  }
+
+  const handleAddSource = () => {
+    setFormData({
+      ...formData,
+      sources: [
+        ...formData.sources,
+        {
+          language: 'PYTHON',
+          filename: 'main.py',
+          content: '',
+          entryPoint: formData.sources.length === 0 // Auto-set first as entry point
+        }
+      ]
+    })
+  }
+
+  const handleRemoveSource = (index: number) => {
+    const newSources = [...formData.sources]
+    newSources.splice(index, 1)
+    setFormData({ ...formData, sources: newSources })
+  }
+
+  const handleUpdateSource = (index: number, field: keyof PluginSource, value: any) => {
+    const newSources = [...formData.sources]
+    newSources[index] = { ...newSources[index], [field]: value }
+    setFormData({ ...formData, sources: newSources })
+  }
+
+  const handleFileUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const content = event.target?.result as string
+      const newSources = [...formData.sources]
+      newSources[index] = { 
+        ...newSources[index], 
+        content,
+        filename: file.name
+      }
+      setFormData({ ...formData, sources: newSources })
+    }
+    reader.readAsText(file)
   }
 
   const handleSave = async () => {
@@ -299,6 +373,116 @@ export function AdminPluginManager() {
                   <span className="text-sm">Requires Dedicated Shard/Bot Instance</span>
                   <span className="text-xs text-foreground/50 ml-1">(Isolation)</span>
                 </label>
+              </div>
+
+              <div className="pt-4 border-t border-border/60">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-semibold text-lg">Scripts</h4>
+                  <button
+                    onClick={handleAddSource}
+                    className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-sm hover:bg-secondary/80 transition-colors"
+                  >
+                    Add Script
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {formData.sources.map((source, idx) => (
+                    <div key={idx} className="p-4 bg-muted/30 rounded-lg border border-border/60 space-y-3">
+                      <div className="flex gap-3 items-start">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-xs font-medium text-foreground/70">Filename</label>
+                          <input
+                            type="text"
+                            value={source.filename}
+                            onChange={(e) => handleUpdateSource(idx, 'filename', e.target.value)}
+                            className="w-full px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            placeholder="main.py"
+                          />
+                        </div>
+                        <div className="w-32 space-y-1">
+                          <label className="text-xs font-medium text-foreground/70">Language</label>
+                          <select
+                            value={source.language}
+                            onChange={(e) => handleUpdateSource(idx, 'language', e.target.value)}
+                            className="w-full px-3 py-1.5 bg-background border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+                          >
+                            <option value="PYTHON">Python</option>
+                            <option value="JAVASCRIPT">JavaScript</option>
+                            <option value="TYPESCRIPT">TypeScript</option>
+                            <option value="LUA">Lua</option>
+                          </select>
+                        </div>
+                        <div className="pt-6">
+                          <button
+                            onClick={() => handleRemoveSource(idx)}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                            title="Remove Script"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-end">
+                          <label className="text-xs font-medium text-foreground/70">Content</label>
+                          <div>
+                            <input
+                              type="file"
+                              id={`file-upload-${idx}`}
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(idx, e)}
+                            />
+                            <label
+                              htmlFor={`file-upload-${idx}`}
+                              className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                              Upload File
+                            </label>
+                          </div>
+                        </div>
+                        <textarea
+                          value={source.content}
+                          onChange={(e) => handleUpdateSource(idx, 'content', e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary/50 min-h-[150px]"
+                          placeholder="Paste your script code here..."
+                          spellCheck={false}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`entry-${idx}`}
+                          checked={source.entryPoint}
+                          onChange={(e) => {
+                            // Ensure only one entry point if needed, or allow multiple?
+                            // Usually one entry point per plugin logic, but let's allow flexibility or auto-uncheck others.
+                            // For now, simple toggle.
+                             const newSources = formData.sources.map((s, i) => ({
+                               ...s,
+                               entryPoint: i === idx ? e.target.checked : s.entryPoint // Allow multiple or independent? Let's assume independent for now, but usually one main.
+                             }))
+                             // Actually, let's enforce single entry point for simplicity if it makes sense, 
+                             // but the schema doesn't enforce it. Let's just update the current one.
+                             handleUpdateSource(idx, 'entryPoint', e.target.checked)
+                          }}
+                          className="rounded border-border bg-background text-primary focus:ring-primary/50"
+                        />
+                        <label htmlFor={`entry-${idx}`} className="text-sm cursor-pointer select-none">
+                          Entry Point (Main Script)
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                  {formData.sources.length === 0 && (
+                    <div className="text-center py-8 border border-dashed border-border/60 rounded-lg text-foreground/50 text-sm">
+                      No scripts added yet. Click &quot;Add Script&quot; to get started.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             

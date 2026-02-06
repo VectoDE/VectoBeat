@@ -216,9 +216,9 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      <section className="w-full py-16 px-4 border-b border-border bg-card/10">
+      <section className="sr-only" aria-labelledby="feature-comparison-heading">
         <div className="max-w-6xl mx-auto space-y-6">
-          <h2 className="text-3xl font-bold text-center">Feature comparison at a glance</h2>
+          <h2 id="feature-comparison-heading" className="text-3xl font-bold text-center">Feature comparison at a glance</h2>
           <p className="text-center text-foreground/60 max-w-3xl mx-auto">
             Scan the controls unlocked at every tier. Each column lines up with the pricing cards above so you can verify hi-fi audio,
             automation, analytics, and support coverage in seconds.
@@ -308,9 +308,9 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      <section className="w-full py-20 px-4 bg-card/30 border-y border-border">
+      <section className="sr-only" aria-labelledby="success-stories-heading">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold mb-12 text-center">Success stories</h2>
+          <h2 id="success-stories-heading" className="text-4xl font-bold mb-12 text-center">Success stories</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {

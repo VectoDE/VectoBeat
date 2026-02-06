@@ -127,6 +127,7 @@ const parseGuildIds = (payload: unknown): string[] => {
   if (!maybeObject) return []
 
   const candidates: unknown[] =
+    (Array.isArray((maybeObject as any).knownGuildIds) && (maybeObject as any).knownGuildIds) ||
     (Array.isArray(maybeObject.guildIds) && maybeObject.guildIds) ||
     (Array.isArray((maybeObject as any).guild_ids) && (maybeObject as any).guild_ids) ||
     (Array.isArray(maybeObject.guilds) && maybeObject.guilds) ||
@@ -165,9 +166,7 @@ export const getBotStatus = async () => {
     try {
       const response = await fetch(target, {
         headers: buildAuthHeaders(authTokens),
-        next: {
-          revalidate: 30,
-        },
+        cache: "no-store",
         signal: controller.signal,
       })
       clearTimeout(timeout)
