@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Copy, Facebook, Linkedin, Share2, Twitter } from "lucide-react"
+import { Copy, Share2 } from "lucide-react"
+import { SiFacebook, SiLinkedin, SiX } from "react-icons/si"
 
 interface BlogShareButtonProps {
   url: string
@@ -11,7 +12,7 @@ interface BlogShareButtonProps {
 const SHARE_TARGETS = [
   {
     label: "Twitter / X",
-    icon: Twitter,
+    icon: SiX,
     buildUrl: (url: string, title?: string) =>
       `https://twitter.com/intent/tweet?${new URLSearchParams({
         url,
@@ -20,12 +21,12 @@ const SHARE_TARGETS = [
   },
   {
     label: "Facebook",
-    icon: Facebook,
+    icon: SiFacebook,
     buildUrl: (url: string) => `https://www.facebook.com/sharer/sharer.php?${new URLSearchParams({ u: url }).toString()}`,
   },
   {
     label: "LinkedIn",
-    icon: Linkedin,
+    icon: SiLinkedin,
     buildUrl: (url: string, title?: string) =>
       `https://www.linkedin.com/shareArticle?${new URLSearchParams({
         url,

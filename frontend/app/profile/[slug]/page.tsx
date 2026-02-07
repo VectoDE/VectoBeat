@@ -2,21 +2,21 @@ import type { ComponentType } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import ReactMarkdown from "react-markdown"
+import { Link as LinkIcon } from "lucide-react"
 import {
-  Youtube,
-  Instagram,
-  Twitter,
-  Twitch,
-  Github,
-  Gitlab,
-  Slack,
-  Music4,
-  Gamepad2,
-  Flame,
-  Joystick,
-  SquareKanban,
-  Link as LinkIcon,
-} from "lucide-react"
+  SiDiscord,
+  SiFaceit,
+  SiGithub,
+  SiGitlab,
+  SiInstagram,
+  SiSlack,
+  SiSteam,
+  SiTiktok,
+  SiTwitch,
+  SiX,
+  SiYoutube,
+} from "react-icons/si"
+import { FaMicrosoft } from "react-icons/fa"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { buildProfilePageUrl, buildProfileSeoDescription, fetchPublicProfile, type LinkedAccount } from "./profile-utils"
@@ -38,60 +38,60 @@ const providerMap: Record<
 > = {
   youtube: {
     label: "YouTube",
-    icon: Youtube,
+    icon: SiYoutube,
     baseUrl: (handle) => `https://youtube.com/${handle.replace(/^@/, "")}`,
   },
   instagram: {
     label: "Instagram",
-    icon: Instagram,
+    icon: SiInstagram,
     baseUrl: (handle) => `https://instagram.com/${handle.replace(/^@/, "")}`,
   },
   x: {
     label: "X",
-    icon: Twitter,
+    icon: SiX,
     baseUrl: (handle) => `https://x.com/${handle.replace(/^@/, "")}`,
   },
   tiktok: {
     label: "TikTok",
-    icon: Music4,
+    icon: SiTiktok,
     baseUrl: (handle) => `https://www.tiktok.com/@${handle.replace(/^@/, "")}`,
   },
   twitch: {
     label: "Twitch",
-    icon: Twitch,
+    icon: SiTwitch,
     baseUrl: (handle) => `https://twitch.tv/${handle.replace(/^@/, "")}`,
   },
   faceit: {
     label: "FACEIT",
-    icon: Flame,
+    icon: SiFaceit,
     baseUrl: (handle) => `https://www.faceit.com/en/players/${handle}`,
   },
   steam: {
     label: "Steam",
-    icon: Gamepad2,
+    icon: SiSteam,
     baseUrl: (handle) => `https://steamcommunity.com/id/${handle}`,
   },
   github: {
     label: "GitHub",
-    icon: Github,
+    icon: SiGithub,
     baseUrl: (handle) => `https://github.com/${handle}`,
   },
   gitlab: {
     label: "GitLab",
-    icon: Gitlab,
+    icon: SiGitlab,
     baseUrl: (handle) => `https://gitlab.com/${handle}`,
   },
   slack: {
     label: "Slack",
-    icon: Slack,
+    icon: SiSlack,
   },
   microsoft: {
     label: "Microsoft",
-    icon: SquareKanban,
+    icon: FaMicrosoft,
   },
   discord_alt: {
     label: "Discord",
-    icon: Joystick,
+    icon: SiDiscord,
   },
 }
 

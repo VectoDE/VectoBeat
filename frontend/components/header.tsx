@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Github } from "lucide-react"
+import { SiGithub } from "react-icons/si"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 
@@ -45,7 +45,7 @@ export default function Header() {
             className="border-primary text-primary hover:bg-primary/10 bg-transparent"
           >
             <Link href="https://github.com/VectoDE/VectoBeat" target="_blank">
-              <Github className="w-4 h-4 mr-2" />
+              <SiGithub className="w-4 h-4 mr-2" />
               <span className="hidden sm:inline">GitHub</span>
             </Link>
           </Button>

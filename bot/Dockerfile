@@ -1,34 +1,36 @@
-FROM python:3.12-slim AS base
-
-ENV PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
-
+# Stage 1: Builder
+FROM python:3.11-alpine3.19 AS builder
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        libffi-dev \
-        libsodium-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev libffi-dev libsodium-dev make
 
-COPY bot/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install python dependencies to a specific prefix
+COPY bot/requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip pip install --prefix=/install --no-cache-dir --no-warn-script-location -r requirements.txt
 
+# Stage 2: Runner
+FROM python:3.11-alpine3.19 AS runner
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 \
+    CONFIG_PATH=/app/config.yml
+
+# Install runtime dependencies only and clean cache
+RUN apk add --no-cache libsodium && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+# Copy installed python packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application source code
 COPY bot/src ./src
 COPY bot/config.yml ./config.yml
 
-# Default configuration path; can be overridden via CONFIG_PATH env.
-ENV CONFIG_PATH=/app/config.yml
+# Create non-root user
+RUN adduser -D vectode && \
+    chown -R vectode:vectode /app
 
-FROM base AS production
-# Remove recursive copy to avoid including sensitive/unnecessary files (S6470)
-# All required files are already copied in the base stage.
-RUN chown -R vectode:vectode /app
 USER vectode
-CMD ["python", "-m", "src.main"]
 
-# Development target keeps the same layout but can be used with bind mounts.
-FROM base AS development
-ENV PYTHONPATH=/app
 CMD ["python", "-m", "src.main"]

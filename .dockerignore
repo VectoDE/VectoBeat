@@ -1,13 +1,58 @@
+# Git
 .git
 .github
-.venv
-.mypy_cache
-__pycache__
-*.pyc
+.gitignore
+
+# Environments
 .env
 .env.local
-.env.*.backup
+.env.*
+!.env.example
+
+# Dependencies
+**/node_modules
+**/venv
+**/.venv
+**/env
+**/__pycache__
+
+# Build outputs
+**/dist
+**/build
+**/out
+**/.next
+**/*.egg-info
+**/*.egg
+
+# Logs
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
 docs/
+README.md
+CHANGELOG.md
+
+# Tests
 tests/
-node_modules/
-*.log
+**/coverage
+**/htmlcov
+.mypy_cache
+.pytest_cache
+
+# Docker
+Dockerfile
+docker-compose.yml
