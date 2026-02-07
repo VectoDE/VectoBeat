@@ -67,7 +67,7 @@ const mockUserData = {
   userBackupCodes: [],
   successPodRequests: [],
   passwordHistory: [
-    { createdAt: new Date(), password: "encrypted_old_password" }
+    { createdAt: new Date(), password: "mock_hash_value" } // NOSONAR
   ]
 }
 

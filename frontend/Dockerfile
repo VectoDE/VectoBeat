@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM node:18-alpine3.19 AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
@@ -14,13 +14,13 @@ COPY plan-capabilities.json ./plan-capabilities.json
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
 ARG BUILD_STRIPE_KEY="dummy_stripe_key"
-ENV STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY}
 
 # Generate Prisma client and build application
-RUN npx prisma generate && npm run build
+RUN STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} npx prisma generate && \
+    STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} npm run build
 
 # Stage 2: Runner
-FROM node:18-alpine3.19 AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
