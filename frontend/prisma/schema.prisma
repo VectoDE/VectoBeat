@@ -26,6 +26,7 @@ model UserProfile {
   displayName      String?  @map("display_name")
   avatarUrl        String?  @map("avatar_url")
   profileSettings  UserProfileSetting?
+  passwordHistory  UserPasswordHistory[]
 
   @@map("user_profiles")
 }
@@ -318,6 +319,18 @@ model UserSecurity {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("user_security")
+}
+
+model UserPasswordHistory {
+  id        String   @id @default(uuid())
+  discordId String   @map("discord_id")
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user UserProfile @relation(fields: [discordId], references: [discordId], onDelete: Cascade)
+
+  @@index([discordId], name: "user_password_history_discord_id_idx")
+  @@map("user_password_history")
 }
 
 model UserBotSetting {

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { cookies } from "next/headers"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions, getUserRole, type SubscriptionSummary } from "@/lib/db"
+import { getUserSubscriptions, getUserRole, getUserSecurity, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 
 const resolveDiscordId = async (request: NextRequest) => {
@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
   const subscriptions = await getUserSubscriptions(discordId)
   const tiers = subscriptions.map((sub: SubscriptionSummary) => normalizeTierId(sub.tier))
   const role = await getUserRole(discordId)
+  const security = await getUserSecurity(discordId)
   const user = verification.user || null
   const username = (user as any)?.username || (user as any)?.displayName || discordId
   const displayName = (user as any)?.displayName || (user as any)?.username || username
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
     user,
     subscriptions,
     tiers,
+    requiresTwoFactor: security.twoFactorEnabled,
   })
 }
 

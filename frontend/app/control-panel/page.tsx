@@ -510,7 +510,7 @@ export default function ControlPanelPage() {
       if (timestamp && Date.now() - Number(timestamp) < 1000 * 60 * 30) {
         return true
       }
-      router.push(`/two-factor?context=login&username=${encodeURIComponent(sessionData.username || "VectoBeat")}`)
+      router.push(`/two-factor?context=login&username=${encodeURIComponent(sessionData.username || "VectoBeat")}&user_id=${sessionData.id}`)
       return false
     },
     [router],

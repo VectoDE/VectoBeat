@@ -9,6 +9,7 @@ type ScaleAccountContact = Prisma.ScaleAccountContactGetPayload<Prisma.ScaleAcco
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
 import { getPrismaClient, handlePrismaError } from "./prisma"
+import { getBotGuildPresence } from "./bot-status"
 import { normalizeTierId, type MembershipTier } from "./memberships"
 import type { AnalyticsOverview, HomeMetrics } from "./metrics"
 import type { QueueSnapshot } from "@/types/queue-sync"
@@ -366,6 +367,7 @@ export type StoredUserProfile = {
   username: string | null
   displayName: string | null
   email: string | null
+  phone: string | null
   avatarUrl: string | null
   createdAt: string | null
   lastSeen: string | null
@@ -404,6 +406,7 @@ export const getStoredUserProfile = async (discordId: string): Promise<StoredUse
       username: profileRow?.username ?? payload?.username ?? null,
       displayName: profileRow?.displayName ?? payload?.displayName ?? payload?.username ?? null,
       email: contact?.email ?? payload?.email ?? null,
+      phone: contact?.phone ?? payload?.phone ?? null,
       avatarUrl: profileRow?.avatarUrl ?? (payload as any)?.avatarUrl ?? null,
       createdAt: null,
       lastSeen: profileRow?.lastSeen ? profileRow.lastSeen.toISOString() : null,
@@ -512,6 +515,118 @@ export const setUserRole = async (discordId: string, role: UserRole) => {
   } catch (error) {
     logDbError("[VectoBeat] Failed to update user role:", error)
     return DEFAULT_ROLE
+  }
+}
+
+export const getFullUserData = async (discordId: string) => {
+  try {
+    const db = getPool()
+    if (!db) return null
+
+    const [
+      profile,
+      contact,
+      role,
+      security,
+      settings,
+      privacy,
+      preferences,
+      notifications,
+      botSettings,
+      sessions,
+      loginEvents,
+      linkedAccounts,
+      subscriptions,
+      blogComments,
+      blogReactionVotes,
+      supportThreads,
+      serverSettings,
+      userBackupCodes,
+      successPodRequests,
+      passwordHistory,
+    ] = await Promise.all([
+      db.userProfile.findUnique({ where: { discordId } }),
+      db.userContact.findUnique({ where: { discordId } }),
+      db.userRole.findUnique({ where: { discordId } }),
+      db.userSecurity.findUnique({ where: { discordId } }),
+      db.userProfileSetting.findUnique({ where: { discordId } }),
+      db.userPrivacy.findUnique({ where: { discordId } }),
+      db.userPreference.findUnique({ where: { discordId } }),
+      db.userNotification.findUnique({ where: { discordId } }),
+      db.userBotSetting.findUnique({ where: { discordId } }),
+      db.userSession.findMany({
+        where: { discordId },
+        orderBy: { lastActive: "desc" },
+      }),
+      db.userLoginEvent.findMany({
+        where: { discordId },
+        orderBy: { createdAt: "desc" },
+        take: 50, // Limit to last 50 for the PDF to be manageable
+      }),
+      db.userLinkedAccount.findMany({
+        where: { discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.subscription.findMany({
+        where: { discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.blogComment.findMany({
+        where: { authorId: discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.blogReactionVote.findMany({
+        where: { authorId: discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.contactMessageThread.findMany({
+        where: { authorId: discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.serverSetting.findMany({
+        where: { discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.userBackupCode.findMany({
+        where: { discordId },
+        select: { id: true, createdAt: true, usedAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.successPodRequest.findMany({
+        where: { createdBy: discordId },
+        orderBy: { submittedAt: "desc" },
+      }),
+      db.userPasswordHistory.findMany({
+        where: { discordId },
+        orderBy: { createdAt: "desc" },
+      }),
+    ])
+
+    return {
+      profile,
+      contact,
+      role,
+      security,
+      settings,
+      privacy,
+      preferences,
+      notifications,
+      botSettings,
+      sessions,
+      loginEvents,
+      linkedAccounts,
+      subscriptions,
+      blogComments,
+      blogReactionVotes,
+      supportThreads,
+      serverSettings,
+      userBackupCodes,
+      successPodRequests,
+      passwordHistory,
+    }
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to fetch full user data:", error)
+    return null
   }
 }
 
@@ -1284,6 +1399,31 @@ export const recordLoginSession = async (params: RecordSessionParams): Promise<R
       })
 
       return { allowed: true, isNew: false, sessionId: existing.id }
+    }
+
+    // Reuse existing session if device/IP matches (avoids duplicate sessions for same device)
+    if (params.userAgent && params.ipAddress) {
+      const reusableSession = await db.userSession.findFirst({
+        where: {
+          discordId: params.discordId,
+          userAgent: params.userAgent,
+          ipAddress: params.ipAddress,
+          revokedAt: null,
+        },
+        orderBy: { lastActive: "desc" },
+      })
+
+      if (reusableSession) {
+        await db.userSession.update({
+          where: { id: reusableSession.id },
+          data: {
+            sessionHash: params.sessionHash,
+            lastActive: new Date(),
+            location: params.location || null,
+          },
+        })
+        return { allowed: true, isNew: false, sessionId: reusableSession.id }
+      }
     }
 
     const inserted = await db.userSession.create({
@@ -2213,12 +2353,26 @@ export const getPublicProfileBySlug = async (slug: string) => {
   const base = await getProfileBase(targetDiscordId)
   const settings = await ensureProfileSettings(targetDiscordId, base.username ?? undefined)
   const decrypted = await getDecryptedProfilePayload(targetDiscordId)
-  const guilds = Array.isArray(decrypted?.guilds) ? decrypted.guilds : []
-  const adminFull = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild?.isAdmin && guild?.id && guild?.name))
-  const memberOnly = guilds.filter((guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } => Boolean(guild && !guild.isAdmin && guild.id && guild.name))
+
+  const botPresence = await getBotGuildPresence()
+
+  const rawGuilds = Array.isArray(decrypted?.guilds) ? decrypted.guilds : []
+  const guilds = rawGuilds.map((guild) => ({
+    ...guild,
+    hasBot: guild.id ? botPresence.has(guild.id) : false,
+  }))
+
+  const adminFull = guilds.filter(
+    (guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } =>
+      Boolean(guild?.isAdmin && guild?.id && guild?.name),
+  )
+  const memberOnly = guilds.filter(
+    (guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } =>
+      Boolean(guild && !guild.isAdmin && guild.id && guild.name),
+  )
   const activeBotGuilds = guilds.filter(
     (guild): guild is { id: string; name: string; hasBot: boolean; isAdmin: boolean } =>
-      Boolean(guild?.id && guild?.name && guild?.hasBot !== false),
+      Boolean(guild?.id && guild?.name && guild?.hasBot && guild?.isAdmin),
   )
   const membershipCount = guilds.length || base.guildCount || 0
   const botGuildCount = activeBotGuilds.length
@@ -2226,7 +2380,7 @@ export const getPublicProfileBySlug = async (slug: string) => {
   const formatGuild = (guild: { id: string; name: string; hasBot?: boolean; isAdmin?: boolean }) => ({
     id: guild.id,
     name: guild.name,
-    hasBot: guild.hasBot === false ? false : true,
+    hasBot: Boolean(guild.hasBot),
     isAdmin: Boolean(guild.isAdmin),
   })
   const linkedAccounts = await getLinkedAccounts(targetDiscordId)

@@ -20,7 +20,26 @@ function TwoFactorSetupContent() {
   const [status, setStatus] = useState<"idle" | "verifying">("idle")
 
   useEffect(() => {
-    const discordId = localStorage.getItem("discord_user_id")
+    // Capture session params from URL if present (e.g. from login callback)
+    const urlToken = searchParams?.get("token")
+    const urlUserId = searchParams?.get("user_id")
+    
+    if (urlToken) {
+      localStorage.setItem("discord_token", urlToken)
+    }
+    if (urlUserId) {
+      localStorage.setItem("discord_user_id", urlUserId)
+    }
+    
+    if (urlToken || urlUserId) {
+      // Clean up the URL to hide the token/user_id
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete("token")
+      newUrl.searchParams.delete("user_id")
+      window.history.replaceState({}, "", newUrl.toString())
+    }
+
+    const discordId = localStorage.getItem("discord_user_id") || urlUserId
     const username = searchParams?.get("username") || ""
     if (!discordId) {
       router.push("/")

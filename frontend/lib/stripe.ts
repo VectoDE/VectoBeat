@@ -10,4 +10,5 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
     name: "VectoBeat",
     version: process.env.NEXT_PUBLIC_APP_VERSION || "2.3.2",
   },
+  typescript: true,
 })

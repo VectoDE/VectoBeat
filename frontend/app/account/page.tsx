@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, type ComponentType } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
-import type { LucideIcon } from "lucide-react"
 import {
   User,
   Lock,
@@ -15,19 +14,21 @@ import {
   LogOut,
   Link2 as LinkIcon,
   SlidersHorizontal,
-  Youtube,
-  Instagram,
-  Twitter,
-  Twitch,
-  Github,
-  Gitlab,
-  Slack,
-  Music4,
-  Gamepad2,
-  Flame,
-  Joystick,
-  SquareKanban,
 } from "lucide-react"
+import {
+  SiDiscord,
+  SiFaceit,
+  SiGithub,
+  SiGitlab,
+  SiInstagram,
+  SiSlack,
+  SiSteam,
+  SiTiktok,
+  SiTwitch,
+  SiX,
+  SiYoutube,
+} from "react-icons/si"
+import { FaMicrosoft } from "react-icons/fa"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import { RoleBadge } from "@/components/role-badge"
 
@@ -79,7 +80,7 @@ const SECURITY_DEFAULTS = {
 type LinkedProviderDefinition = {
   value: string
   label: string
-  icon: LucideIcon
+  icon: ComponentType<{ className?: string }>
   placeholder: string
   helper?: string
   urlBased?: boolean
@@ -96,7 +97,7 @@ const LINKED_ACCOUNT_PROVIDERS: LinkedProviderDefinition[] = [
   {
     value: "youtube",
     label: "YouTube Channel",
-    icon: Youtube,
+    icon: SiYoutube,
     placeholder: "youtube.com/@vectobeat",
     helper: "Paste the channel URL or handle that should appear on your profile.",
     urlBased: true,
@@ -104,63 +105,63 @@ const LINKED_ACCOUNT_PROVIDERS: LinkedProviderDefinition[] = [
   {
     value: "instagram",
     label: "Instagram",
-    icon: Instagram,
+    icon: SiInstagram,
     placeholder: "instagram.com/your-handle",
     urlBased: true,
   },
   {
     value: "x",
     label: "X (Twitter)",
-    icon: Twitter,
+    icon: SiX,
     placeholder: "x.com/your-handle",
     urlBased: true,
   },
   {
     value: "tiktok",
     label: "TikTok",
-    icon: Music4,
+    icon: SiTiktok,
     placeholder: "tiktok.com/@your-handle",
     urlBased: true,
   },
   {
     value: "twitch",
     label: "Twitch",
-    icon: Twitch,
+    icon: SiTwitch,
     placeholder: "twitch.tv/channel",
     urlBased: true,
   },
   {
     value: "faceit",
     label: "FACEIT",
-    icon: Flame,
+    icon: SiFaceit,
     placeholder: "faceit.com/en/players/handle",
     urlBased: true,
   },
   {
     value: "steam",
     label: "Steam",
-    icon: Gamepad2,
+    icon: SiSteam,
     placeholder: "steamcommunity.com/id/handle",
     urlBased: true,
   },
   {
     value: "github",
     label: "GitHub",
-    icon: Github,
+    icon: SiGithub,
     placeholder: "github.com/username",
     urlBased: true,
   },
   {
     value: "gitlab",
     label: "GitLab",
-    icon: Gitlab,
+    icon: SiGitlab,
     placeholder: "gitlab.com/username",
     urlBased: true,
   },
   {
     value: "slack",
     label: "Slack Workspace",
-    icon: Slack,
+    icon: SiSlack,
     placeholder: "workspace.slack.com",
     helper: "Use the workspace URL so we can deep-link teammates directly.",
     urlBased: true,
@@ -168,14 +169,14 @@ const LINKED_ACCOUNT_PROVIDERS: LinkedProviderDefinition[] = [
   {
     value: "microsoft",
     label: "Microsoft (Teams/Azure)",
-    icon: SquareKanban,
+    icon: FaMicrosoft,
     placeholder: "tenant.onmicrosoft.com",
     urlBased: true,
   },
   {
     value: "discord_alt",
     label: "Secondary Discord ID",
-    icon: Joystick,
+    icon: SiDiscord,
     placeholder: "Discord user ID (snowflake)",
     helper: "Perfect for co-admins who help manage billing or automation.",
     urlBased: false,
@@ -2196,7 +2197,7 @@ const profileShareUrl = profileShareSlug
                             disabled={downloadingData}
                             className="w-full px-4 py-3 border border-border/50 rounded-lg hover:bg-card/50 transition-colors text-left disabled:opacity-60"
                           >
-                            {downloadingData ? "Preparing export..." : "Download My Data"}
+                            {downloadingData ? "Preparing PDF export..." : "Download My Data (PDF)"}
                           </button>
                           <button className="w-full px-4 py-3 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors text-left">
                             Delete My Account

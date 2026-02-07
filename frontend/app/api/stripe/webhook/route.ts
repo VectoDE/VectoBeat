@@ -2,18 +2,9 @@ import { NextResponse, type NextRequest } from "next/server"
 import Stripe from "stripe"
 import { upsertSubscription } from "@/lib/db"
 import { deliverTelemetryWebhook } from "@/lib/telemetry-webhooks"
+import { stripe } from "@/lib/stripe"
 
-const stripeSecret = process.env.STRIPE_SECRET_KEY
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-
-if (!stripeSecret) {
-  throw new Error("STRIPE_SECRET_KEY is not set")
-}
-
-const stripe = new Stripe(stripeSecret, {
-  apiVersion: "2026-01-28.clover",
-  appInfo: { name: "VectoBeat", version: process.env.NEXT_PUBLIC_APP_VERSION || "2.3.2" },
-})
 
 const parseTier = (subscription: Stripe.Subscription): string => {
   const product = subscription.items?.data?.[0]?.price?.product
