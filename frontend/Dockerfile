@@ -14,10 +14,15 @@ COPY plan-capabilities.json ./plan-capabilities.json
 ARG DATABASE_URL
 ENV DATABASE_URL=${DATABASE_URL}
 ARG BUILD_STRIPE_KEY="dummy_stripe_key"
+ARG DATA_ENCRYPTION_KEY="dummy_encryption_key_32_chars_exactly_!!!!"
 
 # Generate Prisma client and build application
-RUN STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} npx prisma generate && \
-    STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} npm run build
+RUN STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} \
+    DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY} \
+    npx prisma generate && \
+    STRIPE_SECRET_KEY=${BUILD_STRIPE_KEY} \
+    DATA_ENCRYPTION_KEY=${DATA_ENCRYPTION_KEY} \
+    npm run build
 
 # Stage 2: Runner
 FROM node:20-alpine AS runner
