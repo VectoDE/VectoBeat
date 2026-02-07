@@ -46,7 +46,7 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
 
 # Ensure Prisma client is available
-RUN npx prisma generate
+RUN DATABASE_URL=${DATABASE_URL} npx prisma generate
 
 EXPOSE 3060
 CMD ["sh", "-c", "npx prisma db push && npm start"]
