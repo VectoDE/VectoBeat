@@ -23,7 +23,7 @@ You now have access to:
 - **Support Desk:** open incidents, attach diagnostics, and follow real-time replies.
 - **Automation Library:** prebuilt flows for onboarding, escalations, and monetization.
 
-Need inspiration? Visit our [success stories](${normalizedAppUrl}/success-stories) to explore real-world playbooks.
+Need inspiration? Visit our [blog](${normalizedAppUrl}/blog) to explore real-world playbooks.
 
 If you ever get stuck, reply to this email or ping us from the Support Desk—we're online every day.
 `

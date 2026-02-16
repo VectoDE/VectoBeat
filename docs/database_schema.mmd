@@ -1,0 +1,24 @@
+erDiagram
+    USERS ||--o{ GUILDS : "manages"
+    USERS {
+        string id
+        string username
+        string avatar
+    }
+    GUILDS {
+        string id
+        string name
+        string owner_id
+    }
+    GUILDS ||--|{ QUEUES : "has"
+    QUEUES {
+        string id
+        string guild_id
+    }
+    QUEUES ||--o{ TRACKS : "contains"
+    TRACKS {
+        string id
+        string queue_id
+        string title
+        string artist
+    }

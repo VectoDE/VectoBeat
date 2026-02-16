@@ -45,7 +45,6 @@ const LINK_GROUPS = [
       { label: "Contact", href: "/contact" },
       { label: "Partners", href: "/partners" },
       { label: "Roadmap", href: "/roadmap" },
-      { label: "Success Stories", href: "/success-stories" },
     ],
   },
   {

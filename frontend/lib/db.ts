@@ -4528,6 +4528,7 @@ interface BlogPostRow {
   featured: boolean
   publishedAt: Date
   updatedAt: Date
+  image: string | null
 }
 
 interface BlogReactionRow {
@@ -4567,6 +4568,7 @@ const mapBlogPost = (row: BlogPostRow): BlogPost => ({
   featured: row.featured ?? false,
   publishedAt: row.publishedAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
+  image: row.image,
 })
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
@@ -4588,10 +4590,11 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
         author: row.author,
         category: row.category,
         readTime: row.readTime,
-        views: row.views,
-        featured: row.featured,
+        views: row.views ?? 0,
+        featured: row.featured ?? false,
         publishedAt: row.publishedAt,
         updatedAt: row.updatedAt,
+        image: row.image,
       }),
     )
   } catch (error) {
@@ -4626,10 +4629,11 @@ export const getBlogPostByIdentifier = async (identifier: string): Promise<BlogP
       author: post.author,
       category: post.category,
       readTime: post.readTime,
-      views: post.views,
-      featured: post.featured,
+      views: post.views ?? 0,
+      featured: post.featured ?? false,
       publishedAt: post.publishedAt,
       updatedAt: post.updatedAt,
+      image: post.image,
     })
   } catch (error) {
     logDbError("[VectoBeat] Failed to load blog post:", error)
@@ -4646,6 +4650,7 @@ interface BlogPostInput {
   author: string
   category?: string
   featured?: boolean
+  image?: string | null
 }
 
 const normalizeExcerpt = (excerpt?: string | null): string | null => {
@@ -4670,6 +4675,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
       category: input.category || null,
       readTime: computedReadTime,
       featured: input.featured ?? false,
+      image: input.image || null,
     }
 
     let record: BlogPostRow | null = null
@@ -4696,6 +4702,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           featured: updated.featured,
           publishedAt: updated.publishedAt,
           updatedAt: updated.updatedAt,
+          image: updated.image,
         }
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")) {
@@ -4715,6 +4722,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           category: baseData.category,
           readTime: baseData.readTime,
           featured: baseData.featured,
+          image: baseData.image,
         },
         create: {
           id: input.id,
@@ -4737,6 +4745,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
         featured: created.featured,
         publishedAt: created.publishedAt,
         updatedAt: created.updatedAt,
+        image: created.image,
       }
     }
 

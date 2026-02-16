@@ -1,19 +1,4 @@
-export const dynamic = "force-dynamic"
-
-export const metadata = buildPageMetadata({
-  title: "Blog | VectoBeat Guides, Release Notes & Discord Automation News",
-  description:
-    "Read VectoBeat changelogs, telemetry deep dives, and Discord music automation tips. Fresh guides connect features, pricing, and support resources.",
-  path: "/blog",
-  keywords: [
-    "vectobeat blog",
-    "discord music bot news",
-    "lavalink changelog",
-    "discord automation guides",
-    "vectobeat updates",
-  ],
-})
-
+import { buildBlogOverviewMetadata } from "./metadata"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { Calendar, Clock, Eye, BarChart3, Link2 } from "lucide-react"
@@ -21,14 +6,16 @@ import Link from "next/link"
 import { headers } from "next/headers"
 import { getBlogPosts } from "@/lib/db"
 import { NewsletterSignup } from "@/components/newsletter-signup"
-import { buildPageMetadata, siteUrl } from "@/lib/seo"
 import Script from "next/script"
+
+export const dynamic = "force-dynamic"
+export const metadata = buildBlogOverviewMetadata()
 
 const BLOG_FAQ = [
   {
     question: "Which topics does the VectoBeat blog cover?",
     answer:
-      "Guides about Discord music automation, release updates, telemetry best practices, and moderation playbooks?each post links back to live product context.",
+      "Guides about Discord music automation, release updates, telemetry best practices, and moderation playbooks—each post links back to live product context.",
   },
   {
     question: "How often do you publish new articles?",
@@ -99,51 +86,9 @@ export default async function BlogPage() {
   const totalViews = posts.reduce((sum, post) => sum + (post.views ?? 0), 0)
   const categories = Array.from(new Set(posts.map((post) => post.category).filter((cat): cat is string => Boolean(cat))))
   const latestPost = posts[0]
-  const structuredData = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Blog",
-      headline: "VectoBeat Blog",
-      description:
-        "Articles, changelogs, and Discord automation playbooks for hi-fi streaming, telemetry, and control panels.",
-      url: `${siteUrl}/blog`,
-      inLanguage: "en",
-      blogPost: posts.slice(0, 6).map((post) => ({
-        "@type": "BlogPosting",
-        headline: post.title,
-        datePublished: post.publishedAt,
-        author: post.author,
-        url: `${siteUrl}/blog/${post.slug}`,
-        description: post.excerpt,
-      })),
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Home", item: siteUrl },
-        { "@type": "ListItem", position: 2, name: "Blog", item: `${siteUrl}/blog` },
-      ],
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: BLOG_FAQ.map((faq) => ({
-        "@type": "Question",
-        name: faq.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: faq.answer,
-        },
-      })),
-    },
-  ]
 
   return (
     <div className="min-h-screen bg-background">
-      <Script id="vectobeat-blog-schema" type="application/ld+json" strategy="afterInteractive">
-        {JSON.stringify(structuredData)}
-      </Script>
       <Navigation />
 
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden">
@@ -152,7 +97,7 @@ export default async function BlogPage() {
         </div>
 
         <div className="relative max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">VectoBeat Blog &amp; Release Notes</h1>
+          <h1 className="text-5xl md:text-6xl font-bold mb-6">VectoBeat Blog & Release Notes</h1>
           <p className="text-xl text-foreground/70 max-w-3xl mx-auto">
             Fresh news, playbooks, and VectoBeat-backed Discord music automation guides. {posts.length} posts connect release updates,
             roadmap signals, and support insights.
@@ -246,7 +191,7 @@ export default async function BlogPage() {
                 const href = `/blog/${safeSlug}`
                 return (
                   <Link
-                    key={post.id}
+                    key={rawSlug}
                     href={href}
                     className="group rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 transition-all overflow-hidden cursor-pointer"
                   >
@@ -291,7 +236,7 @@ export default async function BlogPage() {
             <div className="rounded-2xl border border-border/40 bg-card/30 p-8 text-center">
               <h2 className="text-2xl font-bold mb-2">No posts available</h2>
               <p className="text-foreground/70">
-                We’re preparing fresh content. Check back soon for new guides and updates.
+                We&apos;re preparing fresh content. Check back soon for new guides and updates.
               </p>
             </div>
           )}

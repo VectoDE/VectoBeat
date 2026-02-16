@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, type ComponentType } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import {
@@ -1347,10 +1348,11 @@ const profileShareUrl = profileShareSlug
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center text-2xl font-semibold text-primary">
                         {profileMeta.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={profileMeta.avatarUrl}
                             alt={profileMeta.displayName || profileMeta.username}
+                            width={80}
+                            height={80}
                             className="w-full h-full object-cover"
                           />
                         ) : (

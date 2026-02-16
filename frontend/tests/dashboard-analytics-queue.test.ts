@@ -31,6 +31,7 @@ test("dashboard analytics pulls queue snapshot from durable store", async () => 
         avatarUrl: null,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
+        phone: null,
         guilds: [],
       },
     }),

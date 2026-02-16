@@ -308,54 +308,7 @@ export default async function PricingPage() {
         </div>
       </section>
 
-      <section className="sr-only" aria-labelledby="success-stories-heading">
-        <div className="max-w-6xl mx-auto">
-          <h2 id="success-stories-heading" className="text-4xl font-bold mb-12 text-center">Success stories</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                title: "Gaming Tournament Organizer",
-                challenge: "Needed reliable music across 8-hour finals featuring multiple casters.",
-                solution: "Upgraded to Pro for dedicated routing plus live uptime diagnostics.",
-                result: "Zero music interruptions across consecutive tournaments with tens of thousands of viewers.",
-              },
-              {
-                title: "University Study Network",
-                challenge: "Students wanted mood-based playlists that matched structured study sprints.",
-                solution: "Starter provided curated playlists, timers, and light analytics for admins.",
-                result: "Consistency across every semester with community feedback scores up 24%.",
-              },
-              {
-                title: "Music Label Community",
-                challenge: "Needed to know which artists and sounds resonated before big launches.",
-                solution: "Pro analytics dashboard mapped top listeners, retention, and breakout tracks.",
-                result: "Identified trending artists weeks earlier and boosted pre-save engagement by 31%.",
-              },
-            ].map((story, index) => (
-              <div
-                key={`${story.title}-${index}`}
-                className="p-6 rounded-lg border border-border/50 bg-card/50 hover:bg-card/70 transition-all duration-300"
-              >
-                <h3 className="font-bold text-lg mb-3">{story.title}</h3>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs font-semibold text-foreground/60 uppercase">Challenge</p>
-                    <p className="text-sm text-foreground/70">{story.challenge}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground/60 uppercase">Solution</p>
-                    <p className="text-sm text-foreground/70">{story.solution}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-primary uppercase">Result</p>
-                    <p className="text-sm text-primary/80">{story.result}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+
 
       <section className="w-full py-20 px-4">
         <div className="max-w-5xl mx-auto space-y-10">

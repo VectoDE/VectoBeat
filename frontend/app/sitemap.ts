@@ -15,7 +15,6 @@ const STATIC_ROUTES = [
   "/support-desk",
   "/developer",
   "/stats",
-  "/success-stories",
   "/account",
   "/eula",
   "/sla",

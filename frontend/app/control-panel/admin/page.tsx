@@ -19,6 +19,7 @@ interface BlogPost {
   readTime?: string | null
   views: number
   publishedAt: string
+  image?: string | null
 }
 
 type AdminTabKey =
@@ -214,6 +215,7 @@ const initialForm = {
   content: "",
   author: "",
   category: "Announcement",
+  image: "",
 }
 
 function stripMarkdown(content: string): string {
@@ -4138,6 +4140,7 @@ export default function AdminControlPanelPage() {
         body: JSON.stringify({
           discordId,
           ...form,
+          image: form.image?.trim() ? form.image.trim() : null,
           author: form.author || "VectoBeat Team",
         }),
       })
@@ -4151,6 +4154,38 @@ export default function AdminControlPanelPage() {
     } catch (error) {
       console.error("Failed to publish post:", error)
       setActionMessage(error instanceof Error ? error.message : "Failed to publish post")
+    } finally {
+      setSavingPost(false)
+    }
+  }
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    setSavingPost(true)
+    setActionMessage("Uploading image...")
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || "Failed to upload image")
+      }
+
+      const payload = await response.json()
+      setForm((prev) => ({ ...prev, image: payload.url }))
+      setActionMessage("Image uploaded successfully!")
+    } catch (error) {
+      console.error("Failed to upload image:", error)
+      setActionMessage(error instanceof Error ? error.message : "Failed to upload image")
     } finally {
       setSavingPost(false)
     }
@@ -5602,6 +5637,33 @@ export default function AdminControlPanelPage() {
                   className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold mb-2 block">Blog Image</label>
+              <div className="flex gap-2">
+                <input
+                  value={form.image}
+                  onChange={(e) => setForm((prev) => ({ ...prev, image: e.target.value }))}
+                  className="flex-1 px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
+                  placeholder="https://... or upload below"
+                />
+                <label className="px-4 py-2 bg-primary/20 text-primary rounded-lg font-semibold hover:bg-primary/30 transition-colors cursor-pointer">
+                  Upload
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={savingPost}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-foreground/60 mt-1">Optional. Upload an image or enter URL. Used for blog header + previews.</p>
+              {form.image && (
+                <div className="mt-2">
+                  <Image src={form.image} alt="Preview" width={128} height={80} className="w-32 h-20 object-cover rounded border" />
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-semibold mb-2 block">Estimated Read Time</label>

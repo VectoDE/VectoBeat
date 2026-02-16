@@ -409,6 +409,7 @@ model BlogPost {
   readTime    String?  @map("read_time")
   views       Int      @default(0)
   featured    Boolean  @default(false)
+  image       String?  @db.Text
   publishedAt DateTime @default(now()) @map("published_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
