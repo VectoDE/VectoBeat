@@ -115,9 +115,9 @@ export default function Navigation() {
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/pricing", label: "Pricing" },
     { href: "/features", label: "Features" },
     { href: "/commands", label: "Commands" },
+    { href: "/pricing", label: "Pricing" },
     { href: "/blog", label: "Blog" },
     { href: "/forum", label: "Forum" },
   ]
