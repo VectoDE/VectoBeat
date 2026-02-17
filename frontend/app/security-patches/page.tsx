@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
+import { apiClient } from "@/lib/api-client"
 
 type PatchWave = {
   title: string
@@ -28,9 +29,7 @@ export default function SecurityPatchesPage() {
   useEffect(() => {
     const fetchPatches = async () => {
       try {
-        const res = await fetch("/api/security/patches", { cache: "no-store" })
-        if (!res.ok) throw new Error("Failed to load security patches")
-        const payload = (await res.json()) as SecuritySummary
+        const payload = await apiClient<SecuritySummary>("/api/security/patches", { cache: "no-store" })
         setData(payload)
       } catch (error) {
         console.error("[VectoBeat] Failed to load security patches:", error)

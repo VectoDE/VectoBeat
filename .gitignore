@@ -12,6 +12,7 @@ bot/.env*
 frontend/.env*
 
 # Python + Node artefacts
+.venv/*
 bot/.venv
 bot/__pycache__/
 **/__pycache__/

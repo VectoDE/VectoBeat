@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { apiClient } from "@/lib/api-client"
 
 const PARTNERS = [
   {
@@ -124,8 +125,7 @@ export function PartnersClient() {
   useEffect(() => {
     const bootstrapSession = async () => {
       try {
-        const resp = await fetch("/api/verify-session", { credentials: "include" })
-        const data = await resp.json()
+        const data = await apiClient<any>("/api/verify-session", { credentials: "include" })
         if (data?.authenticated) {
           setSession({
             authenticated: true,
@@ -198,7 +198,7 @@ export function PartnersClient() {
       }
 
       if (isAuthenticated && session?.id) {
-        const ticketResp = await fetch("/api/support-tickets", {
+        const body = await apiClient<any>("/api/support-tickets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -212,13 +212,9 @@ export function PartnersClient() {
             subject: payload.subject,
           }),
         })
-        const body = await ticketResp.json()
-        if (!ticketResp.ok || body?.error) {
-          throw new Error(body?.error || "Ticket could not be created.")
-        }
         setSubmitMessage("Your partner request was converted into a support ticket. We’ll reply inside your account.")
       } else {
-        const contactResp = await fetch("/api/contact", {
+        const body = await apiClient<any>("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -226,10 +222,6 @@ export function PartnersClient() {
             topic: payload.topic || "Partner",
           }),
         })
-        const body = await contactResp.json()
-        if (!contactResp.ok || body?.error) {
-          throw new Error(body?.error || "Message could not be sent.")
-        }
         setSubmitMessage(
           "We received your partner request. Add your email so we can migrate it to a ticket when you sign in."
         )

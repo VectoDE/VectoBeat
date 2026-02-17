@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 import type { CombinedMetrics, HomeMetrics, SummaryStat } from "@/lib/metrics"
 import { Headphones, Users, Music, Shield, Zap, Radio } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
 
 type MetricsStatsCopy = {
   blogPosts: { label: string; featured: string }
@@ -138,11 +139,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
 
     const fetchLatest = async () => {
       try {
-        const response = await fetch("/api/metrics?scope=home", { cache: "no-store" })
-        if (!response.ok) {
-          throw new Error("Failed to fetch home metrics snapshot")
-        }
-        const payload = (await response.json()) as HomeMetrics
+        const payload = await apiClient<HomeMetrics>("/api/metrics?scope=home", { cache: "no-store" })
         if (mounted && payload) {
           setMetrics(payload)
           setUpdatedLabel(new Date(payload.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
@@ -166,7 +163,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
 
     const setup = async () => {
       try {
-        await fetch("/api/socket")
+        await apiClient("/api/socket")
         socket = io({ path: "/api/socket" })
 
         socket.on("connect", () => {

@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { apiClient } from "./api-client"
 
 const GITHUB_REPO = process.env.GITHUB_CHANGELOG_REPO || "VectoDE/VectoBeat"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -111,7 +112,7 @@ const parseReleaseBody = (body: string | null) => {
 
 export const fetchChangelog = async (): Promise<ChangelogEntry[]> => {
   try {
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`, {
+    const releases = await apiClient<GitHubRelease[]>(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=20`, {
       headers: {
         Accept: "application/vnd.github+json",
         ...(GITHUB_TOKEN ? { Authorization: `Bearer ${GITHUB_TOKEN}` } : {}),
@@ -120,12 +121,6 @@ export const fetchChangelog = async (): Promise<ChangelogEntry[]> => {
         revalidate: 60 * 30,
       },
     })
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch releases: ${response.status}`)
-    }
-
-    const releases = (await response.json()) as GitHubRelease[]
     const parsed = releases
       .filter((release) => !release.draft)
       .map((release) => {

@@ -4,17 +4,14 @@ import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { StatsControlPanel } from "@/components/stats-control-panel"
 import { type AnalyticsOverview } from "@/lib/metrics"
+import { apiClient } from "@/lib/api-client"
 
 const getInternalBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 
 const fetchAnalyticsData = async (): Promise<AnalyticsOverview | null> => {
   try {
-    const response = await fetch(`${getInternalBaseUrl()}/api/metrics?scope=analytics`, { cache: "no-store" })
-    if (!response.ok) {
-      throw new Error("Failed to load analytics data")
-    }
-    return (await response.json()) as AnalyticsOverview
+    return await apiClient<AnalyticsOverview>(`${getInternalBaseUrl()}/api/metrics?scope=analytics`, { cache: "no-store" })
   } catch (error) {
     console.error("[VectoBeat] Failed to load analytics from API:", error)
     return null

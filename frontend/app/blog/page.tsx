@@ -7,6 +7,7 @@ import { headers } from "next/headers"
 import { getBlogPosts } from "@/lib/db"
 import { NewsletterSignup } from "@/components/newsletter-signup"
 import Script from "next/script"
+import { apiClient } from "@/lib/api-client"
 
 export const dynamic = "force-dynamic"
 export const metadata = buildBlogOverviewMetadata()
@@ -70,14 +71,11 @@ export default async function BlogPage() {
   let posts = await getBlogPosts()
 
   try {
-    const response = await fetch(`${baseUrl}/api/blog`, {
+    const payload = await apiClient<any>(`${baseUrl}/api/blog`, {
       next: { revalidate: 60 },
     })
-    if (response.ok) {
-      const payload = await response.json()
-      if (Array.isArray(payload?.posts)) {
-        posts = payload.posts
-      }
+    if (Array.isArray(payload?.posts)) {
+      posts = payload.posts
     }
   } catch (error) {
     console.error("[VectoBeat] Failed to load blog posts via API:", error)

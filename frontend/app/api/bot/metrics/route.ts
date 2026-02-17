@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { authorizeRequest } from "@/lib/api-auth"
 import { getBotMetricHistory, recordBotMetricSnapshot } from "@/lib/db"
 import { getApiKeySecret, getApiKeySecrets } from "@/lib/api-keys"
+import { apiClient } from "@/lib/api-client"
 
 const AUTH_TOKEN_TYPES = ["status_events", "status_api", "control_panel"]
 
@@ -72,16 +73,14 @@ export async function GET() {
       (await getApiKeySecret("status_events", { includeEnv: false })) ||
       (await getApiKeySecret("control_panel", { includeEnv: false })) ||
       null
-    const res = await fetch(defaultStatusUrl, {
-      headers:
-        statusToken
-          ? { Authorization: `Bearer ${statusToken}` }
-          : undefined,
+    const headers: Record<string, string> = {}
+    if (statusToken) {
+      headers.Authorization = `Bearer ${statusToken}`
+    }
+    liveSnapshot = await apiClient(defaultStatusUrl, {
+      headers,
       cache: "no-store",
     })
-    if (res.ok) {
-      liveSnapshot = await res.json()
-    }
   } catch (error) {
     console.error("[VectoBeat] Failed to fetch live bot status for metrics:", error)
   }

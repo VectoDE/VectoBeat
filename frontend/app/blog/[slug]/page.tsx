@@ -7,6 +7,7 @@ import { buildBlogPostMetadata, defaultBlogPostMetadata } from "./metadata"
 import { sanitizeSlug, resolveParams } from "@/lib/utils"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
+import DOMPurify from "isomorphic-dompurify"
 
 type BlogPageParams = { params: Promise<{ slug: string }> | { slug: string } }
 
@@ -88,7 +89,12 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
 
           <div
             className="prose prose-lg dark:prose-invert mx-auto"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(post.content, {
+                ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
+                ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel']
+              })
+            }}
           />
         </article>
 

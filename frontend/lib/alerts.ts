@@ -1,3 +1,5 @@
+import { apiClient } from "./api-client"
+
 interface SecurityAlertPayload {
   discordId: string
   message: string
@@ -48,7 +50,7 @@ export const sendSecurityAlert = async ({ discordId, message, meta }: SecurityAl
 
     const body = isDiscordWebhook(SECURITY_ALERT_WEBHOOK_URL) ? discordPayload : { content: fallbackContent }
 
-    await fetch(SECURITY_ALERT_WEBHOOK_URL, {
+    await apiClient<any>(SECURITY_ALERT_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

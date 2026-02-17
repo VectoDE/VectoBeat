@@ -3,6 +3,7 @@ import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_ST
 import { getUserSecurity, persistUserProfile, recordLoginSession } from "@/lib/db"
 import { resolveClientLocation } from "@/lib/request-metadata"
 import { hashSessionToken } from "@/lib/session"
+import { apiClient } from "@/lib/api-client"
 
 const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
 const REDIRECT_COOKIE = "discord_pkce_redirect"
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
     const pkceVerifier =
       decodedState?.v ?? request.cookies.get(CODE_VERIFIER_COOKIE)?.value ?? null
 
-    const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+    const tokenData = await apiClient<any>("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -192,37 +193,17 @@ export async function GET(request: NextRequest) {
       })(),
     })
 
-    if (!tokenResponse.ok) {
-      const error = await tokenResponse.text()
-      console.error("Token exchange error:", error)
-      const response = NextResponse.redirect(new URL("/?error=token_exchange_failed", request.url))
-      clearPkceCookie(response)
-      return response
-    }
-
-    const tokenData = await tokenResponse.json()
-
-    const userResponse = await fetch("https://discord.com/api/users/@me", {
+    const userData = await apiClient<any>("https://discord.com/api/users/@me", {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
       },
     })
 
-    if (!userResponse.ok) {
-      const response = NextResponse.redirect(new URL("/?error=user_fetch_failed", request.url))
-      clearPkceCookie(response)
-      return response
-    }
-
-    const userData = await userResponse.json()
-
-    const guildsResponse = await fetch("https://discord.com/api/users/@me/guilds", {
+    const guilds = await apiClient<any>("https://discord.com/api/users/@me/guilds", {
       headers: {
         Authorization: `Bearer ${tokenData.access_token}`,
       },
     })
-
-    const guilds = await guildsResponse.json()
 
     // Persist user profile and guilds
     const mappedGuilds = Array.isArray(guilds)

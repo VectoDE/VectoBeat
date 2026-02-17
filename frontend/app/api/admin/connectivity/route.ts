@@ -4,6 +4,7 @@ import { getUserRole } from "@/lib/db"
 import fs from "fs/promises"
 import path from "path"
 import dotenv from "dotenv"
+import { apiClient } from "@/lib/api-client"
 
 type Service = { label: string; key: string; url?: string | null; status: "online" | "offline" | "missing" }
 
@@ -62,8 +63,8 @@ const fetchWithTimeout = async (url: string) => {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), 3000)
   try {
-    const res = await fetch(url, { method: "GET", signal: controller.signal })
-    return res.ok
+    const res = await apiClient(url, { signal: controller.signal, cache: "no-store" })
+    return true
   } catch {
     return false
   } finally {

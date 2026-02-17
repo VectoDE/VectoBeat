@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 import { ForumReplyBox } from "./forum-actions"
 import { ForumTopicStarter } from "./forum-topic-starter"
@@ -87,8 +88,7 @@ export function ForumThreadBrowser({
         const url = new URL("/api/forum/threads", window.location.origin)
         if (discordId) url.searchParams.set("discordId", discordId)
         url.searchParams.set("category", selectedCategory)
-        const response = await fetch(url.toString(), { cache: "no-store" })
-        const payload = await response.json().catch(() => ({}))
+        const payload = await apiClient<any>(url.toString(), { cache: "no-store" })
         if (Array.isArray(payload.threads)) {
           setThreads(payload.threads)
           const first = payload.threads[0]
@@ -117,8 +117,7 @@ export function ForumThreadBrowser({
         const url = new URL("/api/forum/threads", window.location.origin)
         if (discordId) url.searchParams.set("discordId", discordId)
         url.searchParams.set("threadId", selectedThreadId)
-        const response = await fetch(url.toString(), { cache: "no-store" })
-        const payload = await response.json().catch(() => ({}))
+        const payload = await apiClient<any>(url.toString(), { cache: "no-store" })
         if (Array.isArray(payload.posts)) {
           setPosts(payload.posts)
         }
@@ -152,15 +151,11 @@ export function ForumThreadBrowser({
     setStatusUpdating(true)
     setModerationMessage(null)
     try {
-      const response = await fetch("/api/forum/threads", {
+      const payload = await apiClient<any>("/api/forum/threads", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, threadId: currentThread.id, status: nextStatus }),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || "update_failed")
-      }
       const updatedStatus = typeof payload.thread?.status === "string" ? payload.thread.status : nextStatus
       setThreads((prev) =>
         prev.map((thread) => (thread.id === currentThread.id ? { ...thread, status: updatedStatus } : thread)),

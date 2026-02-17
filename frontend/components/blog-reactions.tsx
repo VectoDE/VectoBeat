@@ -5,6 +5,7 @@ import { ThumbsDown, ThumbsUp } from "lucide-react"
 import type { BlogReactionSummary } from "@/lib/db"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import { useBlogSession } from "@/hooks/use-blog-session"
+import { apiClient } from "@/lib/api-client"
 
 interface BlogReactionsProps {
   postIdentifier: string
@@ -38,7 +39,7 @@ export function BlogReactions({ postIdentifier, initialReactions }: BlogReaction
         return
       }
       try {
-        const response = await fetch(
+        const payload = await apiClient<any>(
           `/api/blog/${postIdentifier}/reactions?discordId=${encodeURIComponent(session.discordId)}`,
           {
             headers: { Authorization: `Bearer ${session.token}` },
@@ -46,10 +47,6 @@ export function BlogReactions({ postIdentifier, initialReactions }: BlogReaction
             signal: controller.signal,
           },
         )
-        if (!response.ok) {
-          throw new Error("Failed to load reactions")
-        }
-        const payload = await response.json()
         if (payload.reactions) {
           setCounts(payload.reactions)
         }
@@ -84,7 +81,7 @@ export function BlogReactions({ postIdentifier, initialReactions }: BlogReaction
       setSubmitting(true)
       setStatusMessage(null)
       try {
-        const response = await fetch(`/api/blog/${postIdentifier}/reactions`, {
+        const payload = await apiClient<any>(`/api/blog/${postIdentifier}/reactions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -92,15 +89,6 @@ export function BlogReactions({ postIdentifier, initialReactions }: BlogReaction
           },
           body: JSON.stringify({ reaction, discordId: session.discordId }),
         })
-        const payload = (await response.json().catch(() => null)) as {
-          reactions?: BlogReactionSummary
-          userReaction?: "up" | "down" | null
-          alreadyReacted?: boolean
-          error?: string
-        } | null
-        if (!response.ok) {
-          throw new Error(payload?.error || "Unable to process reaction.")
-        }
         if (payload?.reactions) {
           setCounts(payload.reactions)
         }

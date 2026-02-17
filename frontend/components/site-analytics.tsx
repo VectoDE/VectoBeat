@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation"
 import { useCallback, useEffect } from "react"
+import { apiClient } from "@/lib/api-client"
 
 declare global {
   interface Window {
@@ -29,10 +30,10 @@ export function SiteAnalyticsTracker() {
         const blob = new Blob([JSON.stringify(payload)], { type: "application/json" })
         navigator.sendBeacon(url, blob)
       } else {
-        void fetch(url, {
+        // Use apiClient for the fallback fetch
+        void apiClient(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          data: payload,
           keepalive: true,
         })
       }

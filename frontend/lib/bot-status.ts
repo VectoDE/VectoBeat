@@ -1,4 +1,5 @@
 import { getApiKeySecrets } from "./api-keys"
+import { apiClient } from "./api-client"
 
 const trimTrailingSlashes = (url: string) => {
   let end = url.length
@@ -161,26 +162,12 @@ export const getBotStatus = async () => {
   let lastError: unknown = null
   for (const endpoint of candidates) {
     const target = appendTokenQuery(endpoint, authTokens)
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
     try {
-      const response = await fetch(target, {
+      const payload = await apiClient<any>(target, {
         headers: buildAuthHeaders(authTokens),
         cache: "no-store",
-        signal: controller.signal,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       })
-      clearTimeout(timeout)
-
-      if (!response.ok) {
-        throw new Error(`Bot status API responded with ${response.status} (${endpoint})`)
-      }
-
-      let payload: any = null
-      try {
-        payload = await response.json()
-      } catch (error) {
-        throw new Error(`Bot status returned invalid JSON (${endpoint}): ${(error as Error).message}`)
-      }
       preferredEndpoint = endpoint
       cachedBotStatus = {
         data: payload,
@@ -188,14 +175,12 @@ export const getBotStatus = async () => {
       }
       return payload
     } catch (error) {
-      clearTimeout(timeout)
       if (error instanceof DOMException && error.name === "AbortError") {
         // Drop aborted attempts quietly; we'll fall through to other endpoints.
         lastError = new Error(`Bot status request timed out after ${FETCH_TIMEOUT_MS}ms (${endpoint})`)
       } else {
         lastError = error
       }
-      lastError = error
       endpointCooldowns.set(endpoint, Date.now() + ENDPOINT_COOLDOWN_MS)
       continue
     }
@@ -266,27 +251,20 @@ const postToBotControl = async (path: string, body: Record<string, any>): Promis
     if (!target) {
       continue
     }
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
     try {
-      const response = await fetch(target, {
+      await apiClient<any>(target, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...buildAuthHeaders(tokens),
         },
-        signal: controller.signal,
+        signal: AbortSignal.timeout(5000),
         body: JSON.stringify(body),
       })
-      clearTimeout(timeout)
-      if (!response.ok) {
-        throw new Error(`Bot control endpoint responded with ${response.status}`)
-      }
       preferredEndpoint = endpoint
       endpointCooldowns.set(endpoint, nowMs + ENDPOINT_COOLDOWN_MS)
       return true
     } catch (error) {
-      clearTimeout(timeout)
       lastError = error
       continue
     }

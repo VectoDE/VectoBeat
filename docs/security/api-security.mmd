@@ -1,0 +1,29 @@
+graph TD
+    A[Client Request] --> B[Rate Limiting]
+    B --> C[Authentication Layer]
+    C --> D[Authorization Layer]
+    D --> E[Security Validation]
+    E --> F[API Endpoint]
+    
+    C --> G[Session Validation]
+    C --> H[API Key Validation]
+    C --> I[Token Validation]
+    
+    G --> J[Discord OAuth]
+    G --> K[Session Management]
+    
+    H --> L[API Key Database]
+    H --> M[Key Rotation]
+    
+    I --> N[JWT Validation]
+    I --> O[Token Expiry]
+    
+    E --> P[Input Validation]
+    E --> Q[SQL Injection Prevention]
+    E --> R[XSS Prevention]
+    E --> S[CSRF Protection]
+    
+    F --> T[Audit Logging]
+    T --> U[Security Monitoring]
+    U --> V[Threat Detection]
+    V --> W[Incident Response]

@@ -8,6 +8,7 @@ import Image from "next/image"
 import type { UserRole } from "@/lib/db"
 import appPackage from "../../../package.json"
 import { AdminPluginManager } from "@/components/admin-plugin-manager"
+import { apiClient } from "@/lib/api-client"
 
 interface BlogPost {
   id: string
@@ -471,14 +472,10 @@ export default function AdminControlPanelPage() {
       const storedToken = localStorage.getItem("discord_token")
       const fetchSession = async (token?: string | null) => {
         const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {}
-        const response = await fetch("/api/verify-session", {
+        return await apiClient<any>("/api/verify-session", {
           headers,
           credentials: "include",
         })
-        if (!response.ok) {
-          throw new Error("Unable to verify session")
-        }
-        return response.json()
       }
 
       let activeToken: string | null = storedToken || urlToken || null
@@ -522,9 +519,7 @@ export default function AdminControlPanelPage() {
     setPostsLoading(true)
     setPostsError(null)
     try {
-      const response = await fetch("/api/blog", { cache: "no-store" })
-      if (!response.ok) throw new Error("Failed to load posts")
-      const data = await response.json()
+      const data = await apiClient<any>("/api/blog", { cache: "no-store" })
       setPosts(Array.isArray(data.posts) ? data.posts : [])
     } catch (error) {
       console.error("Failed to load blog posts:", error)
@@ -542,12 +537,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/newsletter/campaigns?discordId=${discordId}&includeSubscribers=true`, {
+      const data = await apiClient<any>(`/api/newsletter/campaigns?discordId=${discordId}&includeSubscribers=true`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) throw new Error("Failed to load campaigns")
-      const data = await response.json()
       setCampaigns(Array.isArray(data.campaigns) ? data.campaigns : [])
       if (Array.isArray(data.subscribers)) {
         setNewsletterSubscribers(data.subscribers)
@@ -568,12 +561,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/admin/support-tickets?discordId=${discordId}`, {
+      const data = await apiClient<any>(`/api/admin/support-tickets?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) throw new Error("Failed to load tickets")
-      const data = await response.json()
       setSupportTickets(Array.isArray(data.tickets) ? data.tickets : [])
     } catch (error) {
       console.error("Failed to load support tickets:", error)
@@ -594,12 +585,10 @@ export default function AdminControlPanelPage() {
         const threadId = opts?.threadId ?? forumSelectedThread
         if (category) params.set("category", category)
         if (threadId) params.set("threadId", threadId)
-        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+        const payload = await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
           cache: "no-store",
           credentials: "include",
         })
-        if (!res.ok) throw new Error("Failed to load forum data")
-        const payload = await res.json()
         setForumStats(payload.stats ?? null)
         setForumEvents(Array.isArray(payload.events) ? payload.events : [])
         setForumCategories(Array.isArray(payload.categories) ? payload.categories : [])
@@ -627,14 +616,10 @@ export default function AdminControlPanelPage() {
       setForumActionMessage(null)
       try {
         const params = new URLSearchParams({ discordId, threadId })
-        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+        await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
           method: "DELETE",
           credentials: "include",
         })
-        const payload = await res.json().catch(() => ({}))
-        if (!res.ok || payload?.error) {
-          throw new Error(payload?.error || "Unable to delete thread.")
-        }
         setForumActionMessage("Thread removed.")
         setForumSelectedThread("")
         await loadForumData({ category: forumSelectedCategory })
@@ -651,14 +636,10 @@ export default function AdminControlPanelPage() {
       setForumActionMessage(null)
       try {
         const params = new URLSearchParams({ discordId, postId })
-        const res = await fetch(`/api/admin/forum?${params.toString()}`, {
+        await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
           method: "DELETE",
           credentials: "include",
         })
-        const payload = await res.json().catch(() => ({}))
-        if (!res.ok || payload?.error) {
-          throw new Error(payload?.error || "Unable to delete post.")
-        }
         setForumActionMessage("Post removed.")
         await loadForumData({ category: forumSelectedCategory, threadId: forumSelectedThread })
       } catch (error) {
@@ -684,15 +665,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/contact/messages?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/contact/messages?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load contact messages")
-      }
-      const payload = await response.json()
       setContactMessages(Array.isArray(payload.messages) ? payload.messages : [])
     } catch (error) {
       console.error("Failed to load contact messages:", error)
@@ -711,15 +687,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/admin/users?discordId=${discordId}`, {
+      const data = await apiClient<any>(`/api/admin/users?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load users")
-      }
-      const data = await response.json()
       const normalizedUsers = Array.isArray(data.users)
         ? data.users.map((user: any) => ({
           id: String(user.id),
@@ -775,15 +746,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/admin/subscriptions?discordId=${discordId}`, {
+      const data = await apiClient<any>(`/api/admin/subscriptions?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load subscriptions")
-      }
-      const data = await response.json()
       setSubscriptionsData(Array.isArray(data.subscriptions) ? data.subscriptions : [])
     } catch (error) {
       console.error("Failed to load admin subscriptions:", error)
@@ -803,15 +769,10 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/admin/system-keys?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/admin/system-keys?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load system keys")
-      }
-      const payload = await response.json()
       setSystemKeys(Array.isArray(payload.keys) ? payload.keys : [])
       setSystemEndpoints(payload.endpoints || {})
       setSystemKeyMessage(payload.generatedAt ? `Last checked ${new Date(payload.generatedAt).toLocaleString()}` : null)
@@ -833,29 +794,19 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const [frontendRes, botRes] = await Promise.all([
-        fetch(`/api/admin/env?discordId=${discordId}&target=frontend`, {
+      const [frontendData, botData] = await Promise.all([
+        apiClient<any>(`/api/admin/env?discordId=${discordId}&target=frontend`, {
           headers,
           credentials: "include",
         }),
-        fetch(`/api/admin/env?discordId=${discordId}&target=bot`, {
+        apiClient<any>(`/api/admin/env?discordId=${discordId}&target=bot`, {
           headers,
           credentials: "include",
         }),
       ])
-      if (!frontendRes.ok) {
-        const payload = await frontendRes.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load env entries")
-      }
-      if (!botRes.ok) {
-        const payload = await botRes.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load bot env entries")
-      }
-      const payloadFront = await frontendRes.json()
-      const payloadBot = await botRes.json()
       const entries: AdminEnvEntry[] = []
-      if (Array.isArray(payloadFront.entries)) entries.push(...payloadFront.entries)
-      if (Array.isArray(payloadBot.entries)) entries.push(...payloadBot.entries)
+      if (Array.isArray(frontendData.entries)) entries.push(...frontendData.entries)
+      if (Array.isArray(botData.entries)) entries.push(...botData.entries)
       setEnvEntries(entries)
     } catch (error) {
       console.error("Failed to load env entries:", error)
@@ -868,11 +819,7 @@ export default function AdminControlPanelPage() {
   const loadSystemHealth = useCallback(async () => {
     setSystemHealthError(null)
     try {
-      const response = await fetch("/api/bot/metrics", { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error("Failed to fetch bot metrics")
-      }
-      const payload = await response.json()
+      const payload = await apiClient<any>("/api/bot/metrics", { cache: "no-store" })
       setSystemHealth(payload)
     } catch (error) {
       console.error("Failed to load system health:", error)
@@ -887,15 +834,10 @@ export default function AdminControlPanelPage() {
     try {
       const headers: HeadersInit = {}
       if (authToken) headers.Authorization = `Bearer ${authToken}`
-      const response = await fetch(`/api/admin/logs?discordId=${discordId}&limit=200`, {
+      const payload = await apiClient<any>(`/api/admin/logs?discordId=${discordId}&limit=200`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        throw new Error(payload.error || "Failed to load logs")
-      }
-      const payload = await response.json()
       setLogEvents(Array.isArray(payload.events) ? payload.events : [])
     } catch (error) {
       console.error("Failed to load logs:", error)
@@ -910,14 +852,10 @@ export default function AdminControlPanelPage() {
     try {
       const headers: HeadersInit = {}
       if (authToken) headers.Authorization = `Bearer ${authToken}`
-      const response = await fetch(`/api/admin/runtime?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/admin/runtime?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        return
-      }
-      const payload = await response.json()
       setRuntimeInfo({
         nodeVersion: payload.nodeVersion ?? null,
         platform: payload.platform ?? null,
@@ -948,12 +886,10 @@ export default function AdminControlPanelPage() {
     try {
       const headers: HeadersInit = {}
       if (authToken) headers.Authorization = `Bearer ${authToken}`
-      const response = await fetch(`/api/admin/connectivity?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/admin/connectivity?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
-      if (!response.ok) return
-      const payload = await response.json()
       if (Array.isArray(payload.services)) {
         setConnectivity(payload.services)
       }
@@ -988,15 +924,10 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch(`/api/support-tickets/${ticketId}?discordId=${discordId}`, {
+        const data = await apiClient<any>(`/api/support-tickets/${ticketId}?discordId=${discordId}`, {
           headers,
           credentials: "include",
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to load ticket thread")
-        }
-        const data = await response.json()
         setTicketThread(data)
       } catch (error) {
         console.error("Failed to load ticket thread:", error)
@@ -1823,23 +1754,18 @@ export default function AdminControlPanelPage() {
                             topic.includes("partner") || ["waiting", "accepted", "declined"].includes((ticketThread.status || "").toLowerCase())
                           if (!partner) return null
                           const setPartnerStatus = async (next: string) => {
-                            if (!discordId) return
-                            const form = new FormData()
-                            form.append("status", next)
-                            form.append("authorName", adminProfile.name || "Admin")
-                            const response = await fetch(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
-                              method: "POST",
-                              body: form,
-                              credentials: "include",
-                            })
-                            const payload = await response.json().catch(() => ({}))
-                            if (!response.ok || payload?.error) {
-                              setSupportTicketsError(payload?.error || "Unable to update partner request.")
-                              return
+                              if (!discordId) return
+                              const form = new FormData()
+                              form.append("status", next)
+                              form.append("authorName", adminProfile.name || "Admin")
+                              await apiClient<any>(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
+                                method: "POST",
+                                body: form,
+                                credentials: "include",
+                              })
+                              await fetchTicketThread(ticketThread.id)
+                              loadSupportTickets()
                             }
-                            await fetchTicketThread(ticketThread.id)
-                            loadSupportTickets()
-                          }
                           return (
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs text-foreground/60">Partner request</span>
@@ -1869,7 +1795,7 @@ export default function AdminControlPanelPage() {
                               try {
                                 const requesterMessage =
                                   ticketThread.messages?.find((msg: any) => msg.role === "member") ?? null
-                                const response = await fetch(`/api/admin/developer-keys?discordId=${discordId}`, {
+                                const payload = await apiClient<any>(`/api/admin/developer-keys?discordId=${discordId}`, {
                                   method: "POST",
                                   headers: { "Content-Type": "application/json" },
                                   body: JSON.stringify({
@@ -1880,10 +1806,6 @@ export default function AdminControlPanelPage() {
                                     label: `Developer API Key (${ticketThread.email || ticketThread.name || "request"})`,
                                   }),
                                 })
-                                const payload = await response.json().catch(() => ({}))
-                                if (!response.ok) {
-                                  throw new Error(payload?.error || "Failed to generate key")
-                                }
                                 const token = payload?.token as string
                                 setDeveloperToken(token)
                                 setDeveloperTokenMessage("Key generated. It was also added to the ticket thread.")
@@ -1895,7 +1817,7 @@ export default function AdminControlPanelPage() {
                                     `Here is your developer API token. Keep it secret:\n\n${token}\n\nRevoke it anytime via support.`,
                                   )
                                   form.append("authorName", "VectoBeat Support")
-                                  await fetch(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
+                                  await apiClient<any>(`/api/support-tickets/${ticketThread.id}?discordId=${discordId}`, {
                                     method: "POST",
                                     body: form,
                                   })
@@ -4133,7 +4055,7 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch("/api/blog", {
+      await apiClient<any>("/api/blog", {
         method: "POST",
         headers,
         credentials: "include",
@@ -4144,10 +4066,6 @@ export default function AdminControlPanelPage() {
           author: form.author || "VectoBeat Team",
         }),
       })
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Failed to save post")
-      }
       setForm(initialForm)
       setActionMessage("Post published successfully.")
       loadPosts()
@@ -4170,17 +4088,10 @@ export default function AdminControlPanelPage() {
     setActionMessage("Uploading image...")
 
     try {
-      const response = await fetch('/api/upload', {
+      const payload = await apiClient<any>('/api/upload', {
         method: 'POST',
         body: formData,
       })
-
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Failed to upload image")
-      }
-
-      const payload = await response.json()
       setForm((prev) => ({ ...prev, image: payload.url }))
       setActionMessage("Image uploaded successfully!")
     } catch (error) {
@@ -4205,16 +4116,12 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch("/api/newsletter/campaigns", {
+      await apiClient<any>("/api/newsletter/campaigns", {
         method: "POST",
         headers,
         credentials: "include",
         body: JSON.stringify({ discordId, subject: campaignForm.subject, body: campaignForm.body }),
       })
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Failed to send campaign")
-      }
       setCampaignForm({ subject: "", body: "" })
       setCampaignMessage("Newsletter sent!")
       loadCampaigns()
@@ -4244,7 +4151,7 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch("/api/support-tickets", {
+        await apiClient<any>("/api/support-tickets", {
           method: "POST",
           headers,
           credentials: "include",
@@ -4258,10 +4165,6 @@ export default function AdminControlPanelPage() {
             message: ticketDraft.message,
           }),
         })
-        if (!response.ok) {
-          const payload = await response.json()
-          throw new Error(payload.error || "Failed to create ticket")
-        }
         setTicketModalMessage("Ticket logged successfully.")
         setTicketDraft((prev) => ({ ...prev, subject: "", message: "" }))
         loadSupportTickets()
@@ -4299,16 +4202,12 @@ export default function AdminControlPanelPage() {
         ticketAttachmentFiles.forEach((file, index) => {
           formData.append(`attachment_${index}`, file)
         })
-        const response = await fetch(`/api/support-tickets/${selectedTicketId}?discordId=${discordId}`, {
+        await apiClient<any>(`/api/support-tickets/${selectedTicketId}?discordId=${discordId}`, {
           method: "POST",
           body: formData,
           credentials: "include",
           headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Unable to send reply")
-        }
         setTicketReply("")
         setTicketReplyStatus("")
         setTicketAttachmentFiles([])
@@ -4344,16 +4243,12 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch("/api/admin/users", {
+        await apiClient<any>("/api/admin/users", {
           method: "PATCH",
           headers,
           credentials: "include",
           body: JSON.stringify({ discordId, targetId, role: nextRole }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to update user role")
-        }
         await loadAdminUsers()
       } catch (error) {
         console.error("Failed to change user role:", error)
@@ -4374,16 +4269,12 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch("/api/admin/subscriptions", {
+        await apiClient<any>("/api/admin/subscriptions", {
           method: "PATCH",
           headers,
           credentials: "include",
           body: JSON.stringify({ discordId, subscriptionId, updates }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to update subscription")
-        }
         await loadAdminSubscriptions()
       } catch (error) {
         console.error("Failed to update subscription:", error)
@@ -4456,21 +4347,17 @@ export default function AdminControlPanelPage() {
         if (responseValue) {
           payload.response = responseValue
         }
-        const response = await fetch("/api/contact/messages", {
+        const response = await apiClient<any>("/api/contact/messages", {
           method: "PUT",
           headers,
           credentials: "include",
           body: JSON.stringify(payload),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to update message")
-        }
         setContactActionMessage("Message updated.")
         setContactResponse("")
         setContactPriority("")
-        if (payload.status) {
-          setContactStatus(payload.status)
+        if (response.status) {
+          setContactStatus(response.status)
         }
         await loadContactMessages()
       } catch (error) {
@@ -4510,7 +4397,7 @@ export default function AdminControlPanelPage() {
 
         const saveTarget = async (target: "frontend" | "bot", updates: { key: string; value: string }[]) => {
           if (!updates.length) return
-          const response = await fetch("/api/admin/env", {
+          await apiClient<any>("/api/admin/env", {
             method: "PUT",
             headers,
             credentials: "include",
@@ -4520,10 +4407,6 @@ export default function AdminControlPanelPage() {
               updates,
             }),
           })
-          if (!response.ok) {
-            const payload = await response.json().catch(() => ({}))
-            throw new Error(payload.error || `Failed to save ${target} .env file`)
-          }
         }
 
         await saveTarget("frontend", frontendUpdates)
@@ -4553,17 +4436,12 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch("/api/admin/system-keys", {
+        const payload = await apiClient<any>("/api/admin/system-keys", {
           method: "POST",
           headers,
           credentials: "include",
           body: JSON.stringify({ discordId, service: serviceId }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to generate key")
-        }
-        const payload = await response.json()
         setGeneratedSystemKey({ service: payload.service, value: payload.key, envVar: payload.envVar })
         setSystemKeyMessage(payload.message || "Key generated. Saving to environment.")
         if (payload.envVar) {
@@ -4659,16 +4537,12 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const response = await fetch("/api/admin/bot-control", {
+        await apiClient<any>("/api/admin/bot-control", {
           method: "POST",
           headers,
           credentials: "include",
           body: JSON.stringify({ discordId, action }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Control action failed")
-        }
         setBotActionMessage(`${label} triggered.`)
       } catch (error) {
         console.error("Bot control failed:", error)
@@ -4686,7 +4560,7 @@ export default function AdminControlPanelPage() {
       if (!discordId) return
       setContactError(null)
       try {
-        const response = await fetch("/api/contact", {
+        await apiClient<any>("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
           credentials: "include",
@@ -4700,10 +4574,6 @@ export default function AdminControlPanelPage() {
             message: newContact.message,
           }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to create contact")
-        }
         setContactActionMessage("Contact created.")
         setNewContact({
           name: "",
@@ -4732,7 +4602,7 @@ export default function AdminControlPanelPage() {
       try {
         const headers: HeadersInit = { "Content-Type": "application/json" }
         if (authToken) headers.Authorization = `Bearer ${authToken}`
-        const response = await fetch("/api/admin/subscriptions", {
+        await apiClient<any>("/api/admin/subscriptions", {
           method: "POST",
           headers,
           credentials: "include",
@@ -4754,10 +4624,6 @@ export default function AdminControlPanelPage() {
             create: true,
           }),
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Failed to create subscription")
-        }
         setIsSubscriptionModalOpen(false)
         setNewSubscription({
           discordId: "",
@@ -4789,16 +4655,12 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const response = await fetch(`/api/blog/${postId}`, {
+      await apiClient<any>(`/api/blog/${postId}`, {
         method: "DELETE",
         headers,
         credentials: "include",
         body: JSON.stringify({ discordId }),
       })
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Failed to delete post")
-      }
       loadPosts()
     } catch (error) {
       console.error("Failed to delete blog post:", error)

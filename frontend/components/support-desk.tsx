@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import type { TicketDetail, TicketMessage } from "@/lib/types/support"
+import { apiClient } from "@/lib/api-client"
 
 type Ticket = {
   id: string
@@ -130,11 +131,10 @@ const performAttachmentScan = async (file: File): Promise<ScanResult> => {
   const data = new FormData()
   data.set("file", file)
   data.set("name", file.name)
-  const response = await fetch("/api/security/scan", {
+  const payload: ScanResult = await apiClient<any>("/api/security/scan", {
     method: "POST",
     body: data,
-  })
-  const payload: ScanResult = await response.json().catch(() => ({
+  }).catch(() => ({
     allowed: false,
     severity: "blocked",
     reason: "Security scan failed.",
@@ -143,9 +143,6 @@ const performAttachmentScan = async (file: File): Promise<ScanResult> => {
     warnings: [],
     sha256: "",
   }))
-  if (!response.ok) {
-    return { ...payload, allowed: false, severity: payload.severity ?? "blocked" }
-  }
   return payload
 }
 
@@ -224,9 +221,7 @@ export function SupportDeskPanel() {
   const fetchToolkit = useCallback(
     async (discordId: string) => {
       try {
-        const response = await fetch(`/api/moderator/toolkit?discordId=${discordId}`, { credentials: "include" })
-        if (!response.ok) return
-        const payload = await response.json()
+        const payload = await apiClient<any>(`/api/moderator/toolkit?discordId=${discordId}`, { credentials: "include" })
         setToolkitMacros(Array.isArray(payload?.macros) ? payload.macros : [])
         setToolkitStage(payload?.stage === "alpha" ? "alpha" : payload?.stage === "beta" ? "beta" : null)
         setToolkitBadges(Array.isArray(payload?.badges) ? payload.badges : [])
@@ -248,16 +243,12 @@ export function SupportDeskPanel() {
 
     const verify = async () => {
       try {
-        const response = await fetch("/api/verify-session", {
+        const data = await apiClient<any>("/api/verify-session", {
           headers,
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
         })
-        if (!response.ok) {
-          throw new Error("Unable to verify session")
-        }
-        const data = await response.json()
         if (data?.authenticated && !cancelled) {
           const resolvedName = data.displayName || data.username || "Community Member"
           const resolvedEmail = data.email || ""
@@ -322,16 +313,12 @@ export function SupportDeskPanel() {
           discordId: sessionInfo.discordId,
           email: ticketEmail,
         })
-        const response = await fetch(`/api/support-tickets?${params.toString()}`, {
+        const payload = await apiClient<any>(`/api/support-tickets?${params.toString()}`, {
           cache: "no-store",
           headers: {
             Authorization: `Bearer ${getAuthToken()}`,
           },
         })
-        const payload = await response.json()
-        if (!response.ok) {
-          throw new Error(payload?.error || "Unable to load tickets")
-        }
         setTickets(Array.isArray(payload?.tickets) ? payload.tickets : [])
       } catch (err) {
         setTicketError(err instanceof Error ? err.message : "Unable to load tickets")
@@ -351,18 +338,12 @@ export function SupportDeskPanel() {
       setThreadError(null)
       try {
         const params = new URLSearchParams({ discordId: sessionInfo.discordId })
-        const response = await fetch(`/api/support-tickets/${ticketId}?${params.toString()}`, {
-          method: "GET",
-          cache: "no-store",
+        const payload = await apiClient<any>(`/api/support-tickets/${ticketId}?${params.toString()}`, {
           headers: {
             Authorization: `Bearer ${getAuthToken()}`,
           },
           credentials: "include",
         })
-        const payload = await response.json()
-        if (!response.ok) {
-          throw new Error(payload?.error || "Unable to load ticket thread")
-        }
         setThread(payload as TicketDetail)
         if (payload?.status) {
           setReplyStatus(USER_STATUS_VALUES.has(payload.status) ? payload.status : "open")
@@ -410,20 +391,18 @@ export function SupportDeskPanel() {
         if (token) {
           headers.Authorization = `Bearer ${token}`
         }
-        const response = await fetch(`/api/subscriptions?userId=${sessionInfo.discordId}`, {
+        const payload = await apiClient<any>(`/api/subscriptions?userId=${sessionInfo.discordId}`, {
           cache: "no-store",
           credentials: "include",
           headers,
-        })
-        if (!response.ok) return
-        const payload = await response.json().catch(() => null)
+        }).catch(() => null)
         const subs: SubscriptionSummary[] = Array.isArray(payload?.subscriptions) ? payload.subscriptions : []
         const best = resolveHighestTier(subs)
         if (!cancelled) {
           setHighestSubscription(best)
         }
       } catch (err) {
-        console.error("[VectoBeat] Failed to resolve subscriptions for support desk:", err)
+        console.error("[Vectobeat] Failed to resolve subscriptions for support desk:", err)
       }
     }
 
@@ -568,7 +547,7 @@ export function SupportDeskPanel() {
     setFeedback(null)
     setError(null)
     try {
-      const response = await fetch("/api/support-tickets", {
+      const payload = await apiClient<any>("/api/support-tickets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -576,10 +555,6 @@ export function SupportDeskPanel() {
         },
         body: JSON.stringify({ name, email, subject, category, priority, message, discordId: sessionInfo.discordId }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to submit ticket")
-      }
       setFeedback("Thank you! Your ticket has been received. We'll respond via email.")
       setMessage("")
       setSubject("")
@@ -612,18 +587,14 @@ export function SupportDeskPanel() {
         formData.append(`attachment_${index}`, file)
       })
 
-      const response = await fetch(`/api/support-tickets/${selectedTicket.id}?${params.toString()}`, {
+      const payload = await apiClient<any>(`/api/support-tickets/${selectedTicket.id}?${params.toString()}`, {
         method: "POST",
         body: formData,
         headers: {
           Authorization: `Bearer ${getAuthToken()}`,
         },
         credentials: "include",
-      })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to send reply")
-      }
+      }).catch(() => null)
       setReplyMessage("")
       setReplyAttachments([])
       setAttachmentPreviews((prev) => {

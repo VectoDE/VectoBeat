@@ -1,0 +1,33 @@
+graph TD
+    A[SupportDesk Component] --> B[useEffect Ticket Loading]
+    B --> C[apiClient Tickets API]
+    C --> D[Ticket List Processing]
+    
+    D --> E[Filter System]
+    D --> F[Search Functionality]
+    D --> G[Status Management]
+    
+    E --> H[Status Filters]
+    E --> I[Priority Filters]
+    E --> J[Date Filters]
+    
+    F --> K[Search Input Handler]
+    K --> L[Real-time Search]
+    
+    G --> M[Status Update API]
+    
+    N[Ticket Card] --> O[Reply Function]
+    N --> P[Status Change]
+    N --> Q[Attachment Handling]
+    
+    O --> R[Reply Form Component]
+    R --> S[File Attachment]
+    R --> T[Submit Handler]
+    
+    T --> U[FormData Processing]
+    U --> V[apiClient Reply API]
+    V --> W[Real-time Update]
+    
+    X[Admin Actions] --> Y[Priority Change]
+    X --> Z[Assignment System]
+    X --> AA[Bulk Operations]

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import type { BlogComment } from "@/lib/db"
 import { useBlogSession } from "@/hooks/use-blog-session"
 import { buildDiscordLoginUrl } from "@/lib/config"
+import { apiClient } from "@/lib/api-client"
 
 interface BlogCommentsProps {
   postIdentifier: string
@@ -42,7 +43,7 @@ export function BlogComments({ postIdentifier, initialComments }: BlogCommentsPr
 
     setSubmitting(true)
     try {
-      const response = await fetch(`/api/blog/${postIdentifier}/comments`, {
+      const payload = await apiClient<any>(`/api/blog/${postIdentifier}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -54,10 +55,6 @@ export function BlogComments({ postIdentifier, initialComments }: BlogCommentsPr
           discordId: session.discordId,
         }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to save your comment.")
-      }
       if (payload.comment) {
         setComments((prev) => [payload.comment as BlogComment, ...prev])
         setMessage("")

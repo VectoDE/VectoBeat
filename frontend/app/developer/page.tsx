@@ -5,6 +5,7 @@ import Link from "next/link"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { buildDiscordLoginUrl } from "@/lib/config"
+import { apiClient } from "@/lib/api-client"
 
 type SessionUser = {
   id: string
@@ -127,11 +128,7 @@ export default function DeveloperPortalPage() {
     let cancelled = false
     const verify = async () => {
       try {
-        const response = await fetch("/api/verify-session", { credentials: "include" })
-        if (!response.ok) {
-          throw new Error("session")
-        }
-        const payload = await response.json()
+        const payload = await apiClient<any>("/api/verify-session", { credentials: "include" })
         if (cancelled) return
         if (payload?.authenticated) {
           setIsAuthorized(true)
@@ -172,14 +169,9 @@ export default function DeveloperPortalPage() {
       setBetaLoading(true)
       setBetaError(null)
       try {
-        const response = await fetch(`/api/account/notifications?discordId=${user.id}`, {
+        const payload = await apiClient<any>(`/api/account/notifications?discordId=${user.id}`, {
           credentials: "include",
         })
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || "Unable to verify alerts preferences")
-        }
-        const payload = await response.json()
         if (!cancelled) {
           setBetaAllowed(Boolean(payload.betaProgram))
         }

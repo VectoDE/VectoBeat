@@ -6,6 +6,7 @@ import { XCircle, ArrowLeft, RefreshCcw, ShieldAlert, Clock } from "lucide-react
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
+import { apiClient } from "@/lib/api-client"
 
 type CheckoutSummary = {
   id: string
@@ -49,13 +50,7 @@ function FailedContent() {
 
     let cancelled = false
 
-    fetch(`/api/checkout?session_id=${sessionId}`, { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Checkout session not found")
-        }
-        return res.json()
-      })
+    apiClient<CheckoutSummary>(`/api/checkout?session_id=${sessionId}`, { credentials: "include" })
       .then((data: CheckoutSummary) => {
         if (cancelled) return
         setCheckoutInfo(data)

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { apiClient } from "@/lib/api-client"
 
 type ConsentPreferences = {
   analytics: boolean
@@ -83,7 +84,6 @@ export function CookieBanner() {
   const [saving, setSaving] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null)
-  const pushProfileConsentRef = useRef<typeof pushProfileConsent | null>(null)
 
   const pushProfileConsent = useCallback(
     async (analyticsValue: boolean, options?: { silent?: boolean; sessionOverride?: SessionInfo | null }) => {
@@ -96,7 +96,7 @@ export function CookieBanner() {
       }
 
       try {
-        const response = await fetch("/api/account/privacy", {
+        await apiClient<any>("/api/account/privacy", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -108,11 +108,6 @@ export function CookieBanner() {
           }),
           cache: "no-store",
         })
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => ({}))
-          throw new Error(payload.error || `HTTP ${response.status}`)
-        }
 
         if (!options?.silent) {
           setSyncError(null)
@@ -129,6 +124,22 @@ export function CookieBanner() {
     },
     [sessionInfo],
   )
+
+  const pushProfileConsentRef = useRef<typeof pushProfileConsent | null>(null)
+
+  const enforceConsent = useCallback((value: ConsentPreferences) => {
+    if (value.analytics) {
+      writeConsentCookie(value)
+    } else {
+      clearConsentCookie()
+    }
+    syncConsent(value)
+  }, [])
+
+  const revokeConsent = useCallback(() => {
+    clearConsentCookie()
+    syncConsent(defaultConsent)
+  }, [])
 
   useEffect(() => {
     pushProfileConsentRef.current = pushProfileConsent
@@ -152,7 +163,7 @@ export function CookieBanner() {
 
         if (sessionCandidate) {
           try {
-            const response = await fetch(
+            const payload = await apiClient<any>(
               `/api/account/privacy?discordId=${encodeURIComponent(sessionCandidate.discordId)}`,
               {
                 headers: {
@@ -161,24 +172,21 @@ export function CookieBanner() {
                 cache: "no-store",
               },
             )
-            if (response.ok) {
-              const payload = await response.json()
-              if (typeof payload?.analyticsOptIn === "boolean") {
-                const serverConsent = { analytics: Boolean(payload.analyticsOptIn) }
-                if (stored) {
-                  // Align server profile with the consent already stored locally.
-                  if (stored.analytics !== serverConsent.analytics) {
-                    const syncFn = pushProfileConsentRef.current
-                    if (syncFn) {
-                      await syncFn(stored.analytics, {
-                        silent: true,
-                        sessionOverride: sessionCandidate,
-                      })
-                    }
+            if (typeof payload?.analyticsOptIn === "boolean") {
+              const serverConsent = { analytics: Boolean(payload.analyticsOptIn) }
+              if (stored) {
+                // Align server profile with the consent already stored locally.
+                if (stored.analytics !== serverConsent.analytics) {
+                  const syncFn = pushProfileConsentRef.current
+                  if (syncFn) {
+                    await syncFn(stored.analytics, {
+                      silent: true,
+                      sessionOverride: sessionCandidate,
+                    })
                   }
-                } else {
-                  baseline = serverConsent
                 }
+              } else {
+                baseline = serverConsent
               }
             }
           } catch (error) {
@@ -203,21 +211,7 @@ export function CookieBanner() {
     return () => {
       cancelled = true
     }
-  }, [])
-
-  function enforceConsent(value: ConsentPreferences) {
-    if (value.analytics) {
-      writeConsentCookie(value)
-    } else {
-      clearConsentCookie()
-    }
-    syncConsent(value)
-  }
-
-  function revokeConsent() {
-    clearConsentCookie()
-    syncConsent(defaultConsent)
-  }
+  }, [enforceConsent, revokeConsent])
 
   async function commitConsent(next: ConsentPreferences) {
     setConsent(next)

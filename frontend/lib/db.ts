@@ -1,6 +1,8 @@
 import crypto from "crypto"
 import { Prisma } from "@prisma/client"
 import { decryptJson, decryptText, encryptJson, encryptText, isEncryptionAvailable } from "./encryption"
+import { normalizeInput, normalizeWebsite, sanitizeHandle, generateFallbackHandle, normalizeRole, normalizeSlug, normalizeStringWithLength, normalizeOptionalString } from "./utils/normalization"
+import { logError as logDbError } from "./utils/error-handling"
 
 // Explicitly define types from Prisma namespace to avoid import issues
 type ContactMessage = Prisma.ContactMessageGetPayload<Prisma.ContactMessageDefaultArgs>
@@ -17,11 +19,6 @@ import type { QueueSnapshot } from "@/types/queue-sync"
 export { getPrismaClient, handlePrismaError }
 
 const getPool = () => getPrismaClient()
-
-const logDbError = (message: string, error: unknown) => {
-  handlePrismaError(error)
-  console.error(message, error)
-}
 
 const asJsonObject = <T>(value: Prisma.JsonValue | null | undefined): T | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -51,43 +48,6 @@ export const provisionDefaultsForTier = (
   current.exportWebhooks = plan.serverSettings.exportWebhooks
   current.automationLevel = plan.serverSettings.maxAutomationLevel
   return current
-}
-
-const sanitizeHandle = (input: string) =>
-  input
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, PROFILE_HANDLE_MAX)
-
-const generateFallbackHandle = (base?: string, discordId?: string) => {
-  const candidateBase = sanitizeHandle(base || "") || (discordId ? `member-${discordId.slice(-4)}` : "member")
-  return candidateBase.length >= PROFILE_HANDLE_MIN ? candidateBase : `${candidateBase}-${Math.floor(Math.random() * 999)}`
-}
-
-const normalizeInput = (value?: string | null, maxLength = 255) => {
-  if (typeof value !== "string") return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  if (trimmed.length > maxLength) {
-    return trimmed.slice(0, maxLength)
-  }
-  return trimmed
-}
-
-const normalizeWebsite = (url?: string | null) => {
-  if (!url) return null
-  const trimmed = url.trim()
-  if (!trimmed) return null
-  const prefixed = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
-  try {
-    const parsed = new URL(prefixed)
-    return parsed.toString()
-  } catch {
-    return null
-  }
 }
 
 const USER_API_KEY_SECRET = process.env.DATA_ENCRYPTION_KEY
@@ -468,12 +428,6 @@ const getDecryptedProfilePayload = async (discordId: string) => {
 }
 
 const allowedRoles: UserRole[] = ["member", "admin", "operator", "partner"]
-
-const normalizeRole = (role?: string | null): UserRole => {
-  if (!role) return DEFAULT_ROLE
-  const normalized = role.trim().toLowerCase()
-  return allowedRoles.includes(normalized as UserRole) ? (normalized as UserRole) : DEFAULT_ROLE
-}
 
 export const getUserRole = async (discordId: string): Promise<UserRole> => {
   try {
@@ -2317,7 +2271,7 @@ export const updateAccountProfileSettings = async (
 export const getPublicProfileBySlug = async (slug: string) => {
   const db = getPool()
   if (!db) return null
-  const normalized = slug.trim().toLowerCase()
+  const normalized = normalizeSlug(slug)
   if (!normalized) return null
 
   let targetDiscordId: string | null = null
@@ -2456,9 +2410,9 @@ export const recordSitePageView = async ({
     const db = getPool()
     if (!db) return
     const { host: referrerHost, path: referrerPath } = parseReferrerForStorage(referrer)
-    const normalizedPath = path.slice(0, 191)
-    const normalizedReferrer = referrer ? referrer.slice(0, 190) : null
-    const normalizedReferrerPath = referrerPath ? referrerPath.slice(0, 191) : null
+    const normalizedPath = normalizeStringWithLength(path, 191)
+    const normalizedReferrer = normalizeOptionalString(referrer, 190)
+    const normalizedReferrerPath = normalizeOptionalString(referrerPath, 191)
 
     await db.sitePageView.create({
       data: {

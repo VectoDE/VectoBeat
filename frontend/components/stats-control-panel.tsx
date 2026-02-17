@@ -20,6 +20,7 @@ import {
   YAxis,
 } from "recharts"
 import type { AnalyticsOverview, CombinedMetrics } from "@/lib/metrics"
+import { apiClient } from "@/lib/api-client"
 
 interface StatsControlPanelProps {
   initialData: AnalyticsOverview
@@ -58,11 +59,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
 
     const fetchLatest = async () => {
       try {
-        const response = await fetch("/api/metrics?scope=analytics", { cache: "no-store" })
-        if (!response.ok) {
-          throw new Error("Failed to fetch analytics snapshot")
-        }
-        const payload = (await response.json()) as AnalyticsOverview
+        const payload = await apiClient<AnalyticsOverview>("/api/metrics?scope=analytics", { cache: "no-store" })
         if (mounted && payload) {
           setData(payload)
           setLastUpdated(new Date(payload.updatedAt).toLocaleString())
@@ -86,7 +83,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
 
     const connect = async () => {
       try {
-        await fetch("/api/socket")
+        await apiClient<any>("/api/socket")
         socket = io({ path: "/api/socket" })
 
         socket.on("connect", () => {

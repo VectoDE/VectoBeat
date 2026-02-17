@@ -5,6 +5,7 @@ import { Check, X } from "lucide-react"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
 import type { MembershipTier } from "@/lib/memberships"
 import { DISCORD_BOT_INVITE_URL, buildDiscordLoginUrl } from "@/lib/config"
+import { apiClient } from "@/lib/api-client"
 const PLAN_COPY = {
   monthlyLabel: "Monthly",
   yearlyLabel: "Yearly",
@@ -200,14 +201,10 @@ export function HomePlanCarousel() {
       if (token) {
         headers.Authorization = `Bearer ${token}`
       }
-      const response = await fetch("/api/verify-session", {
+      const data = await apiClient<any>("/api/verify-session", {
         headers,
         credentials: "include",
       })
-      if (!response.ok) {
-        throw new Error("Failed to verify session")
-      }
-      const data = await response.json()
       if (data?.authenticated) {
         setSession(data)
         if (!silent) {
@@ -373,7 +370,7 @@ export function HomePlanCarousel() {
         headers.Authorization = `Bearer ${authToken}`
       }
       const navigatorLocale = typeof window !== "undefined" ? window.navigator.language : "en"
-      const response = await fetch("/api/checkout", {
+      const payload = await apiClient<any>("/api/checkout", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -388,11 +385,6 @@ export function HomePlanCarousel() {
           locale: navigatorLocale,
         }),
       })
-
-      const payload = await response.json()
-      if (!response.ok) {
-        throw new Error(payload.error || "Checkout failed")
-      }
 
       const { url } = payload
       if (!url) {
