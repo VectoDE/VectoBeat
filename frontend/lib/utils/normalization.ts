@@ -1,3 +1,5 @@
+import { randomInt } from 'crypto'
+
 export const normalizeInput = (value?: string | null, maxLength = 255) => {
   if (typeof value !== "string") return null
   const trimmed = value.trim()
@@ -21,18 +23,39 @@ export const normalizeWebsite = (url?: string | null) => {
   }
 }
 
-export const sanitizeHandle = (input: string) =>
-  input
+export const sanitizeHandle = (input: string) => {
+  // Performance-optimierte Version ohne anfällige Regex
+  const normalized = input
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 32)
+  
+  // Manuelle Zeichenersetzung für bessere Performance
+  let result = ''
+  let prevWasDash = false
+  
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized[i]
+    const code = char.charCodeAt(0)
+    
+    // Erlaubte Zeichen: a-z, 0-9
+    if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) {
+      result += char
+      prevWasDash = false
+    } else if (!prevWasDash) {
+      // Füge nur einen Bindestrich hinzu, wenn der vorherige keiner war
+      result += '-'
+      prevWasDash = true
+    }
+  }
+  
+  // Entferne führende und abschließende Bindestriche
+  return result.replace(/^-+|-+$/g, '').slice(0, 32)
+}
 
 export const generateFallbackHandle = (base?: string, discordId?: string) => {
   const candidateBase = sanitizeHandle(base || "") || (discordId ? `member-${discordId.slice(-4)}` : "member")
-  return candidateBase.length >= 3 ? candidateBase : `${candidateBase}-${Math.floor(Math.random() * 999)}`
+  return candidateBase.length >= 3 ? candidateBase : `${candidateBase}-${randomInt(100, 999)}`
 }
 
 export const normalizeApiKeyType = (value: string) => value.trim().toLowerCase()

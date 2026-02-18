@@ -14,7 +14,7 @@ runs:
   steps:
     - name: Setup Node.js for npm audit
       if: inputs.audit-type == 'npm-audit'
-      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.1.0 - Updated SHA
       with:
         node-version: '18'
         cache: 'npm'
@@ -40,7 +40,7 @@ runs:
 
     - name: Setup Python for pip audit
       if: inputs.audit-type == 'pip-audit'
-      uses: actions/setup-python@0b93645e9fea7318ecaad2b719ef409de67e9809 # v5.3.0
+      uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.3.0 - Updated SHA
       with:
         python-version: '3.11'
         cache: 'pip'
