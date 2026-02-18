@@ -7,6 +7,7 @@ import { ForumComposer } from "@/components/forum-actions"
 import { listForumCategories, listForumThreads } from "@/lib/db"
 import { siteUrl } from "@/lib/seo"
 import { getForumViewerContext, resolveForumParams } from "../utils"
+import DOMPurify from "isomorphic-dompurify"
 
 type Params = { thema: string }
 
@@ -70,12 +71,19 @@ export default async function ForumCategoryPage({ params }: { params: Promise<Pa
     },
   ]
 
+  // Sichere JSON-Daten vor XSS-Angriffen
+  const safeJsonData = DOMPurify.sanitize(JSON.stringify(structuredData), {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonData }}
         className="sr-only"
       />
 

@@ -22,6 +22,7 @@ import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { buildProfilePageUrl, buildProfileSeoDescription, fetchPublicProfile, type LinkedAccount } from "./profile-utils"
 import { RoleBadge } from "@/components/role-badge"
+import DOMPurify from "isomorphic-dompurify"
 
 type InteractionCounter = {
   "@type": "InteractionCounter"
@@ -158,13 +159,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     : Array.isArray(profile.adminGuilds)
       ? profile.adminGuilds.filter((guild: { hasBot?: boolean }) => guild.hasBot)
       : []
-  const totalGuildSamples: Array<{ id: string; name: string; hasBot?: boolean; isAdmin?: boolean }> = Array.isArray(
-    profile.totalGuildSamples,
-  )
-    ? profile.totalGuildSamples
-    : Array.isArray(profile.memberGuilds)
-      ? profile.memberGuilds
-      : []
+
   const stats = [
     { label: "Bot Installations", value: botInstallations },
     { label: "Total Servers", value: totalServers },
@@ -205,12 +200,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     interactionStatistic,
   }
 
+  // Sichere JSON-Daten vor XSS-Angriffen
+  const safeJsonData = DOMPurify.sanitize(JSON.stringify(structuredData), {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true
+  })
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonData }}
         className="sr-only"
       />
       <main className="flex-1 w-full px-4 py-24">

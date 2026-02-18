@@ -198,7 +198,7 @@ export function PartnersClient() {
       }
 
       if (isAuthenticated && session?.id) {
-        const body = await apiClient<any>("/api/support-tickets", {
+        await apiClient<any>("/api/support-tickets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -214,7 +214,7 @@ export function PartnersClient() {
         })
         setSubmitMessage("Your partner request was converted into a support ticket. We’ll reply inside your account.")
       } else {
-        const body = await apiClient<any>("/api/contact", {
+        await apiClient<any>("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

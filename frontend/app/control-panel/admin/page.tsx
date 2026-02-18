@@ -2449,15 +2449,7 @@ export default function AdminControlPanelPage() {
           }
         }
 
-        const resolveStatus = (configured: boolean) => {
-          if (!configured) return "offline"
-          const lastHistory = Array.isArray(systemHealth?.history) ? systemHealth.history[0] : null
-          const state = (systemHealth?.snapshot?.status || lastHistory?.status || "").toString().toLowerCase()
-          const isOffline = ["offline", "down", "error", "failed"].some((token) => state.includes(token))
-          if (isOffline) return "offline"
-          const isOnline = ["online", "ok", "healthy", "up"].some((token) => state.includes(token))
-          return isOnline ? "online" : "online"
-        }
+
 
         const redisPrimary =
           envMap.REDIS_URL || envMap.UPSTASH_REDIS_REST_URL || envMap.UPSTASH_REDIS_WS_URL || process.env.REDIS_URL

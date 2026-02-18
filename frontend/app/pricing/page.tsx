@@ -2,7 +2,6 @@ export const dynamic = "force-dynamic"
 
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
-import Link from "next/link"
 import Script from "next/script"
 import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
 import { fetchHomeMetrics } from "@/lib/fetch-home-metrics"

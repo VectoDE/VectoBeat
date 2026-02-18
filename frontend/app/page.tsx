@@ -78,24 +78,6 @@ export const metadata = buildPageMetadata({
   },
 })
 
-const JOURNEY_STEPS = [
-  {
-    title: "Discover",
-    detail: "Scan guild health, detect stale queues, and preview AI playlists before rollout.",
-    accent: "from-primary/70 via-primary to-primary/40",
-  },
-  {
-    title: "Automate",
-    detail: "Layer smart triggers, slotting, and predictive scaling without writing custom code.",
-    accent: "from-secondary/70 via-secondary to-secondary/30",
-  },
-  {
-    title: "Measure",
-    detail: "Pipe telemetry to dashboards or exports, then enforce guardrails with a single toggle.",
-    accent: "from-amber-500/70 via-orange-500/50 to-orange-400/30",
-  },
-]
-
 type FaqItem = {
   question: string
   answer?: string
@@ -170,13 +152,6 @@ export default async function Home() {
 
   const render = (template?: string, extraVars: Record<string, string | number> = {}) =>
     formatTemplate(template, { ...templateVars, ...extraVars })
-
-  const heroStats = [
-    { label: "Active guilds", value: serverCountDisplay },
-    { label: "Monthly listeners", value: userCountDisplay },
-    { label: "Streams observed", value: streamsDisplay },
-    { label: "Response SLO", value: avgResponse },
-  ]
 
   const serverCountValue = typeof metrics?.totals.serverCount === "number" ? metrics.totals.serverCount : 0
   const activeListenersValue = typeof metrics?.totals.activeUsers === "number" ? metrics.totals.activeUsers : 0
