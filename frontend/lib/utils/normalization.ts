@@ -24,13 +24,11 @@ export const normalizeWebsite = (url?: string | null) => {
 }
 
 export const sanitizeHandle = (input: string) => {
-  // Performance-optimierte Version ohne anfällige Regex
   const normalized = input
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
   
-  // Manuelle Zeichenersetzung für bessere Performance
   let result = ''
   let prevWasDash = false
   
@@ -38,19 +36,26 @@ export const sanitizeHandle = (input: string) => {
     const char = normalized[i]
     const code = char.charCodeAt(0)
     
-    // Erlaubte Zeichen: a-z, 0-9
     if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) {
       result += char
       prevWasDash = false
     } else if (!prevWasDash) {
-      // Füge nur einen Bindestrich hinzu, wenn der vorherige keiner war
       result += '-'
       prevWasDash = true
     }
   }
   
-  // Entferne führende und abschließende Bindestriche
-  return result.replace(/^-+|-+$/g, '').slice(0, 32)
+  let start = 0
+  while (start < result.length && result[start] === '-') {
+    start++
+  }
+  
+  let end = result.length - 1
+  while (end >= start && result[end] === '-') {
+    end--
+  }
+  
+  return result.substring(start, end + 1).slice(0, 32)
 }
 
 export const generateFallbackHandle = (base?: string, discordId?: string) => {

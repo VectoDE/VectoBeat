@@ -19,7 +19,7 @@ jobs:
       DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@v4
 
       - name: Verify deploy secrets
         run: |

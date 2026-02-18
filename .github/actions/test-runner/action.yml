@@ -19,7 +19,7 @@ runs:
 
     - name: Setup Node.js (if frontend test)
       if: contains(inputs.test-type, 'frontend')
-      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: npm
@@ -27,7 +27,7 @@ runs:
 
     - name: Setup Python (if python test)
       if: contains(inputs.test-type, 'python')
-      uses: actions/setup-python@0b93645e9fea731feca9e4b1b912181a0b8b1238 # v5.3.0
+      uses: actions/setup-python@v5
       with:
         python-version: "3.12"
         cache: "pip"

@@ -16,8 +16,8 @@ jobs:
   update-draft:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: release-drafter/release-drafter@3e0e7c5d9a3d6a62c7d6c2e4b4e1e5f6a7b8c9d0 # v6.1.0 - Updated SHA
+      - uses: actions/checkout@v4
+      - uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
         env:
