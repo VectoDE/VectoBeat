@@ -106,7 +106,7 @@ test("concierge handles concurrent creation attempts", async () => {
 })
 
 test("rapid API token churn keeps actor metadata", async () => {
-  let events: any[] = []
+  const events: any[] = []
   let tokens: any[] = [
     {
       id: "t1",

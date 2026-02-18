@@ -68,7 +68,7 @@ export const getSecurityHeaders = () => {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
   }
 }
 

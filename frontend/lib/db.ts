@@ -3082,7 +3082,7 @@ export const progressSuccessPodRequest = async (
     }
     const now = new Date()
     const data: Prisma.SuccessPodRequestUpdateInput = {}
-    let kind: string = payload.action
+    const kind: string = payload.action
     let note = payload.note ?? ""
     switch (payload.action) {
       case "acknowledged": {

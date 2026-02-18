@@ -67,7 +67,7 @@ test("success pod creation uses plan gate and returns request", async () => {
 })
 
 test("API token leak marker logs actor", async () => {
-  let events: any[] = []
+  const events: any[] = []
   const handlers = createApiTokenHandlers({
     verifyAccess: async () => ({
       ok: true as const,

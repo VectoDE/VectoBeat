@@ -39,7 +39,7 @@ export default function DiscordWidget() {
 
         let onlineMembers = baseOnline
         let totalMembers = Math.max(baseOnline, normalizedMembers.length)
-        let inviteUrl = data.instant_invite || "https://discord.com/invite/vectobeat"
+        const inviteUrl = data.instant_invite || "https://discord.com/invite/vectobeat"
 
         const inviteCode = inviteUrl.split("/").filter(Boolean).pop()?.split("?")[0]
         if (inviteCode) {

@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     const priceResolution = resolveStripePrice(tierId, billingCycle)
-    let priceId: string | null = priceResolution.type === "id" ? priceResolution.value : null
+    const priceId: string | null = priceResolution.type === "id" ? priceResolution.value : null
 
     const tierConfig = MEMBERSHIP_TIERS[tierId as keyof typeof MEMBERSHIP_TIERS]
     if (!tierConfig) {
