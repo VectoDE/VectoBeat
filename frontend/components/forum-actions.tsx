@@ -34,7 +34,7 @@ export function ForumComposer({
     setSubmitting(true)
     setMessage(null)
     try {
-      const payload = await apiClient<any>("/api/forum/threads", {
+      await apiClient<any>("/api/forum/threads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -164,7 +164,7 @@ export function ForumReplyBox({
     setPosting(true)
     setMessage(null)
     try {
-      const payload = await apiClient<any>("/api/forum/posts", {
+      await apiClient<any>("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, threadId, body }),

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
+import secrets
 from typing import Deque, List, Optional, Tuple
 from collections import deque
 
@@ -55,7 +55,7 @@ class ChaosService:
             pass
 
     async def run_random(self, triggered_by: str) -> ScenarioResult:
-        scenario = random.choice(self.config.scenarios or list(self.SUPPORTED_SCENARIOS))
+        scenario = secrets.choice(self.config.scenarios or list(self.SUPPORTED_SCENARIOS))
         return await self.run_scenario(scenario, triggered_by=triggered_by)
 
     async def run_scenario(self, scenario: str, *, triggered_by: str) -> ScenarioResult:
@@ -84,7 +84,7 @@ class ChaosService:
     async def _scenario_disconnect_voice(self, *, triggered_by: str) -> str:
         if not self.bot.voice_clients:
             return "No active voice connections to disrupt."
-        voice_client: discord.VoiceClient = random.choice(self.bot.voice_clients)
+        voice_client: discord.VoiceClient = secrets.choice(self.bot.voice_clients)
         channel = getattr(voice_client, "channel", None)
         await voice_client.disconnect(force=True)
         details = f"Disconnected from {channel} (guild {voice_client.guild.id})"
@@ -95,7 +95,7 @@ class ChaosService:
         lavalink_client: Optional[lavalink.Client] = getattr(self.bot, "lavalink", None)
         if not lavalink_client or not lavalink_client.node_manager.nodes:
             return "No Lavalink nodes registered."
-        node = random.choice(lavalink_client.node_manager.nodes)
+        node = secrets.choice(lavalink_client.node_manager.nodes)
         await node.disconnect()
         details = f"Force-disconnected node {node.name}"
         self.logger.warning("[Chaos:%s] %s", triggered_by, details)

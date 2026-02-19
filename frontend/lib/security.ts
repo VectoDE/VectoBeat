@@ -51,8 +51,11 @@ export const sanitizeInput = (input: string): string => {
 }
 
 export const validateEmail = (email: string): boolean => {
+  if (email.length > 254) {
+    return false
+  }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email) && email.length <= 254
+  return emailRegex.test(email)
 }
 
 export const validateDiscordId = (id: string): boolean => {

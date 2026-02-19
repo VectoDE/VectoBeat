@@ -2,8 +2,6 @@
 
 import { useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import Image from "next/image"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import {
@@ -12,74 +10,10 @@ import {
   Shield,
   Bell,
   CreditCard,
-  LogOut,
-  Link2 as LinkIcon,
-  SlidersHorizontal,
 } from "lucide-react"
-import {
-  SiDiscord,
-  SiFaceit,
-  SiGithub,
-  SiGitlab,
-  SiInstagram,
-  SiSlack,
-  SiSteam,
-  SiTiktok,
-  SiTwitch,
-  SiX,
-  SiYoutube,
-} from "react-icons/si"
-import { FaMicrosoft } from "react-icons/fa"
-import { buildDiscordLoginUrl } from "@/lib/config"
-import { RoleBadge } from "@/components/role-badge"
 import { useAccountState } from "@/hooks/useAccountState"
 import { useAccountApi } from "@/hooks/useAccountApi"
 import { SettingsCard, SettingsInput, SettingsCheckbox, SettingsButton } from "@/components/settings"
-
-const PREFERENCE_DEFAULTS = {
-  preferredLanguage: "en",
-  fullName: "",
-  birthDate: "",
-  addressCountry: "",
-  addressState: "",
-  addressCity: "",
-  addressStreet: "",
-  addressHouseNumber: "",
-  addressPostalCode: "",
-}
-
-const NOTIFICATION_DEFAULTS = {
-  maintenanceAlerts: true,
-  downtimeAlerts: true,
-  releaseNotes: true,
-  securityNotifications: true,
-  betaProgram: false,
-  communityEvents: false,
-}
-
-const PRIVACY_DEFAULTS = {
-  profilePublic: false,
-  searchVisibility: true,
-  analyticsOptIn: false,
-  dataSharing: false,
-}
-
-const PROFILE_FORM_DEFAULTS = {
-  displayName: "",
-  headline: "",
-  bio: "",
-  location: "",
-  website: "",
-  handle: "",
-}
-
-const SECURITY_DEFAULTS = {
-  twoFactorEnabled: false,
-  loginAlerts: true,
-  backupCodesRemaining: 5,
-  activeSessions: 1,
-  lastPasswordChange: null as string | null,
-}
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },

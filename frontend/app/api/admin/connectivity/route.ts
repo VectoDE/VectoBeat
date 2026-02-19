@@ -63,7 +63,7 @@ const fetchWithTimeout = async (url: string) => {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), 3000)
   try {
-    const res = await apiClient(url, { signal: controller.signal, cache: "no-store" })
+    await apiClient(url, { signal: controller.signal, cache: "no-store" })
     return true
   } catch {
     return false

@@ -20,7 +20,7 @@ export { getPrismaClient, handlePrismaError }
 
 const getPool = () => getPrismaClient()
 
-const asJsonObject = <T>(value: Prisma.JsonValue | null | undefined): T | null => {
+const asJsonObject = <T>(value: unknown | null | undefined): T | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null
   }
@@ -2633,7 +2633,7 @@ export const listBotActivityEvents = async (limit = 200): Promise<BotActivityEve
       orderBy: { createdAt: "desc" },
       take: limit,
     })
-    return rows.map((row) => ({
+    return rows.map((row: ContactMessageThread) => ({
       id: row.id,
       type: row.type,
       name: row.name ?? null,
@@ -4426,7 +4426,8 @@ const calculateReadTime = (content: string | null | undefined) => {
   if (!content) {
     return "1 min read"
   }
-  const plain = content
+  const limitedContent = content.length > 20000 ? content.slice(0, 20000) : content
+  const plain = limitedContent
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]*`/g, " ")
     .replace(/<[^>]+>/g, " ")
@@ -5270,14 +5271,14 @@ export const listContactMessages = async (options?: { scope?: "contact" | "ticke
     const db = getPool()
     if (!db) return []
 
-  const scopeFilter = buildContactCategoryWhere(options?.scope)
-  const openStatuses = ["open", "waiting"]
-  const openWhere: Prisma.ContactMessageWhereInput = scopeFilter
-    ? { AND: [scopeFilter, { status: { in: openStatuses } }] }
-    : { status: { in: openStatuses } }
-  const otherWhere: Prisma.ContactMessageWhereInput = scopeFilter
-    ? { AND: [scopeFilter, { NOT: { status: { in: openStatuses } } }] }
-    : { NOT: { status: { in: openStatuses } } }
+    const scopeFilter = buildContactCategoryWhere(options?.scope)
+    const openStatuses = ["open", "waiting"]
+    const openWhere = scopeFilter
+      ? { AND: [scopeFilter, { status: { in: openStatuses } }] }
+      : { status: { in: openStatuses } }
+    const otherWhere = scopeFilter
+      ? { AND: [scopeFilter, { NOT: { status: { in: openStatuses } } }] }
+      : { NOT: { status: { in: openStatuses } } }
 
     const [openMessages, otherMessages] = await Promise.all([
       db.contactMessage.findMany({
@@ -5324,7 +5325,7 @@ export const listContactMessagesByEmail = async (
     if (!db) return []
 
     const scopeFilter = buildContactCategoryWhere(options?.scope)
-    const baseWhere: Prisma.ContactMessageWhereInput = {
+    const baseWhere = {
       email: email.trim().toLowerCase(),
     }
     const where = scopeFilter ? { AND: [scopeFilter, baseWhere] } : baseWhere
@@ -5335,7 +5336,7 @@ export const listContactMessagesByEmail = async (
       take: limit,
     })
 
-    return result.map((row) =>
+    return result.map((row: ContactMessage) =>
       mapContactMessage({
         id: row.id,
         name: row.name,
@@ -5461,7 +5462,7 @@ export const appendContactMessageThread = async ({
   authorName?: string | null
   role: string
   body: string
-  attachments?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | null
+  attachments?: any | null
 }) => {
   try {
     const db = getPool()
@@ -5480,7 +5481,7 @@ export const appendContactMessageThread = async ({
         authorName: authorName || null,
         role,
         body: clampText(body, MAX_BODY_LENGTH),
-        attachments: attachments ?? Prisma.JsonNull,
+        attachments: attachments ?? null,
       },
     })
 
@@ -5623,10 +5624,16 @@ export const listForumCategories = async (): Promise<ForumCategoryRecord[]> => {
   try {
     const db = getPool()
     if (!db) return []
-    const rows = await db.forumCategory.findMany({
+    const rows = (await db.forumCategory.findMany({
       include: { threads: { select: { id: true } } },
       orderBy: { createdAt: "asc" },
-    })
+    })) as Array<{
+      id: string
+      title: string
+      description: string | null
+      slug: string
+      threads: { id: string }[]
+    }>
     if (!rows.length) {
       await seedForumCategories()
       return listForumCategories()
@@ -5649,12 +5656,25 @@ export const listForumThreads = async (categorySlug?: string): Promise<ForumThre
     const db = getPool()
     if (!db) return []
     const where = categorySlug ? { category: { slug: categorySlug } } : undefined
-    const rows = await db.forumThread.findMany({
+    const rows = (await db.forumThread.findMany({
       where,
       include: { category: { select: { slug: true, title: true } } },
       orderBy: { updatedAt: "desc" },
       take: 20,
-    })
+    })) as Array<{
+      id: string
+      categoryId: string
+      category: { slug: string | null; title: string | null } | null
+      title: string
+      summary: string | null
+      status: string
+      authorId: string | null
+      authorName: string | null
+      tags: string | null
+      replies: number
+      lastReplyAt: Date | null
+      createdAt: Date
+    }>
     return rows.map((row) => ({
       id: row.id,
       categoryId: row.categoryId,
@@ -5665,7 +5685,7 @@ export const listForumThreads = async (categorySlug?: string): Promise<ForumThre
       status: row.status,
       authorId: row.authorId ?? null,
       authorName: row.authorName ?? null,
-      tags: (row.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      tags: (row.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean),
       replies: row.replies,
       lastReplyAt: row.lastReplyAt ? row.lastReplyAt.toISOString() : null,
       createdAt: row.createdAt.toISOString(),
@@ -5699,7 +5719,7 @@ export const updateForumThreadStatus = async (threadId: string, status: string):
       status: updated.status,
       authorId: updated.authorId ?? null,
       authorName: updated.authorName ?? null,
-      tags: (updated.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      tags: (updated.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean),
       replies: updated.replies,
       lastReplyAt: updated.lastReplyAt ? updated.lastReplyAt.toISOString() : null,
       createdAt: updated.createdAt.toISOString(),
@@ -5714,11 +5734,19 @@ export const listForumPosts = async (threadId: string): Promise<ForumPostRecord[
   try {
     const db = getPool()
     if (!db) return []
-    const rows = await db.forumPost.findMany({
+    const rows = (await db.forumPost.findMany({
       where: { threadId },
       orderBy: { createdAt: "asc" },
       take: 50,
-    })
+    })) as Array<{
+      id: string
+      threadId: string
+      authorId: string | null
+      authorName: string | null
+      role: string
+      body: string
+      createdAt: Date
+    }>
     return rows.map((row) => ({
       id: row.id,
       threadId: row.threadId,
@@ -5784,7 +5812,7 @@ export const recordForumEvent = async (payload: {
         actorRole: payload.actorRole ?? "member",
         categorySlug: payload.categorySlug ?? null,
         threadId: payload.threadId ?? null,
-        metadata: (payload.metadata ?? {}) as Prisma.JsonObject,
+        metadata: (payload.metadata ?? {}) as Record<string, unknown>,
       },
     })
   } catch (error) {
@@ -5809,7 +5837,19 @@ export const listForumEvents = async (
       orderBy: { createdAt: "desc" },
       take: Math.max(1, Math.min(limit, 200)),
     })
-    return rows.map((row) => ({
+    return rows.map((row: {
+      id: string
+      action: string
+      entityType: string
+      entityId: string
+      actorId: string | null
+      actorName: string | null
+      actorRole: string
+      categorySlug: string | null
+      threadId: string | null
+      metadata: unknown
+      createdAt: Date
+    }) => ({
       id: row.id,
       action: row.action,
       entityType: row.entityType,
@@ -5877,8 +5917,12 @@ export const getForumStats = async (): Promise<ForumStats> => {
       activePosters24h: activePosters24h.length,
       lastEventAt: eventsLatest?.createdAt ? eventsLatest.createdAt.toISOString() : null,
       topCategories: categoryCounts
-        .map((entry) => ({ title: entry.title, slug: entry.slug, threads: entry.threads.length }))
-        .sort((a, b) => b.threads - a.threads)
+        .map((entry: { title: string; slug: string; threads: { id: string }[] }) => ({
+          title: entry.title,
+          slug: entry.slug,
+          threads: entry.threads.length,
+        }))
+        .sort((a: { threads: number }, b: { threads: number }) => b.threads - a.threads)
         .slice(0, 6),
     }
   } catch (error) {
@@ -5927,7 +5971,7 @@ export const createForumThread = async (payload: {
       (await db.forumCategory.findFirst())
     if (!category) return null
 
-    const thread = await db.$transaction(async (tx) => {
+    const thread = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.forumThread.create({
         data: {
           categoryId: category.id,
@@ -6007,7 +6051,7 @@ export const createForumPost = async (payload: {
     })
     if (!thread) return null
 
-    const record = await db.$transaction(async (tx) => {
+    const record = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const post = await tx.forumPost.create({
         data: {
           threadId: payload.threadId,
@@ -6069,11 +6113,11 @@ export const listSupportKnowledgeBase = async (limit = 6): Promise<SupportKnowle
     const db = getPool()
     if (!db) return []
     const statuses = ["resolved", "closed", "solved"]
-    const rows = await db.contactMessage.findMany({
+    const rows = (await db.contactMessage.findMany({
       where: { status: { in: statuses } },
       orderBy: { updatedAt: "desc" },
       take: Math.max(1, Math.min(limit, 12)),
-    })
+    })) as ContactMessage[]
     return rows.map((row) => ({
       id: row.id,
       subject: row.subject ?? row.topic ?? "Ticket",

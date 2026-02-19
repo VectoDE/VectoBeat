@@ -34,7 +34,7 @@ export function ForumTopicStarter({
     setMessage(null)
     try {
       const content = `${title.trim()}\n\n${body.trim()}`
-      const payload = await apiClient<any>("/api/forum/posts", {
+      await apiClient<any>("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, threadId, body: content, role: "topic" }),

@@ -547,7 +547,7 @@ export function SupportDeskPanel() {
     setFeedback(null)
     setError(null)
     try {
-      const payload = await apiClient<any>("/api/support-tickets", {
+      await apiClient<any>("/api/support-tickets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -587,7 +587,7 @@ export function SupportDeskPanel() {
         formData.append(`attachment_${index}`, file)
       })
 
-      const payload = await apiClient<any>(`/api/support-tickets/${selectedTicket.id}?${params.toString()}`, {
+      await apiClient<any>(`/api/support-tickets/${selectedTicket.id}?${params.toString()}`, {
         method: "POST",
         body: formData,
         headers: {

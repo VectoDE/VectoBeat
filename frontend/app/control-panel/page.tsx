@@ -51,10 +51,6 @@ interface Subscription {
 const sanitizeGuildId = (value?: string | null) => (typeof value === "string" ? value.trim() : "") || ""
 const buildManageHref = (guildId?: string | null) => `/control-panel?guild=${encodeURIComponent(sanitizeGuildId(guildId))}`
 const SOURCE_LEVEL_ORDER: ServerFeatureSettings["sourceAccessLevel"][] = ["core", "extended", "unlimited"]
-const formatQueueCapLabel = (tier: MembershipTier) => {
-  const value = getQueueLimitCap(tier)
-  return value === null ? "Unlimited" : value.toLocaleString()
-}
 const automationActionLabel = (action: string) => {
   switch (action) {
     case "queue_trim":
@@ -1422,7 +1418,7 @@ export default function ControlPanelPage() {
     setRoutingRebalanceStatus("running")
     setRoutingRebalanceError(null)
     try {
-      const payload = await apiClient<any>("/api/control-panel/lavalink/reconcile", {
+      await apiClient<any>("/api/control-panel/lavalink/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guildId: selectedGuildId, discordId: user.id }),

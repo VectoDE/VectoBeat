@@ -51,7 +51,8 @@ const parseEnvKeys = (filePath: string): Set<string> => {
 };
 
 const collectRelativeLinks = (filePath: string, content: string): string[] => {
-  const matches = [...content.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)];
+  const limited = content.length > 20000 ? content.slice(0, 20000) : content;
+  const matches = [...limited.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)];
   return matches
     .map((m) => m[1]!)
     .filter(
