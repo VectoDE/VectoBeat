@@ -10,7 +10,7 @@ export function sanitizeSlug(slug: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/^(?:-)|(?:-)$/g, '')
 }
 
 export async function resolveParams<T>(params: Promise<T> | T): Promise<T> {

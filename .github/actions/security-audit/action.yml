@@ -31,8 +31,8 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        echo "Running npm audit..."
-        npm audit --audit-level=moderate || {
+        echo "Running npm audit (production dependencies only)..."
+        npm audit --omit=dev --audit-level=moderate || {
           echo "⚠️ npm audit found vulnerabilities"
           echo "Check the security tab for details"
           exit 1

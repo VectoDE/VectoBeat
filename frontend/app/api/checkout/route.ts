@@ -4,6 +4,7 @@ import { resolveStripePrice } from "@/lib/stripe-prices"
 import { type NextRequest, NextResponse } from "next/server"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
 import { upsertUserContact, getUserPreferences } from "@/lib/db"
+import { logError } from "@/lib/utils/error-handling"
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     )
   } catch (error) {
-    console.error("[VectoBeat] Checkout error:", error)
+    logError("[VectoBeat] Checkout error:", error)
     const errorMessage = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json({ error: `Checkout failed: ${errorMessage}` }, { status: 500 })
   }
@@ -345,7 +346,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to load checkout session"
     const status = message.toLowerCase().includes("no such checkout session") ? 404 : 500
-    console.error("[VectoBeat] Checkout session lookup failed:", error)
+    logError("[VectoBeat] Checkout session lookup failed:", error)
     return NextResponse.json({ error: message }, { status })
   }
 }
