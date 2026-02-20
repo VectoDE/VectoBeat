@@ -161,7 +161,7 @@ class ScalingConfig(BaseModel):
     auth_token: Optional[str] = None
     interval_seconds: int = 60
     cooldown_seconds: int = 300
-    target_guilds_per_shard: int = 1200
+    target_guilds_per_shard: int = 5
     target_players_per_node: int = 150
     min_shards: int = 1
     max_shards: int = 10

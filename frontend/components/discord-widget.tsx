@@ -26,7 +26,7 @@ export default function DiscordWidget() {
   const [widget, setWidget] = useState<DiscordWidgetState | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const DISCORD_SERVER_ID = "879435075710746684"
+  const DISCORD_SERVER_ID = process.env.DISCORD_SERVER_ID
 
   useEffect(() => {
     let isMounted = true
@@ -79,7 +79,7 @@ export default function DiscordWidget() {
       isMounted = false
       clearInterval(interval)
     }
-  }, [])
+  }, [DISCORD_SERVER_ID])
 
   if (loading) {
     return (

@@ -2,7 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
-import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
+import { buildDiscordLoginUrl } from "@/lib/config"
 import { MenuIcon, CloseIcon } from "./icons"
 import { RoleBadge } from "./role-badge"
 import { useAuth } from "@/lib/hooks/useAuth"
@@ -70,12 +70,14 @@ export default function Navigation() {
             >
               GitHub
             </a>
-            <a
-              href={DISCORD_BOT_INVITE_URL}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-300 text-sm animate-zoom-bounce animation-delay-300 hover:glow-pulse"
-            >
-              Add to Discord
-            </a>
+            {!isLoggedIn && (
+              <a
+                href={buildDiscordLoginUrl("/control-panel")}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-300 text-sm animate-zoom-bounce animation-delay-300 hover:glow-pulse"
+              >
+                Login with Discord
+              </a>
+            )}
             {isLoggedIn && user && (
               <div className="relative" ref={dropdownRef}>
                 <button
@@ -269,12 +271,14 @@ export default function Navigation() {
                 >
                   GitHub
                 </a>
-                <a
-                  href={DISCORD_BOT_INVITE_URL}
-                  className="block w-full px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all text-center animate-zoom-bounce animation-delay-400"
-                >
-                  Add to Discord
-                </a>
+                {!isLoggedIn && (
+                  <a
+                    href={buildDiscordLoginUrl("/control-panel")}
+                    className="block w-full px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all text-center animate-zoom-bounce animation-delay-400"
+                  >
+                    Login with Discord
+                  </a>
+                )}
               </div>
             </div>
           </div>

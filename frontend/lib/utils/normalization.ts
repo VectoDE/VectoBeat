@@ -65,9 +65,11 @@ export const generateFallbackHandle = (base?: string, discordId?: string) => {
 
 export const normalizeApiKeyType = (value: string) => value.trim().toLowerCase()
 
-export const normalizeRole = (role?: string | null): 'member' | 'admin' | 'operator' | 'partner' => {
+export const normalizeRole = (role?: string | null): 'member' | 'partner' | 'supporter' | 'operator' | 'admin' => {
   const normalized = role?.trim().toLowerCase()
-  return normalized === "admin" || normalized === "operator" || normalized === "partner" ? normalized : "member"
+  return normalized === "admin" || normalized === "operator" || normalized === "partner" || normalized === "supporter"
+    ? normalized
+    : "member"
 }
 
 export const normalizeUsageValue = (value: number | null | undefined) => {

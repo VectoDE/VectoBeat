@@ -3,7 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { SiGithub } from "react-icons/si"
-import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
+import { buildDiscordLoginUrl } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 
 export default function Header() {
@@ -50,8 +50,8 @@ export default function Header() {
             </Link>
           </Button>
           <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href={DISCORD_BOT_INVITE_URL} target="_blank">
-              Add to Discord
+            <Link href={buildDiscordLoginUrl("/control-panel")}>
+              Login with Discord
             </Link>
           </Button>
         </div>

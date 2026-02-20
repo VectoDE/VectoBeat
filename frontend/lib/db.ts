@@ -1,13 +1,9 @@
 import crypto from "crypto"
-import { Prisma } from "@prisma/client"
+import { Prisma, type ContactMessage, type ContactMessageThread, type ScaleAccountContact } from "@prisma/client"
 import { decryptJson, decryptText, encryptJson, encryptText, isEncryptionAvailable } from "./encryption"
 import { normalizeInput, normalizeWebsite, sanitizeHandle, generateFallbackHandle, normalizeRole, normalizeSlug, normalizeStringWithLength, normalizeOptionalString } from "./utils/normalization"
-import { logError as logDbError } from "./utils/error-handling"
+import { logError as logDbError, logError, logSecurityError } from "./utils/error-handling"
 
-// Explicitly define types from Prisma namespace to avoid import issues
-type ContactMessage = Prisma.ContactMessageGetPayload<Prisma.ContactMessageDefaultArgs>
-type ContactMessageThread = Prisma.ContactMessageThreadGetPayload<Prisma.ContactMessageThreadDefaultArgs>
-type ScaleAccountContact = Prisma.ScaleAccountContactGetPayload<Prisma.ScaleAccountContactDefaultArgs>
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
 import { getPrismaClient, handlePrismaError } from "./prisma"
@@ -50,11 +46,14 @@ export const provisionDefaultsForTier = (
   return current
 }
 
-const USER_API_KEY_SECRET = process.env.DATA_ENCRYPTION_KEY
-
-if (!USER_API_KEY_SECRET) {
-  throw new Error("DATA_ENCRYPTION_KEY is required in environment variables.")
-}
+const USER_API_KEY_SECRET = (() => {
+  const raw = crypto.randomBytes(32).toString("hex")
+  const encrypted = encryptText(raw)
+  if (!encrypted) {
+    throw new Error("DATA_ENCRYPTION_KEY is required for secure API key derivation.")
+  }
+  return raw
+})()
 const USER_API_KEY_PREFIX = "vbk_"
 
 const deriveUserApiKey = (discordId: string) => {
@@ -94,15 +93,20 @@ const packSecretValue = (value: string) => {
 }
 
 const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
-  if (record.iv === "__plain__" && record.authTag === "__plain__") {
-    // SECURITY: Legacy plain-text fallback has been strictly removed to prevent auth bypass.
-    // We intentionally return null here instead of throwing, so that upstream callers
-    // simply see "no secret" rather than crashing or treating an empty list as "allow all".
-    // Or better: log a critical error but return null to signify "invalid secret".
-    console.error("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+  if (!record.encryptedValue || !record.iv || !record.authTag) {
+    logSecurityError("[SECURITY] Missing encrypted secret fields.")
     return null
   }
-  return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
+  if (record.iv === "__plain__" && record.authTag === "__plain__") {
+    logSecurityError("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+    return null
+  }
+  const decrypted = decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
+  if (decrypted === null) {
+    logSecurityError("[SECURITY] Failed to decrypt stored secret value.")
+    return null
+  }
+  return decrypted
 }
 
 const parseReferrerForStorage = (value?: string | null) => {
@@ -155,7 +159,7 @@ interface UserProfilePayload {
   apiKey?: string
 }
 
-export type UserRole = "member" | "admin" | "operator" | "partner"
+export type UserRole = "member" | "partner" | "supporter" | "operator" | "admin"
 const DEFAULT_ROLE: UserRole = "member"
 export type AdminUserSummary = {
   id: string
@@ -427,7 +431,7 @@ const getDecryptedProfilePayload = async (discordId: string) => {
   }
 }
 
-const allowedRoles: UserRole[] = ["member", "admin", "operator", "partner"]
+const allowedRoles: UserRole[] = ["member", "partner", "supporter", "operator", "admin"]
 
 export const getUserRole = async (discordId: string): Promise<UserRole> => {
   try {
@@ -445,7 +449,8 @@ export const getUserRole = async (discordId: string): Promise<UserRole> => {
       },
     })
 
-    return normalizeRole(roleRecord.role)
+    const normalized = normalizeRole(roleRecord.role)
+    return allowedRoles.includes(normalized) ? normalized : DEFAULT_ROLE
   } catch (error) {
     logDbError("[VectoBeat] Failed to load user role:", error)
     return DEFAULT_ROLE
@@ -458,6 +463,9 @@ export const setUserRole = async (discordId: string, role: UserRole) => {
     if (!db) return DEFAULT_ROLE
 
     const normalizedRole = normalizeRole(role)
+    if (!allowedRoles.includes(normalizedRole)) {
+      return DEFAULT_ROLE
+    }
 
     const record = await db.userRole.upsert({
       where: { discordId },
@@ -465,7 +473,8 @@ export const setUserRole = async (discordId: string, role: UserRole) => {
       create: { discordId, role: normalizedRole },
     })
 
-    return normalizeRole(record.role)
+    const persisted = normalizeRole(record.role)
+    return allowedRoles.includes(persisted) ? persisted : DEFAULT_ROLE
   } catch (error) {
     logDbError("[VectoBeat] Failed to update user role:", error)
     return DEFAULT_ROLE
@@ -2123,6 +2132,9 @@ const ensureProfileSettings = async (discordId: string, usernameHint?: string | 
   }
 
   let baseHandle = generateFallbackHandle(usernameHint ?? undefined, discordId)
+  if (baseHandle.length > PROFILE_HANDLE_MAX) {
+    baseHandle = baseHandle.slice(0, PROFILE_HANDLE_MAX)
+  }
   while (baseHandle.length < PROFILE_HANDLE_MIN) {
     baseHandle = `${baseHandle}-${Math.floor(Math.random() * 1000)}`
   }
@@ -2207,7 +2219,10 @@ const resolveHandleForUpdate = async (handle: string | undefined, discordId: str
   if (!handle) return undefined
   const sanitized = sanitizeHandle(handle)
   if (sanitized.length < PROFILE_HANDLE_MIN) {
-    throw new Error("Profile handle must contain at least 3 alphanumeric characters.")
+    throw new Error(`Profile handle must contain at least ${PROFILE_HANDLE_MIN} alphanumeric characters.`)
+  }
+  if (sanitized.length > PROFILE_HANDLE_MAX) {
+    throw new Error(`Profile handle must not exceed ${PROFILE_HANDLE_MAX} characters.`)
   }
   if (await handleExists(sanitized, discordId)) {
     throw new Error("This profile handle is already in use.")
@@ -2633,7 +2648,7 @@ export const listBotActivityEvents = async (limit = 200): Promise<BotActivityEve
       orderBy: { createdAt: "desc" },
       take: limit,
     })
-    return rows.map((row: ContactMessageThread) => ({
+    return rows.map((row) => ({
       id: row.id,
       type: row.type,
       name: row.name ?? null,
@@ -5030,7 +5045,7 @@ export const createNewsletterCampaign = async ({
       },
     })
 
-    console.log("[VectoBeat] Newsletter dispatched", {
+    logError("[VectoBeat] Newsletter dispatched", {
       subject,
       recipients: recipientCount,
     })
@@ -5812,7 +5827,7 @@ export const recordForumEvent = async (payload: {
         actorRole: payload.actorRole ?? "member",
         categorySlug: payload.categorySlug ?? null,
         threadId: payload.threadId ?? null,
-        metadata: (payload.metadata ?? {}) as Record<string, unknown>,
+        metadata: (payload.metadata ?? {}) as Prisma.InputJsonValue,
       },
     })
   } catch (error) {
