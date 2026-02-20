@@ -65,8 +65,7 @@ export async function verifyPluginSource(
 
   // 3. Entry Point Check (Basic heuristic)
   if (language === PluginLanguage.PYTHON && !content.includes("def run(")) {
-     // Warning only, maybe they use a different structure, but good for standardization
-     // issues.push("Missing 'def run(context):' entry point."); 
+    issues.push("Missing 'def run(context):' entry point.");
   }
 
   if (issues.length > 0) {

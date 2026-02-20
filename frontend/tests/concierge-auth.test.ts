@@ -17,6 +17,7 @@ const validVerifier = async () => ({
     avatarUrl: null,
     createdAt: new Date().toISOString(),
     lastSeen: new Date().toISOString(),
+    phone: null,
     guilds: [],
   },
 })

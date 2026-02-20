@@ -25,6 +25,7 @@ test("verifyRequestForUser returns profile when session is valid", async () => {
       avatarUrl: "https://example.com/avatar.png",
       createdAt: new Date().toISOString(),
       lastSeen: new Date().toISOString(),
+      phone: null,
       guilds: [{ id: "g1", name: "Guild One" }],
     }),
   })
@@ -59,6 +60,7 @@ test("verifyRequestForUser rejects when no token present", async () => {
       avatarUrl: "https://example.com/avatar.png",
       createdAt: new Date().toISOString(),
       lastSeen: new Date().toISOString(),
+      phone: null,
       guilds: [],
     }),
   })

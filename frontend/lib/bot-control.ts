@@ -1,4 +1,5 @@
 import { getApiKeySecrets } from "./api-keys"
+import { apiClient } from "./api-client"
 
 const STATUS_API_URL =
   process.env.BOT_STATUS_API_URL || process.env.STATUS_API_URL || process.env.STATUS_API_EVENT_URL || ""
@@ -26,10 +27,8 @@ export const emitBotControl = async (path: string, body: Record<string, unknown>
   const target = `${base}${path.startsWith("/") ? path : `/${path}`}`
   const tokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
   const primary = tokens[0] ?? ""
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 5000)
   try {
-    const response = await fetch(target, {
+    await apiClient<any>(target, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,12 +36,10 @@ export const emitBotControl = async (path: string, body: Record<string, unknown>
         ...buildAuthHeaders(tokens),
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(5000),
     })
-    clearTimeout(timeout)
-    return response.ok
+    return true
   } catch (error) {
-    clearTimeout(timeout)
     console.error("[VectoBeat] Bot control emit failed:", error)
     return false
   }

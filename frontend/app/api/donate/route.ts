@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     const email = typeof body?.email === "string" ? body.email.trim() : ""
     const name = typeof body?.name === "string" ? body.name.trim() : ""
     const discordId = typeof body?.discordId === "string" ? body.discordId.trim() : ""
-    let billingEmail = email
+    const billingEmail = email
     let billingName = name || "VectoBeat supporter"
     let billingAddress: Stripe.AddressParam | null = null
 

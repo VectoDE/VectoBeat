@@ -112,7 +112,7 @@ scaling:
   auth_token: ""
   interval_seconds: 60
   cooldown_seconds: 300
-  target_guilds_per_shard: 1200
+  target_guilds_per_shard: 5
   target_players_per_node: 150
   min_shards: 1
   max_shards: 10

@@ -1,123 +1,36 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { DISCORD_BOT_INVITE_URL } from "@/lib/config"
+import { useState } from "react"
+import { buildDiscordLoginUrl } from "@/lib/config"
 import { MenuIcon, CloseIcon } from "./icons"
 import { RoleBadge } from "./role-badge"
+import { useAuth } from "@/lib/hooks/useAuth"
+import { useClickOutside } from "@/lib/hooks/useClickOutside"
+import { useScrollAnimation } from "@/lib/hooks/useScrollAnimation"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement | null>(null)
-  const router = useRouter()
+  const { isLoggedIn, user, handleLogout } = useAuth()
+  const { ref: dropdownRef, isOpen: profileMenuOpen, setIsOpen: setProfileMenuOpen } = useClickOutside(false)
+  
+  useScrollAnimation()
 
-  useEffect(() => {
-    let isSubscribed = true
-    const checkLoginStatus = async () => {
-      try {
-        const response = await fetch("/api/verify-session", {
-          credentials: "include",
-        })
-        if (!response.ok) {
-          if (isSubscribed) {
-            setIsLoggedIn(false)
-            setUser(null)
-          }
-          return
-        }
-        const data = await response.json()
-        if (!isSubscribed) {
-          return
-        }
-        if (data?.authenticated) {
-          setIsLoggedIn(true)
-          setUser(data)
-        } else {
-          setIsLoggedIn(false)
-          setUser(null)
-        }
-      } catch (error) {
-        console.error("[VectoBeat] Login check error:", error)
-        if (isSubscribed) {
-          setIsLoggedIn(false)
-          setUser(null)
-        }
-      }
-    }
-    void checkLoginStatus()
-    return () => {
-      isSubscribed = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
-      return
-    }
-
-    const sections = Array.from(document.querySelectorAll("section")).filter(
-      (section) => section.getAttribute("data-animate-on-scroll") !== "off",
-    )
-    sections.forEach((section) => {
-      if (!section.hasAttribute("data-animate-on-scroll")) {
-        section.setAttribute("data-animate-on-scroll", "")
-      }
-    })
-
-    const animatedElements = Array.from(document.querySelectorAll("[data-animate-on-scroll]")).filter(
-      (element) => element.getAttribute("data-animate-on-scroll") !== "off",
-    )
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible")
-            observer.unobserve(entry.target)
-          }
-        })
-      },
-      { threshold: 0.15, rootMargin: "0px 0px -10% 0px" },
-    )
-
-    animatedElements.forEach((element) => observer.observe(element))
-
-    return () => observer.disconnect()
-  }, [])
-
-  useEffect(() => {
-    const handler = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/logout", { method: "POST" })
-    } catch (error) {
-      console.error("[VectoBeat] Logout failed:", error)
-    }
-    localStorage.removeItem("discord_token")
-    localStorage.removeItem("discord_user_id")
-    setUser(null)
-    setIsLoggedIn(false)
+  const closeAllMenus = () => {
+    setIsOpen(false)
     setProfileMenuOpen(false)
-    router.push("/")
+  }
+
+  const handleLogoutClick = async () => {
+    await handleLogout()
+    closeAllMenus()
   }
 
   const navLinks = [
     { href: "/", label: "Home" },
-    { href: "/pricing", label: "Pricing" },
     { href: "/features", label: "Features" },
     { href: "/commands", label: "Commands" },
+    { href: "/pricing", label: "Pricing" },
     { href: "/blog", label: "Blog" },
     { href: "/forum", label: "Forum" },
   ]
@@ -157,16 +70,18 @@ export default function Navigation() {
             >
               GitHub
             </a>
-            <a
-              href={DISCORD_BOT_INVITE_URL}
-              className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-300 text-sm animate-zoom-bounce animation-delay-300 hover:glow-pulse"
-            >
-              Add to Discord
-            </a>
+            {!isLoggedIn && (
+              <a
+                href={buildDiscordLoginUrl("/control-panel")}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all duration-300 text-sm animate-zoom-bounce animation-delay-300 hover:glow-pulse"
+              >
+                Login with Discord
+              </a>
+            )}
             {isLoggedIn && user && (
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setProfileMenuOpen((prev) => !prev)}
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                   className="flex items-center gap-2 px-3 py-2 border border-border/60 rounded-full bg-card/70 hover:border-primary/60 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
@@ -226,7 +141,7 @@ export default function Navigation() {
                         Account
                       </Link>
                       <button
-                        onClick={handleLogout}
+                        onClick={handleLogoutClick}
                         className="w-full text-left px-4 py-2 hover:bg-destructive/20 text-destructive transition-colors"
                       >
                         Logout
@@ -267,7 +182,7 @@ export default function Navigation() {
                 <div className="pt-2">
                   <div className="relative" ref={dropdownRef}>
                     <button
-                      onClick={() => setProfileMenuOpen((prev) => !prev)}
+                      onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                       className="w-full flex items-center gap-3 px-3 py-2 border border-border/60 rounded-xl bg-card/80 hover:border-primary/60 transition-colors"
                     >
                       <div className="w-10 h-10 rounded-full bg-primary/10 overflow-hidden flex items-center justify-center">
@@ -334,9 +249,7 @@ export default function Navigation() {
                           </Link>
                           <button
                             onClick={() => {
-                              handleLogout()
-                              setProfileMenuOpen(false)
-                              setIsOpen(false)
+                              handleLogoutClick()
                             }}
                             className="w-full text-left px-4 py-2 hover:bg-destructive/20 text-destructive transition-colors"
                           >
@@ -358,12 +271,14 @@ export default function Navigation() {
                 >
                   GitHub
                 </a>
-                <a
-                  href={DISCORD_BOT_INVITE_URL}
-                  className="block w-full px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all text-center animate-zoom-bounce animation-delay-400"
-                >
-                  Add to Discord
-                </a>
+                {!isLoggedIn && (
+                  <a
+                    href={buildDiscordLoginUrl("/control-panel")}
+                    className="block w-full px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-all text-center animate-zoom-bounce animation-delay-400"
+                  >
+                    Login with Discord
+                  </a>
+                )}
               </div>
             </div>
           </div>

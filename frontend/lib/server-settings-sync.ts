@@ -1,6 +1,7 @@
 import type { MembershipTier } from "./memberships"
 import type { ServerFeatureSettings } from "./server-settings"
 import { getApiKeySecret } from "./api-keys"
+import { apiClient } from "./api-client"
 
 const getInternalBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
@@ -15,22 +16,18 @@ const resolveBroadcastToken = async () => {
 const postWithAuth = async (path: string, body: Record<string, unknown>): Promise<boolean> => {
   const token = await resolveBroadcastToken()
   const endpoint = `${getInternalBaseUrl()}${path}`
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 5000)
   try {
-    const response = await fetch(endpoint, {
+    await apiClient<any>(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(5000),
     })
-    clearTimeout(timeout)
-    return response.ok
+    return true
   } catch (error) {
-    clearTimeout(timeout)
     console.error("[VectoBeat] Broadcast request failed:", error)
     return false
   }

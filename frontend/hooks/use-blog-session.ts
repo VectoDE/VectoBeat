@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { BLOG_SESSION_EVENT } from "@/lib/blog-session"
+import { apiClient } from "@/lib/api-client"
 
 type SessionStatus = "loading" | "authenticated" | "unauthenticated"
 
@@ -52,19 +53,13 @@ export const useBlogSession = () => {
 
     const verify = async (token: string, discordId: string) => {
       try {
-        const response = await fetch("/api/verify-session", {
+        const data = await apiClient<any>("/api/verify-session", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
           credentials: "include",
           cache: "no-store",
         })
-
-        if (!response.ok) {
-          throw new Error("Session verification failed")
-        }
-
-        const data = await response.json()
 
         if (data?.authenticated) {
           applyState({

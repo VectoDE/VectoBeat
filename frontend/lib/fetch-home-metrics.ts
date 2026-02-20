@@ -1,4 +1,5 @@
 import { getHomeMetrics, type HomeMetrics } from "./metrics"
+import { apiClient } from "./api-client"
 
 const resolveBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL ||
@@ -26,10 +27,7 @@ export const fetchHomeMetrics = async (): Promise<HomeMetrics | null> => {
     if (!skipRemote) {
       for (const baseUrl of candidates) {
         try {
-          const response = await fetch(`${baseUrl}/api/metrics?scope=home`, { cache: "no-store" })
-          if (response.ok) {
-            return (await response.json()) as HomeMetrics
-          }
+          return await apiClient<HomeMetrics>(`${baseUrl}/api/metrics?scope=home`, { cache: "no-store" })
         } catch {
           // try next candidate
           continue

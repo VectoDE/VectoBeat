@@ -1,0 +1,25 @@
+graph TD
+    A[PluginMarketplace Component] --> B[useEffect Plugin Loading]
+    B --> C[apiClient Plugin API]
+    C --> D[Plugin Data Processing]
+    
+    D --> E[Search Functionality]
+    D --> F[Filter System]
+    D --> G[Security Validation]
+    
+    E --> H[Search Input Handler]
+    F --> I[Category Filters]
+    F --> J[Status Filters]
+    G --> K[Plugin Verification]
+    
+    L[Plugin Card] --> M[Install Button]
+    L --> N[Plugin Details]
+    L --> O[Security Badges]
+    
+    M --> P[installPlugin Function]
+    P --> Q[API Installation Request]
+    Q --> R[Status Update]
+    
+    S[Uninstall Button] --> T[uninstallPlugin Function]
+    T --> U[API Uninstall Request]
+    U --> V[Plugin List Refresh]

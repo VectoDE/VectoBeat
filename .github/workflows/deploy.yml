@@ -19,7 +19,7 @@ jobs:
       DEPLOY_TARGET_PATH: ${{ secrets.DEPLOY_TARGET_PATH }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Verify deploy secrets
         run: |
@@ -38,10 +38,8 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           key_file=~/.ssh/deploy_key
-          # Support secrets stored with literal \n sequences or real newlines
           printf '%s\n' "$DEPLOY_SSH_KEY" | sed 's/\\n/\n/g' | tr -d '\r' > "$key_file"
           chmod 600 "$key_file"
-          # Validate key before adding to agent
           ssh-keygen -y -f "$key_file" >/dev/null 2>&1 || { echo "Invalid SSH key supplied in DEPLOY_SSH_KEY"; exit 1; }
           eval "$(ssh-agent -s)"
           ssh-add "$key_file"

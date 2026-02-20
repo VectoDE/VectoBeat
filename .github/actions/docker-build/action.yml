@@ -1,0 +1,48 @@
+name: 🐳 Docker Build Composite Action
+
+description: 'Composite action for building Docker images with consistent configuration'
+
+inputs:
+  context:
+    description: 'Build context path'
+    required: true
+    default: '.'
+  dockerfile:
+    description: 'Path to Dockerfile'
+    required: true
+  image-tag:
+    description: 'Docker image tag'
+    required: true
+  push:
+    description: 'Whether to push the image'
+    required: false
+    default: 'false'
+  load:
+    description: 'Whether to load the image'
+    required: false
+    default: 'true'
+  secrets:
+    description: 'Build secrets'
+    required: false
+    default: ''
+  build-args:
+    description: 'Build arguments'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
+      
+    - name: Build image
+      uses: docker/build-push-action@ca877d9245402d1537745e0e356eab47c3520991 # v6.13.0
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: ${{ inputs.push }}
+        load: ${{ inputs.load }}
+        tags: ${{ inputs.image-tag }}
+        secrets: ${{ inputs.secrets }}
+        build-args: ${{ inputs.build-args }}

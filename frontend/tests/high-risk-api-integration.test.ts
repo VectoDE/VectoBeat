@@ -27,6 +27,7 @@ test("control-panel server settings returns tiered settings", async () => {
         avatarUrl: null,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
+        phone: null,
         guilds: [],
       },
     }),
@@ -66,7 +67,7 @@ test("success pod creation uses plan gate and returns request", async () => {
 })
 
 test("API token leak marker logs actor", async () => {
-  let events: any[] = []
+  const events: any[] = []
   const handlers = createApiTokenHandlers({
     verifyAccess: async () => ({
       ok: true as const,
@@ -80,6 +81,7 @@ test("API token leak marker logs actor", async () => {
         avatarUrl: null,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
+        phone: null,
         guilds: [] as any[],
       },
     }),

@@ -26,25 +26,13 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        
+      - name: Run npm security audit
+        uses: ./.github/actions/security-audit
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install packages
-        run: npm install
-
-      - name: Install dependencies (no scripts)
-        run: npm ci --ignore-scripts
-
-      - name: Run npm audit (non-blocking, report only)
-        env:
-          DATABASE_URL: "mysql://user:password@localhost:3306/vectobeat"
-        run: npm audit --omit=dev --audit-level=critical || true
+          audit-type: npm-audit
+          working-directory: frontend
 
   pip-audit:
     runs-on: ubuntu-latest
@@ -53,25 +41,10 @@ jobs:
         working-directory: bot
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        
+      - name: Run pip security audit
+        uses: ./.github/actions/security-audit
         with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: bot/requirements.txt
-
-      - name: Install audit tooling
-        run: |
-          python -m pip install --upgrade pip
-          pip install pip-audit
-
-      - name: Run pip-audit (non-blocking, report only)
-        run: pip-audit -r requirements.txt --format cyclonedx-json --output pip-audit.json || true
-
-      - name: Upload audit report
-        uses: actions/upload-artifact@v6
-        with:
-          name: pip-audit-report
-          path: bot/pip-audit.json
+          audit-type: pip-audit
+          working-directory: bot

@@ -8,6 +8,7 @@ import { ForumThreadBrowser } from "@/components/forum-thread-browser"
 import { listForumCategories, listForumPosts, listForumThreads } from "@/lib/db"
 import { siteUrl } from "@/lib/seo"
 import { getForumViewerContext } from "./utils"
+import DOMPurify from "isomorphic-dompurify"
 
 const SUPPORT_DESK_LINK = "/support-desk"
 const ROADMAP_LINK = "/roadmap"
@@ -62,12 +63,19 @@ export default async function ForumPage() {
     },
   ]
 
+  // Sichere JSON-Daten vor XSS-Angriffen
+  const safeJsonData = DOMPurify.sanitize(JSON.stringify(structuredData), {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true
+  })
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonData }}
         className="sr-only"
       />
 

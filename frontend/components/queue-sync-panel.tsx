@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { io, type Socket } from "socket.io-client"
 import type { QueueSnapshot, QueueTrackSummary } from "@/types/queue-sync"
+import { apiClient } from "@/lib/api-client"
 
 interface QueueSyncPanelProps {
   guildId: string
@@ -57,18 +58,15 @@ export function QueueSyncPanel({ guildId, enabled, realtime = true }: QueueSyncP
     let socket: Socket | null = null
     const fetchInitial = async () => {
       try {
-        const response = await fetch(`/api/queue-sync?guildId=${guildId}`, { cache: "no-store" })
-        if (!response.ok) {
-          if (response.status !== 404) {
-            console.warn("[VectoBeat] Failed to load queue snapshot:", response.status)
-          }
-          return
-        }
-        const payload = (await response.json()) as QueueSnapshot
+        const payload = await apiClient<QueueSnapshot>(`/api/queue-sync?guildId=${guildId}`, { cache: "no-store" })
         if (mounted) {
           setState(payload)
         }
       } catch (error) {
+        if (error instanceof Error && 'status' in error && error.status === 404) {
+          // 404 is expected when no queue data exists yet
+          return
+        }
         console.error("[VectoBeat] Queue snapshot fetch failed:", error)
       }
     }
@@ -79,7 +77,7 @@ export function QueueSyncPanel({ guildId, enabled, realtime = true }: QueueSyncP
       }
       try {
         setStatus("connecting")
-        await fetch("/api/socket")
+        await apiClient<any>("/api/socket")
         socket = io({ path: "/api/socket" })
         socket.emit("queue:join", guildId)
 

@@ -1,0 +1,24 @@
+graph TD
+    A[SiteAnalytics Component] --> B[useEffect Initialization]
+    B --> C[Consent Check]
+    C --> D[Analytics Initialization]
+    
+    D --> E[Google Analytics Setup]
+    D --> F[Custom Event Tracking]
+    D --> G[Page View Tracking]
+    
+    E --> H[GA4 Configuration]
+    H --> I[Measurement Protocol]
+    
+    F --> J[Event Categories]
+    J --> K[User Interactions]
+    J --> L[Button Clicks]
+    J --> M[Form Submissions]
+    
+    G --> N[URL Change Detection]
+    G --> O[Page Load Timing]
+    G --> P[Scroll Tracking]
+    
+    Q[Fallback System] --> R[apiClient Analytics]
+    R --> S[Server-side Tracking]
+    S --> T[Privacy-compliant Logging]

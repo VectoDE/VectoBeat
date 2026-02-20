@@ -46,5 +46,8 @@ COPY --from=builder /app/plan-capabilities.json ./plan-capabilities.json
 # Ensure Prisma client is available
 RUN DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy" npx prisma generate
 
+RUN addgroup -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs && chown -R nextjs:nodejs /app
+USER nextjs
+
 EXPOSE 3060
 CMD ["sh", "-c", "npx prisma db push && npm start"]

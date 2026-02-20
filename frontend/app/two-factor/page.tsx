@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
+import { apiClient } from "@/lib/api-client"
 
 function TwoFactorSetupContent() {
   const searchParams = useSearchParams()
@@ -53,16 +54,10 @@ function TwoFactorSetupContent() {
     }
 
     const loadSecret = async () => {
-      const response = await fetch(
+      const data = await apiClient<any>(
         `/api/account/security/setup?discordId=${discordId}&username=${encodeURIComponent(username)}`,
         { cache: "no-store" },
       )
-      if (!response.ok) {
-        const payload = await response.json()
-        setError(payload.error || "Failed to prepare 2FA setup.")
-        return
-      }
-      const data = await response.json()
       setSecret(data.secret)
       setOtpauth(data.otpauth)
     }
@@ -86,15 +81,11 @@ function TwoFactorSetupContent() {
     setStatus("verifying")
     try {
       const endpoint = isSetupMode ? "/api/account/security/verify" : "/api/account/security/challenge"
-      const response = await fetch(endpoint, {
+      await apiClient<any>(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, token: code }),
       })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to verify code.")
-      }
       localStorage.setItem(`two_factor_verified_${discordId}`, Date.now().toString())
       router.push("/control-panel")
     } catch (err) {

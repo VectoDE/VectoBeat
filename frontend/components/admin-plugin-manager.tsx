@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react'
+import { apiClient } from '@/lib/api-client'
 
 interface PluginSource {
   id?: string
@@ -64,11 +65,8 @@ export function AdminPluginManager() {
   const fetchPlugins = async () => {
     try {
       setLoading(true)
-      const res = await fetch('/api/admin/plugins')
-      if (res.ok) {
-        const data = await res.json()
-        setPlugins(data)
-      }
+      const data = await apiClient<Plugin[]>('/api/admin/plugins')
+      setPlugins(data)
     } catch (e) {
       console.error(e)
     } finally {
@@ -171,18 +169,14 @@ export function AdminPluginManager() {
       }
       
       const method = formData.id ? 'PUT' : 'POST'
-      const res = await fetch('/api/admin/plugins', {
+      await apiClient<any>('/api/admin/plugins', {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
       
-      if (res.ok) {
-        setModalOpen(false)
-        fetchPlugins()
-      } else {
-        alert('Failed to save plugin')
-      }
+      setModalOpen(false)
+      fetchPlugins()
     } catch (e) {
       console.error(e)
     }
@@ -190,11 +184,9 @@ export function AdminPluginManager() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/plugins?id=${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setConfirmDeleteId(null)
-        fetchPlugins()
-      }
+      await apiClient<any>(`/api/admin/plugins?id=${id}`, { method: 'DELETE' })
+      setConfirmDeleteId(null)
+      fetchPlugins()
     } catch (e) {
       console.error(e)
     }

@@ -7,6 +7,8 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState, Suspense } from "react"
 import { MEMBERSHIP_TIERS } from "@/lib/memberships"
+import { apiClient } from "@/lib/api-client"
+import { logError } from "@/lib/utils/error-handling"
 
 interface CheckoutSummary {
   id: string
@@ -61,13 +63,7 @@ function SuccessContent() {
 
     let cancelled = false
 
-    fetch(`/api/checkout?session_id=${sessionId}`, { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Unable to load the Stripe checkout session")
-        }
-        return res.json()
-      })
+    apiClient<CheckoutSummary>(`/api/checkout?session_id=${sessionId}`, { credentials: "include" })
       .then((data: CheckoutSummary) => {
         if (cancelled) return
         setSummary(data)
@@ -75,8 +71,8 @@ function SuccessContent() {
       })
       .catch((err) => {
         if (cancelled) return
-        console.error("[VectoBeat] Failed to load checkout session:", err)
-        setError("We could not confirm Stripe’s response, but your payment may still be processing. Check your email for confirmation receipts.")
+        logError("[VectoBeat] Failed to load checkout session:", err)
+        setError("We could not confirm Stripe's response, but your payment may still be processing. Check your email for confirmation receipts.")
         setLoading(false)
       })
 

@@ -51,8 +51,11 @@ export const sanitizeInput = (input: string): string => {
 }
 
 export const validateEmail = (email: string): boolean => {
+  if (email.length > 254) {
+    return false
+  }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email) && email.length <= 254
+  return emailRegex.test(email)
 }
 
 export const validateDiscordId = (id: string): boolean => {
@@ -68,7 +71,7 @@ export const getSecurityHeaders = () => {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
   }
 }
 

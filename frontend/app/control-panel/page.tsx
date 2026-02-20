@@ -35,6 +35,7 @@ import { QueueSyncPanel } from "@/components/queue-sync-panel"
 import { API_SCOPE_DEFINITIONS, DEFAULT_API_SCOPES } from "@/lib/api-scopes"
 
 import { PluginMarketplace } from "@/components/plugin-marketplace"
+import { apiClient } from "@/lib/api-client"
 
 interface Subscription {
   id: string
@@ -50,10 +51,6 @@ interface Subscription {
 const sanitizeGuildId = (value?: string | null) => (typeof value === "string" ? value.trim() : "") || ""
 const buildManageHref = (guildId?: string | null) => `/control-panel?guild=${encodeURIComponent(sanitizeGuildId(guildId))}`
 const SOURCE_LEVEL_ORDER: ServerFeatureSettings["sourceAccessLevel"][] = ["core", "extended", "unlimited"]
-const formatQueueCapLabel = (tier: MembershipTier) => {
-  const value = getQueueLimitCap(tier)
-  return value === null ? "Unlimited" : value.toLocaleString()
-}
 const automationActionLabel = (action: string) => {
   switch (action) {
     case "queue_trim":
@@ -415,13 +412,9 @@ export default function ControlPanelPage() {
 
   const fetchSubscriptionsForUser = useCallback(async (discordId: string) => {
     try {
-      const response = await fetch(`/api/subscriptions?userId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/subscriptions?userId=${discordId}`, {
         cache: "no-store",
       })
-      if (!response.ok) {
-        throw new Error("Failed to load subscriptions")
-      }
-      const payload = await response.json()
       setSubscriptions(
         (payload?.subscriptions || []).map((sub: any) => ({
           id: sub.id,
@@ -442,13 +435,9 @@ export default function ControlPanelPage() {
 
   const fetchOverviewData = useCallback(async (discordId: string) => {
     try {
-      const response = await fetch(`/api/dashboard/overview?discordId=${discordId}&t=${Date.now()}`, {
+      const payload = await apiClient<any>(`/api/dashboard/overview?discordId=${discordId}&t=${Date.now()}`, {
         cache: "no-store",
       })
-      if (!response.ok) {
-        throw new Error("Failed to load overview metrics")
-      }
-      const payload = await response.json()
       setOverviewData(payload)
     } catch (error) {
       console.error("Failed to load overview data:", error)
@@ -460,13 +449,9 @@ export default function ControlPanelPage() {
     setBotSettingsLoading(true)
     setBotSettingsError(null)
     try {
-      const response = await fetch(`/api/account/bot-settings?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/account/bot-settings?discordId=${discordId}`, {
         cache: "no-store",
       })
-      if (!response.ok) {
-        throw new Error("Failed to load bot settings")
-      }
-      const payload = await response.json()
       setBotSettings((prev) => ({ ...prev, ...payload }))
     } catch (error) {
       console.error("Failed to load bot settings:", error)
@@ -483,15 +468,11 @@ export default function ControlPanelPage() {
       setBotSettingsSaving(true)
       setBotSettingsError(null)
       try {
-        const response = await fetch("/api/account/bot-settings", {
+        await apiClient<any>("/api/account/bot-settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ discordId: user.id, [key]: value }),
         })
-        if (!response.ok) {
-          const payload = await response.json()
-          throw new Error(payload.error || "Failed to update bot settings")
-        }
       } catch (error) {
         console.error("Failed to update bot settings:", error)
         setBotSettingsError("Failed to save bot settings")
@@ -606,14 +587,10 @@ export default function ControlPanelPage() {
     setSuccessPodLoading(true)
     setSuccessPodError(null)
     try {
-      const response = await fetch(
+      const payload = await apiClient<any>(
         `/api/success-pod?guildId=${encodeURIComponent(selectedGuildId)}&discordId=${user.id}`,
         { cache: "no-store", credentials: "include" },
       )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Failed to load success pod workflow")
-      }
       setSuccessPodRequests(payload?.requests ?? [])
     } catch (error) {
       console.error("Failed to load success pod requests:", error)
@@ -634,14 +611,10 @@ export default function ControlPanelPage() {
     setApiTokenAuditLoading(true)
     setApiTokenAuditError(null)
     try {
-      const response = await fetch(
+      const payload = await apiClient<any>(
         `/api/control-panel/api-tokens/audit?guildId=${selectedGuildId}&discordId=${user.id}`,
         { cache: "no-store" },
       )
-      if (!response.ok) {
-        throw new Error("Unable to load audit log")
-      }
-      const payload = await response.json()
       setApiTokenAudit(Array.isArray(payload?.events) ? payload.events : [])
     } catch (error) {
       setApiTokenAuditError(error instanceof Error ? error.message : "Failed to load audit log")
@@ -671,11 +644,7 @@ export default function ControlPanelPage() {
       if (toIso) params.set("to", toIso)
       if (securityFilters.actor.trim()) params.set("actor", securityFilters.actor.trim())
       if (securityFilters.type !== "all") params.set("type", securityFilters.type)
-      const response = await fetch(`/api/control-panel/security/audit?${params.toString()}`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error("Unable to load security audit log")
-      }
-      const payload = await response.json().catch(() => null)
+      const payload = await apiClient<any>(`/api/control-panel/security/audit?${params.toString()}`, { cache: "no-store" })
       setSecurityEvents(Array.isArray(payload?.events) ? payload.events : [])
     } catch (error) {
       setSecurityEvents([])
@@ -718,11 +687,7 @@ export default function ControlPanelPage() {
       if (securityAccessFilters.actor.trim()) {
         params.set("actor", securityAccessFilters.actor.trim())
       }
-      const response = await fetch(`/api/control-panel/security/access?${params.toString()}`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error("Unable to load access logs")
-      }
-      const payload = await response.json().catch(() => null)
+      const payload = await apiClient<any>(`/api/control-panel/security/access?${params.toString()}`, { cache: "no-store" })
       setSecurityAccessLogs(Array.isArray(payload?.logs) ? payload.logs : [])
     } catch (error) {
       setSecurityAccessError(error instanceof Error ? error.message : "Failed to load access logs")
@@ -749,14 +714,10 @@ export default function ControlPanelPage() {
     setResidencyLoading(true)
     setResidencyError(null)
     try {
-      const response = await fetch(
+      const payload = await apiClient<any>(
         `/api/control-panel/security/residency?guildId=${selectedGuildId}&discordId=${user.id}`,
         { cache: "no-store" },
       )
-      if (!response.ok) {
-        throw new Error("Unable to load residency proofs")
-      }
-      const payload = await response.json().catch(() => null)
       setResidencyProofs(Array.isArray(payload?.proofs) ? payload.proofs : [])
     } catch (error) {
       setResidencyProofs([])
@@ -778,7 +739,7 @@ export default function ControlPanelPage() {
 
     const connect = async () => {
       try {
-        await fetch("/api/socket")
+        await apiClient<any>("/api/socket")
         socket = io({ path: "/api/socket" })
         if (!active) {
           socket.disconnect()
@@ -821,14 +782,10 @@ export default function ControlPanelPage() {
       setServerSettingsLoading(true)
       setServerSettingsError(null)
       try {
-        const response = await fetch(
+        const payload = await apiClient<any>(
           `/api/control-panel/server-settings?guildId=${selectedGuildId}&discordId=${user.id}`,
           { cache: "no-store" },
         )
-        if (!response.ok) {
-          throw new Error("Failed to load server settings")
-        }
-        const payload = await response.json()
         if (cancelled) return
         const tier = subscriptionTierByGuild.get(selectedGuildId) ?? "free"
         const queueCap = getQueueLimitCap(tier)
@@ -909,16 +866,10 @@ export default function ControlPanelPage() {
           window.history.replaceState({}, document.title, window.location.pathname)
         }
 
-        const response = await fetch("/api/verify-session", {
+        const sessionData = await apiClient<any>("/api/verify-session", {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           credentials: "include",
         })
-
-        if (!response.ok) {
-          throw new Error("Session verification request failed")
-        }
-
-        const sessionData = await response.json()
 
         if (!sessionData?.authenticated) {
           throw new Error("unauthenticated")
@@ -1026,14 +977,10 @@ export default function ControlPanelPage() {
     const fetchTokens = async () => {
       setApiTokenLoading(true)
       try {
-        const response = await fetch(
+        const payload = await apiClient<any>(
           `/api/control-panel/api-tokens?guildId=${selectedGuildId}&discordId=${user.id}`,
           { cache: "no-store", signal: controller.signal },
         )
-        if (!response.ok) {
-          throw new Error("Unable to load API tokens")
-        }
-        const payload = await response.json()
         const tokens = Array.isArray(payload.tokens)
           ? payload.tokens.map((token: ApiTokenSummary) => ({
             ...token,
@@ -1097,7 +1044,7 @@ export default function ControlPanelPage() {
       setServerSettingsSaving(true)
       setServerSettingsError(null)
       try {
-        const response = await fetch("/api/control-panel/server-settings", {
+        const payload = await apiClient<any>("/api/control-panel/server-settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1106,10 +1053,6 @@ export default function ControlPanelPage() {
             settings: updates,
           }),
         })
-        const payload = await response.json().catch(() => null)
-        if (!response.ok) {
-          throw new Error(payload?.error || "Failed to update server settings")
-        }
         if (payload?.settings) {
           setServerSettings(payload.settings)
         }
@@ -1212,14 +1155,10 @@ export default function ControlPanelPage() {
     const fetchAnalytics = async () => {
       setAdvancedAnalyticsLoading(true)
       try {
-        const response = await fetch(
+        const payload = await apiClient<any>(
           `/api/dashboard/analytics?discordId=${user.id}&guildId=${encodeURIComponent(selectedGuildId)}`,
           { cache: "no-store", credentials: "include" },
         )
-        const payload = await response.json().catch(() => null)
-        if (!response.ok) {
-          throw new Error(payload?.error || "Failed to load analytics")
-        }
         if (!cancelled) {
           const analyticsPayload = payload?.analytics
           if (analyticsPayload) {
@@ -1275,11 +1214,7 @@ export default function ControlPanelPage() {
       setAutomationActionsError(null)
       try {
         const automationUrl = `/api/control-panel/automation-actions?guildId=${encodeURIComponent(selectedGuildId)}&discordId=${user.id}&limit=25`
-        const automationResponse = await fetch(automationUrl, { cache: "no-store", credentials: "include" })
-        const automationPayload = await automationResponse.json().catch(() => null)
-        if (!automationResponse.ok) {
-          throw new Error(automationPayload?.error || "Failed to load automation actions")
-        }
+        const automationPayload = await apiClient<any>(automationUrl, { cache: "no-store", credentials: "include" })
         if (!cancelled) {
           setAutomationActions(automationPayload?.actions ?? [])
         }
@@ -1316,18 +1251,13 @@ export default function ControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const usageResponse = await fetch(`/api/concierge?${params.toString()}`, {
+        const usagePayload = await apiClient<any>(`/api/concierge?${params.toString()}`, {
           cache: "no-store",
           credentials: "include",
           headers,
         })
-        if (usageResponse.ok) {
-          const usagePayload = await usageResponse.json().catch(() => null)
-          if (!cancelled) {
-            setConciergeUsage(usagePayload?.usage ?? null)
-          }
-        } else if (!cancelled) {
-          setConciergeUsage(null)
+        if (!cancelled) {
+          setConciergeUsage(usagePayload?.usage ?? null)
         }
       } catch (error) {
         console.error("Failed to load concierge usage:", error)
@@ -1360,14 +1290,10 @@ export default function ControlPanelPage() {
     setScaleContactLoading(true)
     setScaleContactError(null)
     try {
-      const response = await fetch(
+      const payload = await apiClient<any>(
         `/api/scale/contact?guildId=${encodeURIComponent(selectedGuildId)}&discordId=${user.id}`,
         { cache: "no-store", credentials: "include" },
       )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to load account manager")
-      }
       setScaleContact(payload?.contact ?? null)
     } catch (error) {
       setScaleContact(null)
@@ -1393,14 +1319,10 @@ export default function ControlPanelPage() {
     setRoutingStatusLoading(true)
     setRoutingStatusError(null)
     try {
-      const response = await fetch(
+      const payload = await apiClient<any>(
         `/api/control-panel/lavalink/nodes?guildId=${encodeURIComponent(selectedGuildId)}&discordId=${user.id}`,
         { cache: "no-store", credentials: "include" },
       )
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to load routing status")
-      }
       setRoutingNodes(Array.isArray(payload?.nodes) ? payload.nodes : [])
       setRoutingPlayerState(payload?.player ?? null)
       setRoutingUpdatedAt(typeof payload?.updatedAt === "string" ? payload.updatedAt : null)
@@ -1455,7 +1377,7 @@ export default function ControlPanelPage() {
             ? Math.max(1, selectedPlan.limits.conciergeHours)
             : 8
       const hoursToRequest = Math.max(1, Math.min(maxHours, conciergeHours))
-      const response = await fetch("/api/concierge", {
+      const payload = await apiClient<any>("/api/concierge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1466,10 +1388,6 @@ export default function ControlPanelPage() {
           hours: hoursToRequest,
         }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to submit concierge request")
-      }
       setConciergeStatus("success")
       setConciergeSummary("")
       if (payload?.usage) {
@@ -1500,15 +1418,11 @@ export default function ControlPanelPage() {
     setRoutingRebalanceStatus("running")
     setRoutingRebalanceError(null)
     try {
-      const response = await fetch("/api/control-panel/lavalink/reconcile", {
+      await apiClient<any>("/api/control-panel/lavalink/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guildId: selectedGuildId, discordId: user.id }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to refresh routing")
-      }
       setRoutingRebalanceStatus("success")
       setTimeout(() => setRoutingRebalanceStatus("idle"), 4000)
       void refreshRoutingStatus()
@@ -1528,7 +1442,7 @@ export default function ControlPanelPage() {
     setSuccessStatus("submitting")
     setSuccessError(null)
     try {
-      const response = await fetch("/api/success-pod", {
+      const payload = await apiClient<any>("/api/success-pod", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1540,10 +1454,6 @@ export default function ControlPanelPage() {
           discordId: user.id,
         }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to submit request")
-      }
       if (payload?.request) {
         setSuccessPodRequests((prev) => {
           const next = [payload.request as SuccessPodRequestSummary, ...prev]
@@ -1575,7 +1485,7 @@ export default function ControlPanelPage() {
     setApiTokenError(null)
     setApiTokenLoading(true)
     try {
-      const response = await fetch("/api/control-panel/api-tokens", {
+      const payload = await apiClient<any>("/api/control-panel/api-tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1585,10 +1495,6 @@ export default function ControlPanelPage() {
           scopes: apiTokenScopes,
         }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to create token")
-      }
       if (payload?.record) {
         setApiTokens((prev) => [...prev, payload.record])
       }
@@ -1608,15 +1514,11 @@ export default function ControlPanelPage() {
     if (!planAllowsApiTokens || !selectedGuildId || !user?.id) return
     setApiTokenError(null)
     try {
-      const response = await fetch("/api/control-panel/api-tokens", {
+      await apiClient<any>("/api/control-panel/api-tokens", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guildId: selectedGuildId, discordId: user.id, tokenId }),
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        throw new Error(payload?.error || "Unable to delete token")
-      }
       setApiTokens((prev) => prev.filter((token) => token.id !== tokenId))
       void fetchApiTokenAudit()
     } catch (error) {
@@ -1629,15 +1531,11 @@ export default function ControlPanelPage() {
     setApiTokenError(null)
     setApiTokenRotating(tokenId)
     try {
-      const response = await fetch("/api/control-panel/api-tokens", {
+      const payload = await apiClient<any>("/api/control-panel/api-tokens", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guildId: selectedGuildId, discordId: user.id, tokenId, action: "rotate" }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to rotate token")
-      }
       if (payload?.record) {
         setApiTokens((prev) => prev.map((token) => (token.id === payload.record.id ? payload.record : token)))
       }
@@ -1660,7 +1558,7 @@ export default function ControlPanelPage() {
     setApiTokenError(null)
     setApiTokenAction({ tokenId, action })
     try {
-      const response = await fetch("/api/control-panel/api-tokens", {
+      const payload = await apiClient<any>("/api/control-panel/api-tokens", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1671,10 +1569,6 @@ export default function ControlPanelPage() {
           ...overrides,
         }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to update token")
-      }
       if (payload?.record) {
         setApiTokens((prev) => prev.map((token) => (token.id === payload.record.id ? payload.record : token)))
       }
@@ -1715,15 +1609,11 @@ export default function ControlPanelPage() {
     setApiTokenPolicyError(null)
     setApiTokenPolicyMessage(null)
     try {
-      const response = await fetch("/api/control-panel/api-tokens/policy", {
+      const payload = await apiClient<any>("/api/control-panel/api-tokens/policy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guildId: selectedGuildId, discordId: user.id, ttlDays }),
       })
-      const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(payload?.error || "Unable to update policy")
-      }
       const applied = typeof payload?.ttlDays === "number" ? payload.ttlDays : ttlDays
       setApiTokenTtlInput(String(applied))
       setServerSettings((prev) => ({ ...prev, apiTokenTtlDays: applied }))
@@ -1774,16 +1664,13 @@ export default function ControlPanelPage() {
       if (toIso) params.set("to", toIso)
       if (securityFilters.actor.trim()) params.set("actor", securityFilters.actor.trim())
       if (securityFilters.type !== "all") params.set("type", securityFilters.type)
-      const response = await fetch(`/api/control-panel/security/audit?${params.toString()}`)
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        throw new Error(payload?.error || "Unable to export audit log")
-      }
-      const blob = await response.blob()
+      const response = await apiClient<Blob>(`/api/control-panel/security/audit?${params.toString()}`, {
+        method: "GET",
+      })
       if (typeof window === "undefined") {
         return
       }
-      const url = window.URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(response)
       const anchor = document.createElement("a")
       const extension = format === "jsonl" ? "jsonl" : "csv"
       const stamp = new Date().toISOString().split("T")[0]
@@ -1809,14 +1696,11 @@ export default function ControlPanelPage() {
         guildId: selectedGuildId,
         discordId: user.id,
       })
-      const response = await fetch(`/api/control-panel/security/residency/${proofId}/attestation?${query.toString()}`)
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        throw new Error(payload?.error || "Unable to download attestation")
-      }
-      const blob = await response.blob()
+      const response = await apiClient<Blob>(`/api/control-panel/security/residency/${proofId}/attestation?${query.toString()}`, {
+        method: "GET",
+      })
       if (typeof window === "undefined") return
-      const url = window.URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(response)
       const anchor = document.createElement("a")
       anchor.href = url
       anchor.download = `attestation-${proofId}.json`
@@ -1844,7 +1728,7 @@ export default function ControlPanelPage() {
     },
   ) => {
     if (!selectedGuildId || !user?.id) return null
-    const response = await fetch("/api/control-panel/domain-branding", {
+    const response = await apiClient<any>("/api/control-panel/domain-branding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1860,14 +1744,10 @@ export default function ControlPanelPage() {
         embedCtaUrl: payload?.embedCtaUrl,
       }),
     })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) {
-      throw new Error(data?.error || "Domain update failed")
+    if (response?.settings) {
+      setServerSettings((prev) => ({ ...prev, ...response.settings }))
     }
-    if (data?.settings) {
-      setServerSettings((prev) => ({ ...prev, ...data.settings }))
-    }
-    return data
+    return response
   }
 
   const handleDomainSave = async () => {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 type ForumTopicStarterProps = {
   discordId: string | null
@@ -33,15 +34,11 @@ export function ForumTopicStarter({
     setMessage(null)
     try {
       const content = `${title.trim()}\n\n${body.trim()}`
-      const response = await fetch("/api/forum/posts", {
+      await apiClient<any>("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, threadId, body: content, role: "topic" }),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || "failed")
-      }
       setTitle("")
       setBody("")
       setMessage("Topic saved")

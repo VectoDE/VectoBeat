@@ -1,11 +1,9 @@
 import crypto from "crypto"
-import { Prisma } from "@prisma/client"
+import { Prisma, type ContactMessage, type ContactMessageThread, type ScaleAccountContact } from "@prisma/client"
 import { decryptJson, decryptText, encryptJson, encryptText, isEncryptionAvailable } from "./encryption"
+import { normalizeInput, normalizeWebsite, sanitizeHandle, generateFallbackHandle, normalizeRole, normalizeSlug, normalizeStringWithLength, normalizeOptionalString } from "./utils/normalization"
+import { logError as logDbError, logError, logSecurityError } from "./utils/error-handling"
 
-// Explicitly define types from Prisma namespace to avoid import issues
-type ContactMessage = Prisma.ContactMessageGetPayload<Prisma.ContactMessageDefaultArgs>
-type ContactMessageThread = Prisma.ContactMessageThreadGetPayload<Prisma.ContactMessageThreadDefaultArgs>
-type ScaleAccountContact = Prisma.ScaleAccountContactGetPayload<Prisma.ScaleAccountContactDefaultArgs>
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
 import { getPrismaClient, handlePrismaError } from "./prisma"
@@ -18,12 +16,7 @@ export { getPrismaClient, handlePrismaError }
 
 const getPool = () => getPrismaClient()
 
-const logDbError = (message: string, error: unknown) => {
-  handlePrismaError(error)
-  console.error(message, error)
-}
-
-const asJsonObject = <T>(value: Prisma.JsonValue | null | undefined): T | null => {
+const asJsonObject = <T>(value: unknown | null | undefined): T | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null
   }
@@ -53,48 +46,14 @@ export const provisionDefaultsForTier = (
   return current
 }
 
-const sanitizeHandle = (input: string) =>
-  input
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, PROFILE_HANDLE_MAX)
-
-const generateFallbackHandle = (base?: string, discordId?: string) => {
-  const candidateBase = sanitizeHandle(base || "") || (discordId ? `member-${discordId.slice(-4)}` : "member")
-  return candidateBase.length >= PROFILE_HANDLE_MIN ? candidateBase : `${candidateBase}-${Math.floor(Math.random() * 999)}`
-}
-
-const normalizeInput = (value?: string | null, maxLength = 255) => {
-  if (typeof value !== "string") return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  if (trimmed.length > maxLength) {
-    return trimmed.slice(0, maxLength)
+const USER_API_KEY_SECRET = (() => {
+  const raw = crypto.randomBytes(32).toString("hex")
+  const encrypted = encryptText(raw)
+  if (!encrypted) {
+    throw new Error("DATA_ENCRYPTION_KEY is required for secure API key derivation.")
   }
-  return trimmed
-}
-
-const normalizeWebsite = (url?: string | null) => {
-  if (!url) return null
-  const trimmed = url.trim()
-  if (!trimmed) return null
-  const prefixed = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
-  try {
-    const parsed = new URL(prefixed)
-    return parsed.toString()
-  } catch {
-    return null
-  }
-}
-
-const USER_API_KEY_SECRET = process.env.DATA_ENCRYPTION_KEY
-
-if (!USER_API_KEY_SECRET) {
-  throw new Error("DATA_ENCRYPTION_KEY is required in environment variables.")
-}
+  return raw
+})()
 const USER_API_KEY_PREFIX = "vbk_"
 
 const deriveUserApiKey = (discordId: string) => {
@@ -134,15 +93,20 @@ const packSecretValue = (value: string) => {
 }
 
 const unpackSecretValue = (record: { encryptedValue: string; iv: string; authTag: string }) => {
-  if (record.iv === "__plain__" && record.authTag === "__plain__") {
-    // SECURITY: Legacy plain-text fallback has been strictly removed to prevent auth bypass.
-    // We intentionally return null here instead of throwing, so that upstream callers
-    // simply see "no secret" rather than crashing or treating an empty list as "allow all".
-    // Or better: log a critical error but return null to signify "invalid secret".
-    console.error("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+  if (!record.encryptedValue || !record.iv || !record.authTag) {
+    logSecurityError("[SECURITY] Missing encrypted secret fields.")
     return null
   }
-  return decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
+  if (record.iv === "__plain__" && record.authTag === "__plain__") {
+    logSecurityError("[SECURITY] Insecure stored value detected and rejected. Rotation required.")
+    return null
+  }
+  const decrypted = decryptText({ payload: record.encryptedValue, iv: record.iv, tag: record.authTag })
+  if (decrypted === null) {
+    logSecurityError("[SECURITY] Failed to decrypt stored secret value.")
+    return null
+  }
+  return decrypted
 }
 
 const parseReferrerForStorage = (value?: string | null) => {
@@ -195,7 +159,7 @@ interface UserProfilePayload {
   apiKey?: string
 }
 
-export type UserRole = "member" | "admin" | "operator" | "partner"
+export type UserRole = "member" | "partner" | "supporter" | "operator" | "admin"
 const DEFAULT_ROLE: UserRole = "member"
 export type AdminUserSummary = {
   id: string
@@ -467,13 +431,7 @@ const getDecryptedProfilePayload = async (discordId: string) => {
   }
 }
 
-const allowedRoles: UserRole[] = ["member", "admin", "operator", "partner"]
-
-const normalizeRole = (role?: string | null): UserRole => {
-  if (!role) return DEFAULT_ROLE
-  const normalized = role.trim().toLowerCase()
-  return allowedRoles.includes(normalized as UserRole) ? (normalized as UserRole) : DEFAULT_ROLE
-}
+const allowedRoles: UserRole[] = ["member", "partner", "supporter", "operator", "admin"]
 
 export const getUserRole = async (discordId: string): Promise<UserRole> => {
   try {
@@ -491,7 +449,8 @@ export const getUserRole = async (discordId: string): Promise<UserRole> => {
       },
     })
 
-    return normalizeRole(roleRecord.role)
+    const normalized = normalizeRole(roleRecord.role)
+    return allowedRoles.includes(normalized) ? normalized : DEFAULT_ROLE
   } catch (error) {
     logDbError("[VectoBeat] Failed to load user role:", error)
     return DEFAULT_ROLE
@@ -504,6 +463,9 @@ export const setUserRole = async (discordId: string, role: UserRole) => {
     if (!db) return DEFAULT_ROLE
 
     const normalizedRole = normalizeRole(role)
+    if (!allowedRoles.includes(normalizedRole)) {
+      return DEFAULT_ROLE
+    }
 
     const record = await db.userRole.upsert({
       where: { discordId },
@@ -511,7 +473,8 @@ export const setUserRole = async (discordId: string, role: UserRole) => {
       create: { discordId, role: normalizedRole },
     })
 
-    return normalizeRole(record.role)
+    const persisted = normalizeRole(record.role)
+    return allowedRoles.includes(persisted) ? persisted : DEFAULT_ROLE
   } catch (error) {
     logDbError("[VectoBeat] Failed to update user role:", error)
     return DEFAULT_ROLE
@@ -2169,6 +2132,9 @@ const ensureProfileSettings = async (discordId: string, usernameHint?: string | 
   }
 
   let baseHandle = generateFallbackHandle(usernameHint ?? undefined, discordId)
+  if (baseHandle.length > PROFILE_HANDLE_MAX) {
+    baseHandle = baseHandle.slice(0, PROFILE_HANDLE_MAX)
+  }
   while (baseHandle.length < PROFILE_HANDLE_MIN) {
     baseHandle = `${baseHandle}-${Math.floor(Math.random() * 1000)}`
   }
@@ -2253,7 +2219,10 @@ const resolveHandleForUpdate = async (handle: string | undefined, discordId: str
   if (!handle) return undefined
   const sanitized = sanitizeHandle(handle)
   if (sanitized.length < PROFILE_HANDLE_MIN) {
-    throw new Error("Profile handle must contain at least 3 alphanumeric characters.")
+    throw new Error(`Profile handle must contain at least ${PROFILE_HANDLE_MIN} alphanumeric characters.`)
+  }
+  if (sanitized.length > PROFILE_HANDLE_MAX) {
+    throw new Error(`Profile handle must not exceed ${PROFILE_HANDLE_MAX} characters.`)
   }
   if (await handleExists(sanitized, discordId)) {
     throw new Error("This profile handle is already in use.")
@@ -2317,7 +2286,7 @@ export const updateAccountProfileSettings = async (
 export const getPublicProfileBySlug = async (slug: string) => {
   const db = getPool()
   if (!db) return null
-  const normalized = slug.trim().toLowerCase()
+  const normalized = normalizeSlug(slug)
   if (!normalized) return null
 
   let targetDiscordId: string | null = null
@@ -2456,9 +2425,9 @@ export const recordSitePageView = async ({
     const db = getPool()
     if (!db) return
     const { host: referrerHost, path: referrerPath } = parseReferrerForStorage(referrer)
-    const normalizedPath = path.slice(0, 191)
-    const normalizedReferrer = referrer ? referrer.slice(0, 190) : null
-    const normalizedReferrerPath = referrerPath ? referrerPath.slice(0, 191) : null
+    const normalizedPath = normalizeStringWithLength(path, 191)
+    const normalizedReferrer = normalizeOptionalString(referrer, 190)
+    const normalizedReferrerPath = normalizeOptionalString(referrerPath, 191)
 
     await db.sitePageView.create({
       data: {
@@ -3128,7 +3097,7 @@ export const progressSuccessPodRequest = async (
     }
     const now = new Date()
     const data: Prisma.SuccessPodRequestUpdateInput = {}
-    let kind: string = payload.action
+    const kind: string = payload.action
     let note = payload.note ?? ""
     switch (payload.action) {
       case "acknowledged": {
@@ -4472,7 +4441,8 @@ const calculateReadTime = (content: string | null | undefined) => {
   if (!content) {
     return "1 min read"
   }
-  const plain = content
+  const limitedContent = content.length > 20000 ? content.slice(0, 20000) : content
+  const plain = limitedContent
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/`[^`]*`/g, " ")
     .replace(/<[^>]+>/g, " ")
@@ -4528,6 +4498,7 @@ interface BlogPostRow {
   featured: boolean
   publishedAt: Date
   updatedAt: Date
+  image: string | null
 }
 
 interface BlogReactionRow {
@@ -4567,6 +4538,7 @@ const mapBlogPost = (row: BlogPostRow): BlogPost => ({
   featured: row.featured ?? false,
   publishedAt: row.publishedAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
+  image: row.image,
 })
 
 export const getBlogPosts = async (): Promise<BlogPost[]> => {
@@ -4588,10 +4560,11 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
         author: row.author,
         category: row.category,
         readTime: row.readTime,
-        views: row.views,
-        featured: row.featured,
+        views: row.views ?? 0,
+        featured: row.featured ?? false,
         publishedAt: row.publishedAt,
         updatedAt: row.updatedAt,
+        image: row.image,
       }),
     )
   } catch (error) {
@@ -4626,10 +4599,11 @@ export const getBlogPostByIdentifier = async (identifier: string): Promise<BlogP
       author: post.author,
       category: post.category,
       readTime: post.readTime,
-      views: post.views,
-      featured: post.featured,
+      views: post.views ?? 0,
+      featured: post.featured ?? false,
       publishedAt: post.publishedAt,
       updatedAt: post.updatedAt,
+      image: post.image,
     })
   } catch (error) {
     logDbError("[VectoBeat] Failed to load blog post:", error)
@@ -4646,6 +4620,7 @@ interface BlogPostInput {
   author: string
   category?: string
   featured?: boolean
+  image?: string | null
 }
 
 const normalizeExcerpt = (excerpt?: string | null): string | null => {
@@ -4670,6 +4645,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
       category: input.category || null,
       readTime: computedReadTime,
       featured: input.featured ?? false,
+      image: input.image || null,
     }
 
     let record: BlogPostRow | null = null
@@ -4696,6 +4672,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           featured: updated.featured,
           publishedAt: updated.publishedAt,
           updatedAt: updated.updatedAt,
+          image: updated.image,
         }
       } catch (error) {
         if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")) {
@@ -4715,6 +4692,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           category: baseData.category,
           readTime: baseData.readTime,
           featured: baseData.featured,
+          image: baseData.image,
         },
         create: {
           id: input.id,
@@ -4737,6 +4715,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
         featured: created.featured,
         publishedAt: created.publishedAt,
         updatedAt: created.updatedAt,
+        image: created.image,
       }
     }
 
@@ -5066,7 +5045,7 @@ export const createNewsletterCampaign = async ({
       },
     })
 
-    console.log("[VectoBeat] Newsletter dispatched", {
+    logError("[VectoBeat] Newsletter dispatched", {
       subject,
       recipients: recipientCount,
     })
@@ -5307,14 +5286,14 @@ export const listContactMessages = async (options?: { scope?: "contact" | "ticke
     const db = getPool()
     if (!db) return []
 
-  const scopeFilter = buildContactCategoryWhere(options?.scope)
-  const openStatuses = ["open", "waiting"]
-  const openWhere: Prisma.ContactMessageWhereInput = scopeFilter
-    ? { AND: [scopeFilter, { status: { in: openStatuses } }] }
-    : { status: { in: openStatuses } }
-  const otherWhere: Prisma.ContactMessageWhereInput = scopeFilter
-    ? { AND: [scopeFilter, { NOT: { status: { in: openStatuses } } }] }
-    : { NOT: { status: { in: openStatuses } } }
+    const scopeFilter = buildContactCategoryWhere(options?.scope)
+    const openStatuses = ["open", "waiting"]
+    const openWhere = scopeFilter
+      ? { AND: [scopeFilter, { status: { in: openStatuses } }] }
+      : { status: { in: openStatuses } }
+    const otherWhere = scopeFilter
+      ? { AND: [scopeFilter, { NOT: { status: { in: openStatuses } } }] }
+      : { NOT: { status: { in: openStatuses } } }
 
     const [openMessages, otherMessages] = await Promise.all([
       db.contactMessage.findMany({
@@ -5361,7 +5340,7 @@ export const listContactMessagesByEmail = async (
     if (!db) return []
 
     const scopeFilter = buildContactCategoryWhere(options?.scope)
-    const baseWhere: Prisma.ContactMessageWhereInput = {
+    const baseWhere = {
       email: email.trim().toLowerCase(),
     }
     const where = scopeFilter ? { AND: [scopeFilter, baseWhere] } : baseWhere
@@ -5372,7 +5351,7 @@ export const listContactMessagesByEmail = async (
       take: limit,
     })
 
-    return result.map((row) =>
+    return result.map((row: ContactMessage) =>
       mapContactMessage({
         id: row.id,
         name: row.name,
@@ -5498,7 +5477,7 @@ export const appendContactMessageThread = async ({
   authorName?: string | null
   role: string
   body: string
-  attachments?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | null
+  attachments?: any | null
 }) => {
   try {
     const db = getPool()
@@ -5517,7 +5496,7 @@ export const appendContactMessageThread = async ({
         authorName: authorName || null,
         role,
         body: clampText(body, MAX_BODY_LENGTH),
-        attachments: attachments ?? Prisma.JsonNull,
+        attachments: attachments ?? null,
       },
     })
 
@@ -5660,10 +5639,16 @@ export const listForumCategories = async (): Promise<ForumCategoryRecord[]> => {
   try {
     const db = getPool()
     if (!db) return []
-    const rows = await db.forumCategory.findMany({
+    const rows = (await db.forumCategory.findMany({
       include: { threads: { select: { id: true } } },
       orderBy: { createdAt: "asc" },
-    })
+    })) as Array<{
+      id: string
+      title: string
+      description: string | null
+      slug: string
+      threads: { id: string }[]
+    }>
     if (!rows.length) {
       await seedForumCategories()
       return listForumCategories()
@@ -5686,12 +5671,25 @@ export const listForumThreads = async (categorySlug?: string): Promise<ForumThre
     const db = getPool()
     if (!db) return []
     const where = categorySlug ? { category: { slug: categorySlug } } : undefined
-    const rows = await db.forumThread.findMany({
+    const rows = (await db.forumThread.findMany({
       where,
       include: { category: { select: { slug: true, title: true } } },
       orderBy: { updatedAt: "desc" },
       take: 20,
-    })
+    })) as Array<{
+      id: string
+      categoryId: string
+      category: { slug: string | null; title: string | null } | null
+      title: string
+      summary: string | null
+      status: string
+      authorId: string | null
+      authorName: string | null
+      tags: string | null
+      replies: number
+      lastReplyAt: Date | null
+      createdAt: Date
+    }>
     return rows.map((row) => ({
       id: row.id,
       categoryId: row.categoryId,
@@ -5702,7 +5700,7 @@ export const listForumThreads = async (categorySlug?: string): Promise<ForumThre
       status: row.status,
       authorId: row.authorId ?? null,
       authorName: row.authorName ?? null,
-      tags: (row.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      tags: (row.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean),
       replies: row.replies,
       lastReplyAt: row.lastReplyAt ? row.lastReplyAt.toISOString() : null,
       createdAt: row.createdAt.toISOString(),
@@ -5736,7 +5734,7 @@ export const updateForumThreadStatus = async (threadId: string, status: string):
       status: updated.status,
       authorId: updated.authorId ?? null,
       authorName: updated.authorName ?? null,
-      tags: (updated.tags || "").split(",").map((t) => t.trim()).filter(Boolean),
+      tags: (updated.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean),
       replies: updated.replies,
       lastReplyAt: updated.lastReplyAt ? updated.lastReplyAt.toISOString() : null,
       createdAt: updated.createdAt.toISOString(),
@@ -5751,11 +5749,19 @@ export const listForumPosts = async (threadId: string): Promise<ForumPostRecord[
   try {
     const db = getPool()
     if (!db) return []
-    const rows = await db.forumPost.findMany({
+    const rows = (await db.forumPost.findMany({
       where: { threadId },
       orderBy: { createdAt: "asc" },
       take: 50,
-    })
+    })) as Array<{
+      id: string
+      threadId: string
+      authorId: string | null
+      authorName: string | null
+      role: string
+      body: string
+      createdAt: Date
+    }>
     return rows.map((row) => ({
       id: row.id,
       threadId: row.threadId,
@@ -5821,7 +5827,7 @@ export const recordForumEvent = async (payload: {
         actorRole: payload.actorRole ?? "member",
         categorySlug: payload.categorySlug ?? null,
         threadId: payload.threadId ?? null,
-        metadata: (payload.metadata ?? {}) as Prisma.JsonObject,
+        metadata: (payload.metadata ?? {}) as Prisma.InputJsonValue,
       },
     })
   } catch (error) {
@@ -5846,7 +5852,19 @@ export const listForumEvents = async (
       orderBy: { createdAt: "desc" },
       take: Math.max(1, Math.min(limit, 200)),
     })
-    return rows.map((row) => ({
+    return rows.map((row: {
+      id: string
+      action: string
+      entityType: string
+      entityId: string
+      actorId: string | null
+      actorName: string | null
+      actorRole: string
+      categorySlug: string | null
+      threadId: string | null
+      metadata: unknown
+      createdAt: Date
+    }) => ({
       id: row.id,
       action: row.action,
       entityType: row.entityType,
@@ -5914,8 +5932,12 @@ export const getForumStats = async (): Promise<ForumStats> => {
       activePosters24h: activePosters24h.length,
       lastEventAt: eventsLatest?.createdAt ? eventsLatest.createdAt.toISOString() : null,
       topCategories: categoryCounts
-        .map((entry) => ({ title: entry.title, slug: entry.slug, threads: entry.threads.length }))
-        .sort((a, b) => b.threads - a.threads)
+        .map((entry: { title: string; slug: string; threads: { id: string }[] }) => ({
+          title: entry.title,
+          slug: entry.slug,
+          threads: entry.threads.length,
+        }))
+        .sort((a: { threads: number }, b: { threads: number }) => b.threads - a.threads)
         .slice(0, 6),
     }
   } catch (error) {
@@ -5964,7 +5986,7 @@ export const createForumThread = async (payload: {
       (await db.forumCategory.findFirst())
     if (!category) return null
 
-    const thread = await db.$transaction(async (tx) => {
+    const thread = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const created = await tx.forumThread.create({
         data: {
           categoryId: category.id,
@@ -6044,7 +6066,7 @@ export const createForumPost = async (payload: {
     })
     if (!thread) return null
 
-    const record = await db.$transaction(async (tx) => {
+    const record = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const post = await tx.forumPost.create({
         data: {
           threadId: payload.threadId,
@@ -6106,11 +6128,11 @@ export const listSupportKnowledgeBase = async (limit = 6): Promise<SupportKnowle
     const db = getPool()
     if (!db) return []
     const statuses = ["resolved", "closed", "solved"]
-    const rows = await db.contactMessage.findMany({
+    const rows = (await db.contactMessage.findMany({
       where: { status: { in: statuses } },
       orderBy: { updatedAt: "desc" },
       take: Math.max(1, Math.min(limit, 12)),
-    })
+    })) as ContactMessage[]
     return rows.map((row) => ({
       id: row.id,
       subject: row.subject ?? row.topic ?? "Ticket",

@@ -102,9 +102,9 @@ CONFIG = AppConfig(**_raw)
 try:
     with (_base_dir / "package.json").open("r", encoding="utf-8") as f:
         _pkg = json.load(f)
-        VERSION = _pkg.get("version", "2.3.2")
+        VERSION = _pkg.get("version", "2.3.4")
 except (FileNotFoundError, json.JSONDecodeError):
-    VERSION = "2.3.2"
+    VERSION = "2.3.4"
 
 # .env overrides for Bot Intents
 intents_members = os.getenv("BOT_INTENTS_MEMBERS")

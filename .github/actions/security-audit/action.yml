@@ -1,0 +1,63 @@
+name: 🔐 Security Audit Composite Action
+description: Run security audits for different package managers
+
+inputs:
+  audit-type:
+    description: 'Type of audit to run (npm-audit or pip-audit)'
+    required: true
+  working-directory:
+    description: 'Directory to run the audit in'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js for npm audit
+      if: inputs.audit-type == 'npm-audit'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+    - name: Install dependencies for npm audit
+      if: inputs.audit-type == 'npm-audit'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+
+    - name: Run npm audit
+      if: inputs.audit-type == 'npm-audit'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Running npm audit (production dependencies only)..."
+        npm audit --omit=dev --audit-level=moderate || {
+          echo "⚠️ npm audit found vulnerabilities"
+          echo "Check the security tab for details"
+          exit 1
+        }
+
+    - name: Setup Python for pip audit
+      if: inputs.audit-type == 'pip-audit'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install pip-audit
+      if: inputs.audit-type == 'pip-audit'
+      shell: bash
+      run: pip install pip-audit
+
+    - name: Run pip audit
+      if: inputs.audit-type == 'pip-audit'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        echo "Running pip audit..."
+        pip-audit --desc --format=json --output=audit-results.json || {
+          echo "⚠️ pip audit found vulnerabilities"
+          echo "Check audit-results.json for details"
+          exit 1
+        }

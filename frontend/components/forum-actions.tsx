@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import { apiClient } from "@/lib/api-client"
 
 type Category = { slug: string; title: string }
 
@@ -33,7 +34,7 @@ export function ForumComposer({
     setSubmitting(true)
     setMessage(null)
     try {
-      const response = await fetch("/api/forum/threads", {
+      await apiClient<any>("/api/forum/threads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -48,10 +49,6 @@ export function ForumComposer({
           body,
         }),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || "failed")
-      }
       setMessage("Thread created. Reloading ...")
       reset()
       onCreated?.()
@@ -167,15 +164,11 @@ export function ForumReplyBox({
     setPosting(true)
     setMessage(null)
     try {
-      const response = await fetch("/api/forum/posts", {
+      await apiClient<any>("/api/forum/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ discordId, threadId, body }),
       })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload?.error || "failed")
-      }
       setBody("")
       setMessage("Reply saved.")
       onPosted?.()

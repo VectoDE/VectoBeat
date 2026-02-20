@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { apiClient } from "@/lib/api-client"
 
 const LINK_GROUPS = [
   {
@@ -45,7 +46,6 @@ const LINK_GROUPS = [
       { label: "Contact", href: "/contact" },
       { label: "Partners", href: "/partners" },
       { label: "Roadmap", href: "/roadmap" },
-      { label: "Success Stories", href: "/success-stories" },
     ],
   },
   {
@@ -107,15 +107,9 @@ export default function Footer() {
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {
-        const response = await fetch("/api/verify-session", {
+        const data = await apiClient<any>("/api/verify-session", {
           credentials: "include",
         })
-        if (!response.ok) {
-          setIsLoggedIn(false)
-          setUserProfile({})
-          return
-        }
-        const data = await response.json()
         setIsLoggedIn(Boolean(data?.authenticated))
         if (data?.authenticated) {
           setUserProfile({
@@ -178,16 +172,15 @@ export default function Footer() {
       if (name) payload.name = name
       if (userProfile.id) payload.discordId = userProfile.id
 
-      const response = await fetch("/api/donate", {
+      const response = await apiClient<any>("/api/donate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      const body = await response.json()
-      if (!response.ok || !body?.url) {
-        throw new Error(body?.error || "Stripe donation link could not be created.")
+      if (!response?.url) {
+        throw new Error(response?.error || "Stripe donation link could not be created.")
       }
-      window.location.href = body.url
+      window.location.href = response.url
       setDonationDialogOpen(false)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not open donation link."

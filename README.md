@@ -172,7 +172,7 @@
 <p align="center" style="font-size: 0.9rem;"><em>High-level interaction map between Discord, the VectoBeat runtime, Lavalink, and upstream media sources.</em></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/architecture.png" alt="VectoBeat System Architecture" width="720" />
+  <img src="https://raw.githubusercontent.com/VectoDE/VectoBeat/main/assets/images/system-architecture.png" alt="VectoBeat System Architecture" width="720" />
 </p>
 <p style="font-size: 0.9rem; text-align: center;">
   A prose + Mermaid breakdown of the data flow lives in <code>docs/architecture.md</code> (source: <code>docs/system_architecture.mmd</code>).
@@ -180,7 +180,7 @@
 </p>
 
 ```bash
-npx -y @mermaid-js/mermaid-cli -i docs/system_architecture.mmd -o assets/images/architecture.png -w 3840 -H 2160 -b transparent
+npx -y @mermaid-js/mermaid-cli -i docs/system_architecture.mmd -o assets/images/system-architecture.png -w 3840 -H 2160 -b transparent
 ```
 
 <p style="font-size: 0.9rem; text-align: center;">

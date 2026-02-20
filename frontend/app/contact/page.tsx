@@ -4,6 +4,7 @@ import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { Mail, MessageSquare, Headphones, Github } from "lucide-react"
 import { useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "", topic: "", priority: "normal", company: "" })
@@ -21,15 +22,11 @@ export default function ContactPage() {
     setStatus("loading")
     setFeedback(null)
     try {
-      const response = await fetch("/api/contact", {
+      await apiClient<any>("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       })
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Message could not be sent.")
-      }
       setStatus("success")
       setFeedback("Thank you for reaching out! We will get back to you as soon as possible.")
       setForm({ name: "", email: "", subject: "", message: "", topic: "", priority: "normal", company: "" })

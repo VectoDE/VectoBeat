@@ -64,6 +64,7 @@ test("concierge handles concurrent creation attempts", async () => {
         avatarUrl: null,
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
+        phone: null,
         guilds: [],
       },
     }),
@@ -105,7 +106,7 @@ test("concierge handles concurrent creation attempts", async () => {
 })
 
 test("rapid API token churn keeps actor metadata", async () => {
-  let events: any[] = []
+  const events: any[] = []
   let tokens: any[] = [
     {
       id: "t1",
@@ -131,6 +132,7 @@ test("rapid API token churn keeps actor metadata", async () => {
         avatarUrl: "",
         createdAt: new Date().toISOString(),
         lastSeen: new Date().toISOString(),
+        phone: null,
         guilds: [],
       },
     }),

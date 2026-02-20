@@ -170,7 +170,7 @@ export const createApiTokenHandlers = (deps: RouteDeps = {}) => {
       return NextResponse.json({ error: "invalid_payload" }, { status: 400 })
     }
     let tier: MembershipTier | undefined
-    let actorDiscordId = discordId || "system"
+    const actorDiscordId = discordId || "system"
     let actorName = actorDiscordId
     let actorId = actorDiscordId
     if (!tokenAuthorized) {

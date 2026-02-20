@@ -1,3 +1,5 @@
+import { apiClient } from "@/lib/api-client"
+
 type GuildPreview = {
   id: string
   name: string
@@ -45,19 +47,13 @@ const resolveBaseUrl = () =>
 export const fetchPublicProfile = async (slug: string): Promise<ProfileFetchResult> => {
   if (!slug?.trim()) return null
 
-  const response = await fetch(`${resolveBaseUrl()}/api/profile/${slug}`, {
-    cache: "no-store",
-  })
-
-  if (response.status === 403) {
-    return { restricted: true }
-  }
-
-  if (!response.ok) {
+  try {
+    return await apiClient<any>(`${resolveBaseUrl()}/api/profile/${slug}`, {
+      cache: "no-store",
+    })
+  } catch (error) {
     return null
   }
-
-  return response.json()
 }
 
 export const buildProfilePageUrl = (handle: string) => `${resolveBaseUrl()}/profile/${handle}`

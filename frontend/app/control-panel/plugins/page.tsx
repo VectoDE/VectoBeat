@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Download, Star, ShieldCheck, Loader2, Trash2 } from "lucide-react"
 import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import { apiClient } from "@/lib/api-client"
 
 interface Plugin {
   id: string
@@ -31,11 +32,7 @@ function PluginMarketplaceContent() {
 
   useEffect(() => {
     const url = guildId ? `/api/plugins?guildId=${guildId}` : "/api/plugins"
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to load plugins")
-        return res.json()
-      })
+    apiClient<Plugin[]>(url)
       .then((data) => {
         setPlugins(data)
       })
@@ -52,13 +49,11 @@ function PluginMarketplaceContent() {
     }
     setProcessing(pluginId)
     try {
-      const res = await fetch("/api/plugins/install", {
+      await apiClient<any>("/api/plugins/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pluginId, guildId, action })
       })
-      
-      if (!res.ok) throw new Error(`${action} failed`)
       
       // Update local state
       setPlugins(prev => prev.map(p => 

@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserSubscriptions, getUserRole, getUserSecurity, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
+import { apiClient } from "@/lib/api-client"
 
 const resolveDiscordId = async (request: NextRequest) => {
   const cookieStore = await cookies()
@@ -81,12 +82,10 @@ const resolveGuilds = async (verification: any): Promise<ResolvedGuild[]> => {
   const existingById = new Map(existing.map((g: any) => [g.id, g]))
   if (!token) return existing
   try {
-    const resp = await fetch("https://discord.com/api/users/@me/guilds", {
+    const data = await apiClient<any>("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     })
-    if (!resp.ok) return existing
-    const data = await resp.json()
     if (!Array.isArray(data)) return existing
     const fresh = mapDiscordGuilds(data).map((guild) => {
       const prior = existingById.get(guild.id)

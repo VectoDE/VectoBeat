@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import { Link as LinkIcon } from "lucide-react"
@@ -21,6 +22,7 @@ import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import { buildProfilePageUrl, buildProfileSeoDescription, fetchPublicProfile, type LinkedAccount } from "./profile-utils"
 import { RoleBadge } from "@/components/role-badge"
+import DOMPurify from "isomorphic-dompurify"
 
 type InteractionCounter = {
   "@type": "InteractionCounter"
@@ -157,13 +159,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     : Array.isArray(profile.adminGuilds)
       ? profile.adminGuilds.filter((guild: { hasBot?: boolean }) => guild.hasBot)
       : []
-  const totalGuildSamples: Array<{ id: string; name: string; hasBot?: boolean; isAdmin?: boolean }> = Array.isArray(
-    profile.totalGuildSamples,
-  )
-    ? profile.totalGuildSamples
-    : Array.isArray(profile.memberGuilds)
-      ? profile.memberGuilds
-      : []
+
   const stats = [
     { label: "Bot Installations", value: botInstallations },
     { label: "Total Servers", value: totalServers },
@@ -204,12 +200,19 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     interactionStatistic,
   }
 
+  // Sichere JSON-Daten vor XSS-Angriffen
+  const safeJsonData = DOMPurify.sanitize(JSON.stringify(structuredData), {
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true
+  })
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonData }}
         className="sr-only"
       />
       <main className="flex-1 w-full px-4 py-24">
@@ -218,8 +221,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-24 h-24 rounded-full border border-border/40 bg-primary/10 overflow-hidden flex items-center justify-center text-3xl font-semibold text-primary">
                 {profile.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
+                  <Image src={profile.avatarUrl} alt={profile.displayName} width={96} height={96} className="w-full h-full object-cover" />
                 ) : (
                   (profile.displayName || "VB").slice(0, 2).toUpperCase()
                 )}

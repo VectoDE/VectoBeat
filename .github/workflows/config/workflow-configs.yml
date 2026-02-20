@@ -1,0 +1,38 @@
+# Gemeinsame Workflow-Konfigurationen
+# Diese Datei definiert gemeinsame Umgebungsvariablen und Matrices
+
+branches:
+  main: &main-branches
+    - main
+    - developement
+
+node-version: &node-version '20'
+python-version: &python-version '3.12'
+
+# Gemeinsame Matrices
+language-matrix: &language-matrix
+  fail-fast: false
+  matrix:
+    language: [javascript-typescript, python]
+    build-mode: [none]
+
+# Gemeinsame Permissions
+read-permissions: &read-permissions
+  contents: read
+
+write-permissions: &write-permissions
+  contents: write
+  pull-requests: read
+
+security-permissions: &security-permissions
+  security-events: write
+  packages: read
+  contents: read
+  actions: read
+
+# Gemeinsame Cron-Schedules
+weekly-schedule: &weekly-schedule
+  - cron: "40 13 * * 0" # Every Sunday at 13:40 UTC
+
+audit-schedule: &audit-schedule  
+  - cron: "0 3 * * 1" # Every Monday at 03:00 UTC

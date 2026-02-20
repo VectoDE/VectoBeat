@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { apiClient } from "@/lib/api-client"
 
 type NewsletterCopy = {
   label: string
@@ -43,15 +44,10 @@ export function NewsletterSignup({ copy }: NewsletterSignupProps) {
     setStatus("loading")
     setMessage(null)
     try {
-      const response = await fetch("/api/newsletter/subscribe", {
+      await apiClient("/api/newsletter/subscribe", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name }),
       })
-      if (!response.ok) {
-        const payload = await response.json()
-        throw new Error(payload.error || "Unable to subscribe")
-      }
       setStatus("success")
       setMessage(resolvedCopy.success)
       setEmail("")

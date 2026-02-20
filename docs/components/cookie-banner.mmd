@@ -1,0 +1,28 @@
+graph TD
+    A[CookieBanner Component] --> B[useEffect Initialization]
+    B --> C[readConsentCookie]
+    B --> D[check Session Info]
+    B --> E[fetch Server Privacy Settings]
+    
+    C --> F[localStorage Consent]
+    D --> G[Discord Token Check]
+    E --> H[apiClient Privacy API]
+    
+    F --> I[enforceConsent Function]
+    G --> I
+    H --> I
+    
+    I --> J[writeConsentCookie]
+    I --> K[Google Analytics]
+    I --> L[updateBannerVisibility]
+    
+    M[Accept Button] --> N[handleAccept]
+    N --> I
+    
+    O[Decline Button] --> P[handleDecline]
+    P --> Q[revokeConsent]
+    Q --> J
+    Q --> R[gaOptOut]
+    
+    S[pushProfileConsent] --> T[apiClient Update Privacy]
+    T --> U[Server Sync]

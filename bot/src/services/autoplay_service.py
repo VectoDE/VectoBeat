@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import random
+import secrets
 import ssl
 import time
 from typing import Any, Dict, List, Optional
@@ -149,7 +149,7 @@ class AutoplayService:
         if not candidates:
             return None
         if random_pick and len(candidates) > 1:
-            return random.choice(candidates)
+            return secrets.choice(candidates)
         return candidates[0]
 
     async def ping(self) -> bool:

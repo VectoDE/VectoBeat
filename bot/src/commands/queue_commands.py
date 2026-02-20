@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-import random
+import secrets
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from urllib.parse import urlparse
@@ -53,6 +53,12 @@ def ms_to_clock(ms: int) -> str:
 def track_str(track: lavalink.AudioTrack) -> str:
     """Return a rich string describing a Lavalink track."""
     return f"**{track.title}** — `{track.author}` (`{ms_to_clock(track.duration)}`)"
+
+
+def shuffle_tracks(tracks: list) -> None:
+    for i in range(len(tracks) - 1, 0, -1):
+        j = secrets.randbelow(i + 1)
+        tracks[i], tracks[j] = tracks[j], tracks[i]
 
 PLAYLIST_STORAGE_LIMITS = {
     "free": 0,
@@ -600,7 +606,7 @@ class QueueCommands(commands.Cog):
             warning_embed = factory.warning("Need at least 2 tracks to shuffle.")
             return await inter.response.send_message(embed=warning_embed, ephemeral=True)
 
-        random.shuffle(player.queue)
+        shuffle_tracks(player.queue)
         embed = factory.primary("🔀 Shuffled")
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
