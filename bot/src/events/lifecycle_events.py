@@ -56,7 +56,11 @@ class LifecycleEvents(commands.Cog):
             # Rebalance shards by requesting the supervisor to orchestrate a restart.
             supervisor = getattr(self.bot, "shard_supervisor", None)
             if supervisor:
-                asyncio.create_task(supervisor.request_restart())
+                if not hasattr(self, "_active_tasks"):
+                    self._active_tasks = set()
+                task = asyncio.create_task(supervisor.request_restart())
+                self._active_tasks.add(task)
+                task.add_done_callback(self._active_tasks.discard)
 
     @commands.Cog.listener()
     async def on_shard_ready(self, shard_id: int) -> None:

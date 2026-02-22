@@ -42,9 +42,9 @@ const statusBadge = (status) => {
 
 const escapeHtml = (str) =>
     String(str ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
 
 const renderTest = (t, idx) => {
     const durationMs = t.details?.duration_ms ?? 0
