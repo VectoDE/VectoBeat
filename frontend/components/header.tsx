@@ -2,11 +2,18 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { SiGithub } from "react-icons/si"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 
 export default function Header() {
+  const [loginUrl, setLoginUrl] = useState(buildDiscordLoginUrl("/control-panel"))
+
+  useEffect(() => {
+    setLoginUrl(buildDiscordLoginUrl(window.location.href))
+  }, [])
+
   return (
     <header className="fixed w-full top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -50,7 +57,7 @@ export default function Header() {
             </Link>
           </Button>
           <Button asChild size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Link href={buildDiscordLoginUrl("/control-panel")}>
+            <Link href={loginUrl}>
               Login with Discord
             </Link>
           </Button>

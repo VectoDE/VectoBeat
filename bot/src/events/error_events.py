@@ -30,22 +30,28 @@ class ErrorEvents(commands.Cog):
                     await interaction.followup.send(embed=factory.error(error.message), ephemeral=True)
                 else:
                     await interaction.response.send_message(embed=factory.error(error.message), ephemeral=True)
-            except Exception:
-                pass
+            except Exception as e:
+                bot_logger = getattr(self.bot, "logger", None)
+                if bot_logger:
+                    bot_logger.debug("Suppressed error sending UserFacingError: %s", e)
             return
 
         fallback_embed = factory.error("Unexpected error. Please try again later.")
-        self.bot.logger.error(
-            "Unhandled app command error: %s",
-            "".join(traceback.format_exception(type(error), error, error.__traceback__)),
-        )
+        bot_logger = getattr(self.bot, "logger", None)
+        if bot_logger:
+            bot_logger.error(
+                "Unhandled app command error: %s",
+                "".join(traceback.format_exception(type(error), error, error.__traceback__)),
+            )
         try:
             if interaction.response.is_done():
                 await interaction.followup.send(embed=fallback_embed, ephemeral=True)
             else:
                 await interaction.response.send_message(embed=fallback_embed, ephemeral=True)
-        except Exception:
-            pass
+        except Exception as e:
+            bot_logger = getattr(self.bot, "logger", None)
+            if bot_logger:
+                bot_logger.debug("Suppressed error sending fallback embed: %s", e)
 
 
 async def setup(bot: commands.Bot) -> None:

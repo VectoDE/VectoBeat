@@ -23,7 +23,7 @@ class SettingsCommands(commands.Cog):
     def _settings_service(self) -> Optional[ServerSettingsService]:
         return getattr(self.bot, "server_settings", None)
 
-    async def _ensure_manage_guild(self, inter: discord.Interaction) -> Optional[str]:
+    def _ensure_manage_guild(self, inter: discord.Interaction) -> Optional[str]:
         if not inter.guild:
             return "This command can only be used inside a guild."
         member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
@@ -36,23 +36,31 @@ class SettingsCommands(commands.Cog):
     @settings.command(name="queue-limit", description="Update the maximum queue size (respects plan limits).")
     @app_commands.describe(limit="Desired queue size (Free plan caps at 100 tracks).")
     async def queue_limit(self, inter: discord.Interaction, limit: app_commands.Range[int, 50, 50000]) -> None:
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        error = await self._ensure_manage_guild(inter)
+        if not inter.guild:
+            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            return
+
+        factory = EmbedFactory(inter.guild.id)
+        error = self._ensure_manage_guild(inter)
         if error:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         service = self._settings_service()
         if not service:
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 embed=factory.error("Control panel settings are unavailable."), ephemeral=True
             )
+            return
 
         await inter.response.defer(ephemeral=True)
         state = await service.update_settings(inter.guild.id, {"queueLimit": limit})
         if not state:
-            return await inter.followup.send(embed=factory.error("Failed to persist settings."), ephemeral=True)
+            await inter.followup.send(embed=factory.error("Failed to persist settings."), ephemeral=True)
+            return
 
-        applied = int(state.settings.get("queueLimit", limit))
+        val = state.settings.get("queueLimit", limit)
+        applied = int(val) if isinstance(val, (int, float, str)) else limit
         embed = factory.success("Queue limit updated", f"Queue size capped at **{applied}** tracks.")
         embed.add_field(name="Plan", value=state.tier.capitalize(), inline=True)
         if applied != limit:
@@ -66,21 +74,28 @@ class SettingsCommands(commands.Cog):
     @settings.command(name="collaborative", description="Enable or disable collaborative queueing.")
     @app_commands.describe(enabled="Allow members without DJ role to add songs.")
     async def collaborative(self, inter: discord.Interaction, enabled: bool) -> None:
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        error = await self._ensure_manage_guild(inter)
+        if not inter.guild:
+            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            return
+
+        factory = EmbedFactory(inter.guild.id)
+        error = self._ensure_manage_guild(inter)
         if error:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         service = self._settings_service()
         if not service:
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 embed=factory.error("Control panel settings are unavailable."), ephemeral=True
             )
+            return
 
         await inter.response.defer(ephemeral=True)
         state = await service.update_settings(inter.guild.id, {"collaborativeQueue": enabled})
         if not state:
-            return await inter.followup.send(embed=factory.error("Failed to persist settings."), ephemeral=True)
+            await inter.followup.send(embed=factory.error("Failed to persist settings."), ephemeral=True)
+            return
 
         status = "enabled" if state.settings.get("collaborativeQueue") else "disabled"
         embed = factory.success("Collaborative queue", f"Collaborative queueing is now **{status}**.")

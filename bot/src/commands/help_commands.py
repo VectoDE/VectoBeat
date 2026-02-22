@@ -70,7 +70,9 @@ class HelpCommands(commands.Cog):
     """Dynamic help command that introspects registered slash commands."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        from typing import cast, Any
+        from src.main import VectoBeat
+        self.bot: VectoBeat = cast(Any, bot)
 
     def _flatten_command(
         self,
@@ -94,7 +96,8 @@ class HelpCommands(commands.Cog):
     def _build_pages(self) -> List[discord.Embed]:
         entries: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
-            entries.extend(self._flatten_command(command))
+            if isinstance(command, (app_commands.Command, app_commands.Group)):
+                entries.extend(self._flatten_command(command))
 
         grouped = defaultdict(list)
         for category, name, description in sorted(entries, key=lambda item: (item[0], item[1])):
@@ -126,7 +129,8 @@ class HelpCommands(commands.Cog):
         """Return a detailed embed for a specific command name."""
         targets: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
-            targets.extend(self._flatten_command(command))
+            if isinstance(command, (app_commands.Command, app_commands.Group)):
+                targets.extend(self._flatten_command(command))
         lookup = {full.lower(): (category, desc) for category, full, desc in targets}
 
         match = None
@@ -137,9 +141,9 @@ class HelpCommands(commands.Cog):
         if not match:
             return None
 
-        cmd_obj = next((c for c in self.bot.tree.get_commands() if match[0].lstrip("/") == c.qualified_name), None)
+        cmd_obj = next((c for c in self.bot.tree.get_commands() if isinstance(c, (app_commands.Command, app_commands.Group)) and match[0].lstrip("/") == c.qualified_name), None)
         parameters: List[str] = []
-        if cmd_obj:
+        if isinstance(cmd_obj, app_commands.Command):
             for param in cmd_obj.parameters:
                 param_name = f"<{param.name}>"
                 param_desc = param.description or "No description provided."
@@ -180,7 +184,8 @@ class HelpCommands(commands.Cog):
     async def help_autocomplete(self, interaction: discord.Interaction, current: str) -> List[app_commands.Choice[str]]:
         entries: List[Tuple[str, str, str]] = []
         for command in self.bot.tree.get_commands():
-            entries.extend(self._flatten_command(command))
+            if isinstance(command, (app_commands.Command, app_commands.Group)):
+                entries.extend(self._flatten_command(command))
         values = [name for _, name, _ in entries]
         current_lower = current.lower()
         filtered = [v for v in values if current_lower in v.lower()][:25]

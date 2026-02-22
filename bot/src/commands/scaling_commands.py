@@ -66,7 +66,8 @@ class ScalingCommands(commands.Cog):
     @scaling.command(name="evaluate", description="Force an immediate scaling evaluation.")
     async def evaluate(self, inter: discord.Interaction) -> None:
         if not self._ensure_admin(inter):
-            return await inter.response.send_message("Administrator permission required.", ephemeral=True)
+            await inter.response.send_message("Administrator permission required.", ephemeral=True)
+            return
         service = _service(self.bot)
         await inter.response.defer(ephemeral=True)
         payload = await service.evaluate(trigger="manual")

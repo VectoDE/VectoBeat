@@ -11,6 +11,11 @@ import os
 from typing import Any, Awaitable, Callable, List, Optional, Union
 
 import asyncio
+import math
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import lavalink
 
 import discord
 from discord import app_commands
@@ -69,20 +74,25 @@ class VectoBeat(commands.AutoShardedBot):
     hooks and eager cog loading.
     """
 
-    def __init__(self):
+    def __init__(self, override_shard_count: Optional[int] = None):
+        self.lavalink: lavalink.Client
         super().__init__(
             command_prefix=self._command_prefix_resolver,
             intents=INTENTS,
             help_command=None,
-            shard_count=CONFIG.bot.shard_count,
-            shard_ids=CONFIG.bot.shard_ids,
+            shard_count=override_shard_count or CONFIG.bot.shard_count,
+            shard_ids=CONFIG.bot.shard_ids,  # type: ignore[arg-type]
             chunk_guilds_at_startup=False,
             member_cache_flags=MEMBER_CACHE_FLAGS,
             max_messages=MESSAGE_CACHE_LIMIT,
         )
         self.logger: Optional[logging.Logger] = None
         self._cleanup_tasks: List[Union[Callable[[], Awaitable[None]], Awaitable[None]]] = []
-        self.lavalink_manager = LavalinkManager(self, CONFIG.lavalink_nodes)
+
+        from typing import cast
+        bot_cast = cast(commands.Bot, self)
+
+        self.lavalink_manager = LavalinkManager(bot_cast, CONFIG.lavalink_nodes)
         self.profile_manager = GuildProfileManager()
         self.playlist_service = PlaylistService(CONFIG.redis)
         self.autoplay_service = AutoplayService(CONFIG.redis)
@@ -90,20 +100,20 @@ class VectoBeat(commands.AutoShardedBot):
         self.dj_permissions = DJPermissionManager()
         # Faster gateway recovery: restart shards if latency stays above 100ms.
         # Aggressive gateway recovery: recycle shards if latency remains above ~70 ms.
-        self.shard_supervisor = ShardSupervisor(self, latency_threshold=0.07)
-        self.metrics_service = MetricsService(self, CONFIG.metrics)
-        self.chaos_service = ChaosService(self, CONFIG.chaos)
-        self.scaling_service = ScalingService(self, CONFIG.scaling)
+        self.shard_supervisor = ShardSupervisor(bot_cast, latency_threshold=0.07)
+        self.metrics_service = MetricsService(bot_cast, CONFIG.metrics)
+        self.chaos_service = ChaosService(bot_cast, CONFIG.chaos)
+        self.scaling_service = ScalingService(bot_cast, CONFIG.scaling)
         self.analytics_service = CommandAnalyticsService(CONFIG.analytics)
         self.server_settings = ServerSettingsService(CONFIG.control_panel_api, default_prefix=DEFAULT_COMMAND_PREFIX)
         self.automation_audit = AutomationAuditService(CONFIG.control_panel_api, self.server_settings)
         self.success_pod = SuccessPodService(CONFIG.control_panel_api)
         self.concierge = ConciergeService(CONFIG.control_panel_api)
-        self.regional_routing = RegionalRoutingService(self, self.server_settings, self.lavalink_manager)
+        self.regional_routing = RegionalRoutingService(bot_cast, self.server_settings, self.lavalink_manager)
         self.scale_contacts = ScaleContactService(CONFIG.control_panel_api)
         self.plugin_service = PluginService(self.server_settings)
-        self.federation_service = FederationService(self, CONFIG.control_panel_api)
-        self.predictive_health = PredictiveHealthService(self)
+        self.federation_service = FederationService(bot_cast, CONFIG.control_panel_api)
+        self.predictive_health = PredictiveHealthService(bot_cast)
         self.command_throttle = CommandThrottleService(self.server_settings)
         self.analytics_export = AnalyticsExportService(self.server_settings, profile_manager=self.profile_manager)
         self.queue_telemetry = QueueTelemetryService(CONFIG.queue_telemetry, self.server_settings)
@@ -111,8 +121,8 @@ class VectoBeat(commands.AutoShardedBot):
         self.queue_copilot = QueueCopilotService(self.server_settings)
         self.search_cache = SearchCacheService(CONFIG.cache)
         # Sample more frequently to keep gateway latency fresher.
-        self.latency_monitor = LatencyMonitor(self, sample_interval=2.0, max_samples=60)
-        self.status_api = StatusAPIService(self, CONFIG.status_api)
+        self.latency_monitor = LatencyMonitor(bot_cast, sample_interval=2.0, max_samples=60)
+        self.status_api = StatusAPIService(bot_cast, CONFIG.status_api)
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
         self._entrypoint_payloads: List[dict] = []
         self._panel_parity_task: Optional[asyncio.Task] = None
@@ -343,7 +353,7 @@ class VectoBeat(commands.AutoShardedBot):
                 key = self._command_signature(remote)
                 if key not in local_keys:
                     data = remote.to_dict()
-                    preserved_payloads.append(data)
+                    preserved_payloads.append(data)  # type: ignore[arg-type]
                     preserved_names.append(remote.name)
 
             self._entrypoint_payloads = preserved_payloads
@@ -351,21 +361,24 @@ class VectoBeat(commands.AutoShardedBot):
         payload.extend(preserved_payloads)
 
         if preserved_names:
-            self.logger.warning(
-                "Preserving remote entry-point commands during sync: %s", ", ".join(sorted(set(preserved_names)))
-            )
+            if self.logger:
+                self.logger.warning(
+                    "Preserving remote entry-point commands during sync: %s", ", ".join(sorted(set(preserved_names)))
+                )
         elif not preserved_payloads:
-            self.logger.warning("Entry-point sync error detected but no remote commands were found to preserve.")
+            if self.logger:
+                self.logger.warning("Entry-point sync error detected but no remote commands were found to preserve.")
 
         for command_payload in payload:
             command_payload.pop("integration_types", None)
             command_payload.pop("contexts", None)
 
         await self.tree._http.bulk_upsert_global_commands(self.application_id, payload=payload)
-        self.logger.info(
-            "Slash commands synced (%s preserved entry commands).",
-            len(preserved_payloads),
-        )
+        if self.logger:
+            self.logger.info(
+                "Slash commands synced (%s preserved entry commands).",
+                len(preserved_payloads),
+            )
 
     async def _validate_panel_parity_on_startup(self) -> None:
         """Fetch control-panel settings for every guild and ensure we enforce them."""
@@ -463,10 +476,41 @@ class VectoBeat(commands.AutoShardedBot):
             type_value = int(raw_type)
         else:
             type_value = 1  # default to slash command
-        return (name, type_value)
+        return str(name), type_value
+async def _fetch_exact_guild_count_and_run(token: str) -> None:
+    import logging
+    from discord.http import HTTPClient, Route
+    http = HTTPClient(loop=asyncio.get_running_loop())
 
+    logging.getLogger("discord").info("Querying global guild count to calculate exactly 5 shards/guild...")
+    try:
+        await http.static_login(token)
+        # We fetch the first 1 response to get the exact count, or loop through if >200
+        # Discord returns a list of user guilds. For a bot, /users/@me/guilds
+        guilds = []
+        after = None
+        while True:
+            params = {"limit": 200}
+            if after:
+                params["after"] = after
+            resp = await http.request(Route("GET", "/users/@me/guilds"), params=params)
+            guilds.extend(resp)
+            if len(resp) < 200:
+                break
+            after = resp[-1]["id"]
 
-bot = VectoBeat()
+        guild_count = len(guilds)
+        shard_count = math.ceil(guild_count / 5.0) if guild_count > 0 else 1
+        logging.getLogger("discord").info("Bot is in %d guilds. Enforcing exactly %d shards.", guild_count, shard_count)
+    except Exception as exc:
+        logging.getLogger("discord").error("Failed to query guild count from Discord API. Defaulting to 1 shard. %s", exc)
+        shard_count = 1
+    finally:
+        await http.close()
+
+    # Run the bot with the precise 5-guild shard count.
+    bot_instance = VectoBeat(override_shard_count=shard_count)
+    await bot_instance.start(token)
 
 if __name__ == "__main__":
-    bot.run(DISCORD_TOKEN)
+    asyncio.run(_fetch_exact_guild_count_and_run(DISCORD_TOKEN))

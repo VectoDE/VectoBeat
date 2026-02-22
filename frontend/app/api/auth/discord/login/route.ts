@@ -6,15 +6,11 @@ const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
 const REDIRECT_COOKIE = "discord_pkce_redirect"
 
 const base64UrlEncode = (input: Buffer) => {
-  let base64 = input.toString("base64")
-
-  while (base64.endsWith("=")) {
-    base64 = base64.slice(0, -1)
-  }
-
-  return base64
-    .replace("+", "-")
-    .replace("/", "_")
+  return input
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "")
 }
 
 const generateCodeVerifier = () => base64UrlEncode(crypto.randomBytes(64))

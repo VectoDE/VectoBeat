@@ -3,7 +3,7 @@
 import asyncio
 import re
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 import discord
 import yt_dlp
@@ -13,7 +13,7 @@ YTDL_OPTIONS = {
     "quiet": True,
     "no_warnings": True,
     "default_search": "ytsearch",
-    "source_address": "0.0.0.0",
+    "source_address": "0.0.0.0",  # nosec B104
     "extract_flat": False,
     "skip_download": True,
     "geo_bypass": True,
@@ -21,7 +21,7 @@ YTDL_OPTIONS = {
     "noplaylist": False,
 }
 
-YTDL = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+YTDL = yt_dlp.YoutubeDL(YTDL_OPTIONS)  # type: ignore[arg-type]
 
 
 URL_REGEX = re.compile(r"https?://", re.IGNORECASE)
@@ -61,7 +61,7 @@ class AudioService:
         if self._is_spotify_link(effective_query):
             # Extract metadata and search on YouTube for playable audio.
             metadata = await asyncio.to_thread(self._ytdl.extract_info, effective_query, download=False)
-            entries = metadata.get("entries") or [metadata]
+            entries: Any = metadata.get("entries") or [metadata]
             tracks: List[TrackInfo] = []
             for entry in entries:
                 title = entry.get("title")
@@ -79,7 +79,7 @@ class AudioService:
         if data is None:
             return []
 
-        entries: Iterable[dict] = data.get("entries") or [data]
+        entries: Any = data.get("entries") or [data]
         tracks: List[TrackInfo] = []
         for entry in entries:
             if entry is None:

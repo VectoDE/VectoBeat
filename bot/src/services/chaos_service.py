@@ -71,6 +71,8 @@ class ChaosService:
             "inject_error": self._scenario_inject_error,
         }
         handler = handlers.get(scenario)
+        if not handler:
+            return (scenario, False, "Handler not found")
         try:
             message = await handler(triggered_by=triggered_by)
             result = (scenario, True, message)
@@ -84,7 +86,8 @@ class ChaosService:
     async def _scenario_disconnect_voice(self, *, triggered_by: str) -> str:
         if not self.bot.voice_clients:
             return "No active voice connections to disrupt."
-        voice_client: discord.VoiceClient = secrets.choice(self.bot.voice_clients)
+        from typing import cast
+        voice_client = cast(discord.VoiceClient, secrets.choice(self.bot.voice_clients))
         channel = getattr(voice_client, "channel", None)
         await voice_client.disconnect(force=True)
         details = f"Disconnected from {channel} (guild {voice_client.guild.id})"
@@ -96,7 +99,7 @@ class ChaosService:
         if not lavalink_client or not lavalink_client.node_manager.nodes:
             return "No Lavalink nodes registered."
         node = secrets.choice(lavalink_client.node_manager.nodes)
-        await node.disconnect()
+        await node.destroy()  # type: ignore[attr-defined]
         details = f"Force-disconnected node {node.name}"
         self.logger.warning("[Chaos:%s] %s", triggered_by, details)
         return details

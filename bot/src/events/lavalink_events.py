@@ -24,8 +24,9 @@ class LavalinkNodeEvents(commands.Cog):
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        if hasattr(bot, "lavalink"):
-            bot.lavalink.add_event_hooks(self)
+        lavalink_attr = getattr(bot, "lavalink", None)
+        if lavalink_attr:
+            lavalink_attr.add_event_hooks(self)
 
         self._rate_limit_cooldown = 30.0
         self._skip_notice_interval = 5.0

@@ -112,7 +112,8 @@ class QueueCopilotService:
         self, player: lavalink.DefaultPlayer, added_tracks: Iterable[lavalink.AudioTrack], guild_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Apply hygiene immediately after tracks are added."""
-        guild_id = guild_id or getattr(player, "guild_id", None) or 0
+        from typing import cast
+        guild_id = cast(int, guild_id or getattr(player, "guild_id", 0) or 0)
         tier = await self._tier(guild_id)
         summary: Dict[str, Any] = {"tier": tier}
         removed = self._dedupe_queue(player)

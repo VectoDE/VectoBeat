@@ -26,7 +26,7 @@ export default function DiscordWidget() {
   const [widget, setWidget] = useState<DiscordWidgetState | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const DISCORD_SERVER_ID = process.env.DISCORD_SERVER_ID
+  const DISCORD_SERVER_ID = process.env.NEXT_PUBLIC_DISCORD_SERVER_ID
 
   useEffect(() => {
     let isMounted = true

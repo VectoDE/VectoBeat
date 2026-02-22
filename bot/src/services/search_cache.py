@@ -94,9 +94,9 @@ class SearchCacheService:
                 )
                 continue
             try:
-                # Reconstruct AudioTrack from cached data
-                # Lavalink.py AudioTrack expects (track_id, info_dict, ...)
-                reconstructed.append(lavalink.AudioTrack(item.track, info))
+                # Lavalink.py AudioTrack expects a payload dict + requester
+                entry_data = {"track": item.track, "info": info}
+                reconstructed.append(lavalink.AudioTrack(entry_data, requester=0))
             except Exception as exc:
                 logger.debug("Failed to rebuild cached track for query '%s': %s", key, exc)
         if not reconstructed:

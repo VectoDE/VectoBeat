@@ -7,12 +7,15 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import TYPE_CHECKING, cast
+if TYPE_CHECKING:
+    from src.main import VectoBeat
 
 from src.services.chaos_service import ChaosService
 from src.utils.embeds import EmbedFactory
 
 
-def _service(bot: commands.Bot) -> ChaosService:
+def _service(bot: "VectoBeat") -> ChaosService:
     service = getattr(bot, "chaos_service", None)
     if not service:
         raise RuntimeError("Chaos service not initialised.")
@@ -23,7 +26,7 @@ class ChaosCommands(commands.Cog):
     """Allow administrators to trigger or inspect chaos drills."""
 
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot = cast("VectoBeat", bot)
 
     chaos = app_commands.Group(name="chaos", description="Chaos engineering playbook", guild_only=True)
 
@@ -61,7 +64,8 @@ class ChaosCommands(commands.Cog):
     @app_commands.describe(scenario="Scenario to run (leave empty for random).")
     async def run(self, inter: discord.Interaction, scenario: Optional[str] = None) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         service = _service(self.bot)
         await inter.response.defer(ephemeral=True)
         if scenario:

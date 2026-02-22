@@ -1,0 +1,786 @@
+{
+  "startedAt": "2026-02-21T14:22:10.920Z",
+  "finishedAt": "2026-02-21T14:22:44.101Z",
+  "totalDurationMs": 33198.139,
+  "total": 129,
+  "passes": 129,
+  "failures": 0,
+  "skips": 0,
+  "passRate": "100.0%",
+  "tests": [
+    {
+      "name": "account contact endpoints require valid session",
+      "status": "pass",
+      "durationMs": 38.4717,
+      "error": null
+    },
+    {
+      "name": "account profile update rejects unauthorized access",
+      "status": "pass",
+      "durationMs": 4.3622,
+      "error": null
+    },
+    {
+      "name": "account privacy update rejects unauthorized access",
+      "status": "pass",
+      "durationMs": 3.221,
+      "error": null
+    },
+    {
+      "name": "notification settings update requires a valid session",
+      "status": "pass",
+      "durationMs": 5.215,
+      "error": null
+    },
+    {
+      "name": "bot settings endpoints are locked down",
+      "status": "pass",
+      "durationMs": 5016.2145,
+      "error": null
+    },
+    {
+      "name": "linked accounts routes enforce session ownership",
+      "status": "pass",
+      "durationMs": 7.4969,
+      "error": null
+    },
+    {
+      "name": "API token creation records actor identity",
+      "status": "pass",
+      "durationMs": 5064.8443,
+      "error": null
+    },
+    {
+      "name": "API token rotation falls back to discordId when profile missing",
+      "status": "pass",
+      "durationMs": 6.4432,
+      "error": null
+    },
+    {
+      "name": "API token leak marker includes actor metadata",
+      "status": "pass",
+      "durationMs": 4.5052,
+      "error": null
+    },
+    {
+      "name": "bot concierge blocks unauthorized callers",
+      "status": "pass",
+      "durationMs": 18.1511,
+      "error": null
+    },
+    {
+      "name": "bot concierge returns usage for authorized caller",
+      "status": "pass",
+      "durationMs": 11.4541,
+      "error": null
+    },
+    {
+      "name": "bot concierge create enforces quota and returns usage",
+      "status": "pass",
+      "durationMs": 13.705,
+      "error": null
+    },
+    {
+      "name": "bot concierge resolve updates requests",
+      "status": "pass",
+      "durationMs": 5.7034,
+      "error": null
+    },
+    {
+      "name": "bot concierge rejects unauthorized usage",
+      "status": "pass",
+      "durationMs": 6.4252,
+      "error": null
+    },
+    {
+      "name": "bot success-pod requires auth header",
+      "status": "pass",
+      "durationMs": 4152.3611,
+      "error": null
+    },
+    {
+      "name": "bot automation-actions enforces authorization",
+      "status": "pass",
+      "durationMs": 4121.0339,
+      "error": null
+    },
+    {
+      "name": "bot scale-contact requires auth",
+      "status": "pass",
+      "durationMs": 4108.9448,
+      "error": null
+    },
+    {
+      "name": "queue-sync contract accepts authorized payloads",
+      "status": "pass",
+      "durationMs": 1.651,
+      "error": null
+    },
+    {
+      "name": "env files are anchored to the repo root",
+      "status": "pass",
+      "durationMs": 85.3915,
+      "error": null
+    },
+    {
+      "name": ".env.example stays in sync with the working .env",
+      "status": "pass",
+      "durationMs": 14.6339,
+      "error": null
+    },
+    {
+      "name": "docs index is present and links resolve",
+      "status": "pass",
+      "durationMs": 47.0608,
+      "error": null
+    },
+    {
+      "name": "README exposes public bot badges",
+      "status": "pass",
+      "durationMs": 51.1359,
+      "error": null
+    },
+    {
+      "name": "concierge GET requires valid session",
+      "status": "pass",
+      "durationMs": 31.5495,
+      "error": null
+    },
+    {
+      "name": "concierge GET blocks users without an active subscription for the guild",
+      "status": "pass",
+      "durationMs": 5064.973,
+      "error": null
+    },
+    {
+      "name": "concierge POST requires valid session",
+      "status": "pass",
+      "durationMs": 14.8157,
+      "error": null
+    },
+    {
+      "name": "concierge POST blocks users without an active subscription",
+      "status": "pass",
+      "durationMs": 4130.6628,
+      "error": null
+    },
+    {
+      "name": "concierge POST uses subscription tier for limits",
+      "status": "pass",
+      "durationMs": 2.0599,
+      "error": null
+    },
+    {
+      "name": "verifyControlPanelGuildAccess rejects invalid sessions",
+      "status": "pass",
+      "durationMs": 3.5297,
+      "error": null
+    },
+    {
+      "name": "verifyControlPanelGuildAccess blocks cross-tenant access",
+      "status": "pass",
+      "durationMs": 1.8877,
+      "error": null
+    },
+    {
+      "name": "verifyControlPanelGuildAccess returns membership details when authorized",
+      "status": "pass",
+      "durationMs": 1.1266,
+      "error": null
+    },
+    {
+      "name": "server settings GET denies unauthorized guild access",
+      "status": "pass",
+      "durationMs": 5329.2802,
+      "error": null
+    },
+    {
+      "name": "server settings PUT denies unauthorized writes",
+      "status": "pass",
+      "durationMs": 10.9104,
+      "error": null
+    },
+    {
+      "name": "dashboard analytics pulls queue snapshot from durable store",
+      "status": "pass",
+      "durationMs": 6314.7172,
+      "error": null
+    },
+    {
+      "name": "dashboard overview denies requests without a valid session",
+      "status": "pass",
+      "durationMs": 8.8058,
+      "error": null
+    },
+    {
+      "name": "subscriptions endpoint blocks unauthorized access",
+      "status": "pass",
+      "durationMs": 2.0529,
+      "error": null
+    },
+    {
+      "name": "sanitizeDomain normalizes input correctly",
+      "status": "pass",
+      "durationMs": 2.7952,
+      "error": null
+    },
+    {
+      "name": "sanitizeUrl enforces https and valid structure",
+      "status": "pass",
+      "durationMs": 1.2767,
+      "error": null
+    },
+    {
+      "name": "sanitizeEmail validates format and allowed characters",
+      "status": "pass",
+      "durationMs": 1.3134,
+      "error": null
+    },
+    {
+      "name": "POST enforces authentication",
+      "status": "pass",
+      "durationMs": 26.1614,
+      "error": null
+    },
+    {
+      "name": "POST enforces plan requirements",
+      "status": "pass",
+      "durationMs": 6.6952,
+      "error": null
+    },
+    {
+      "name": "POST saves valid branding settings",
+      "status": "pass",
+      "durationMs": 5.8663,
+      "error": null
+    },
+    {
+      "name": "POST handles mark_active action",
+      "status": "pass",
+      "durationMs": 9.9557,
+      "error": null
+    },
+    {
+      "name": "POST handles reset action",
+      "status": "pass",
+      "durationMs": 6.8457,
+      "error": null
+    },
+    {
+      "name": "detects queue sync underutilization and automation exceedance",
+      "status": "pass",
+      "durationMs": 8.8248,
+      "error": null
+    },
+    {
+      "name": "flags entitlement exceedance for free guild with queue sync and API tokens",
+      "status": "pass",
+      "durationMs": 0.8618,
+      "error": null
+    },
+    {
+      "name": "PdfGenerator creates a valid PDF with branding",
+      "status": "pass",
+      "durationMs": 171.0469,
+      "error": null
+    },
+    {
+      "name": "queue snapshot API follows plan capabilities",
+      "status": "pass",
+      "durationMs": 1.1653,
+      "error": null
+    },
+    {
+      "name": "control-panel server settings returns tiered settings",
+      "status": "pass",
+      "durationMs": 8236.2162,
+      "error": null
+    },
+    {
+      "name": "concierge denies when guild not accessible",
+      "status": "pass",
+      "durationMs": 2.4397,
+      "error": null
+    },
+    {
+      "name": "success pod creation uses plan gate and returns request",
+      "status": "pass",
+      "durationMs": 7.5071,
+      "error": null
+    },
+    {
+      "name": "API token leak marker logs actor",
+      "status": "pass",
+      "durationMs": 2.0454,
+      "error": null
+    },
+    {
+      "name": "security audit export respects plan gate",
+      "status": "pass",
+      "durationMs": 1.2996,
+      "error": null
+    },
+    {
+      "name": "analytics export requires predictive analytics",
+      "status": "pass",
+      "durationMs": 0.9706,
+      "error": null
+    },
+    {
+      "name": "queue-sync API stores and returns snapshot using durable store hooks",
+      "status": "pass",
+      "durationMs": 0.6405,
+      "error": null
+    },
+    {
+      "name": "queue-sync survives multiple writers with recency wins",
+      "status": "pass",
+      "durationMs": 1.5201,
+      "error": null
+    },
+    {
+      "name": "concierge handles concurrent creation attempts",
+      "status": "pass",
+      "durationMs": 14.5579,
+      "error": null
+    },
+    {
+      "name": "rapid API token churn keeps actor metadata",
+      "status": "pass",
+      "durationMs": 4130.8969,
+      "error": null
+    },
+    {
+      "name": "normalizeTierId coerces casing and trims whitespace",
+      "status": "pass",
+      "durationMs": 0.8281,
+      "error": null
+    },
+    {
+      "name": "normalizeTierId defaults unknown values to free",
+      "status": "pass",
+      "durationMs": 0.1507,
+      "error": null
+    },
+    {
+      "name": "isMembershipTier recognises canonical ids",
+      "status": "pass",
+      "durationMs": 0.1274,
+      "error": null
+    },
+    {
+      "name": "free tier ignores premium toggles",
+      "status": "pass",
+      "durationMs": 1.6923,
+      "error": null
+    },
+    {
+      "name": "plan upgrades provision expected defaults and quotas",
+      "status": "pass",
+      "durationMs": 1.1404,
+      "error": null
+    },
+    {
+      "name": "plan downgrades clamp quotas and UI gates to tier policies",
+      "status": "pass",
+      "durationMs": 1.4296,
+      "error": null
+    },
+    {
+      "name": "starter provisioning enables extended sources, playlists sync, and large queue",
+      "status": "pass",
+      "durationMs": 1.2194,
+      "error": null
+    },
+    {
+      "name": "existing settings are upgraded but user overrides persist",
+      "status": "pass",
+      "durationMs": 0.1845,
+      "error": null
+    },
+    {
+      "name": "provisioning for pro unlocks hi-res playback and AI recommendations",
+      "status": "pass",
+      "durationMs": 0.1272,
+      "error": null
+    },
+    {
+      "name": "concurrent writers do not clobber newer queue snapshots",
+      "status": "pass",
+      "durationMs": 1.1755,
+      "error": null
+    },
+    {
+      "name": "queue store persists with tier-based TTL",
+      "status": "pass",
+      "durationMs": 3.3988,
+      "error": null
+    },
+    {
+      "name": "queue store evicts expired snapshots",
+      "status": "pass",
+      "durationMs": 0.794,
+      "error": null
+    },
+    {
+      "name": "free tier clamps queue limit and disables premium controls",
+      "status": "pass",
+      "durationMs": 3.1088,
+      "error": null
+    },
+    {
+      "name": "free tier rejects invalid inputs gracefully",
+      "status": "pass",
+      "durationMs": 0.7231,
+      "error": null
+    },
+    {
+      "name": "starter tier unlocks advanced controls while enforcing tier caps",
+      "status": "pass",
+      "durationMs": 0.683,
+      "error": null
+    },
+    {
+      "name": "pro tier keeps premium toggles without clamping values",
+      "status": "pass",
+      "durationMs": 0.5418,
+      "error": null
+    },
+    {
+      "name": "normalizeToken – trims whitespace",
+      "status": "pass",
+      "durationMs": 7.7724,
+      "error": null
+    },
+    {
+      "name": "normalizeToken – strips surrounding quotes",
+      "status": "pass",
+      "durationMs": 0.5703,
+      "error": null
+    },
+    {
+      "name": "normalizeToken – returns empty string for null/undefined",
+      "status": "pass",
+      "durationMs": 0.6446,
+      "error": null
+    },
+    {
+      "name": "extractToken – extracts Bearer token from Authorization header",
+      "status": "pass",
+      "durationMs": 16.4562,
+      "error": null
+    },
+    {
+      "name": "extractToken – extracts token from x-api-key header",
+      "status": "pass",
+      "durationMs": 3.5086,
+      "error": null
+    },
+    {
+      "name": "extractToken – extracts token from x-status-api-key header",
+      "status": "pass",
+      "durationMs": 1.748,
+      "error": null
+    },
+    {
+      "name": "extractToken – extracts token from query param ?token=",
+      "status": "pass",
+      "durationMs": 4.1957,
+      "error": null
+    },
+    {
+      "name": "extractToken – returns null when no token present",
+      "status": "pass",
+      "durationMs": 1.8909,
+      "error": null
+    },
+    {
+      "name": "extractToken – prefers Authorization header over x-api-key",
+      "status": "pass",
+      "durationMs": 3.1365,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – returns true for correct Bearer token",
+      "status": "pass",
+      "durationMs": 3.3588,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – returns false for wrong token",
+      "status": "pass",
+      "durationMs": 2.3822,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – returns false when no token provided",
+      "status": "pass",
+      "durationMs": 1.5951,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – returns true when allowedSecrets is empty",
+      "status": "pass",
+      "durationMs": 4.2459,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – allows localhost when allowLocalhost=true",
+      "status": "pass",
+      "durationMs": 7.673,
+      "error": null
+    },
+    {
+      "name": "authorizeRequest – does NOT bypass non-localhost when allowLocalhost=true",
+      "status": "pass",
+      "durationMs": 2.2783,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'status_api' to canonical form",
+      "status": "pass",
+      "durationMs": 1.9476,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'STATUS_API_KEY' alias to status_api",
+      "status": "pass",
+      "durationMs": 0.4852,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'BOT_STATUS_API_KEY' alias to status_api",
+      "status": "pass",
+      "durationMs": 0.4312,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'status_events' correctly",
+      "status": "pass",
+      "durationMs": 0.473,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'CONTROL_PANEL_API_KEY' to control_panel",
+      "status": "pass",
+      "durationMs": 0.6243,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – maps 'QUEUE_SYNC_API_KEY' to queue_sync",
+      "status": "pass",
+      "durationMs": 0.4726,
+      "error": null
+    },
+    {
+      "name": "normalizeApiKeyType – lowercases unknown types as fallback",
+      "status": "pass",
+      "durationMs": 0.5975,
+      "error": null
+    },
+    {
+      "name": "getApiKeySecrets – returns env fallback for status_api when includeEnv=true",
+      "status": "pass",
+      "durationMs": 4168.4116,
+      "error": null
+    },
+    {
+      "name": "getApiKeySecrets – skips env fallback when includeEnv=false",
+      "status": "pass",
+      "durationMs": 4120.4741,
+      "error": null
+    },
+    {
+      "name": "getApiKeySecrets – returns empty array for unknown type with no env",
+      "status": "pass",
+      "durationMs": 4112.2818,
+      "error": null
+    },
+    {
+      "name": "getApiKeySecrets – deduplicates returned secrets",
+      "status": "pass",
+      "durationMs": 4118.745,
+      "error": null
+    },
+    {
+      "name": "base64UrlEncode – no raw + characters",
+      "status": "pass",
+      "durationMs": 6.6213,
+      "error": null
+    },
+    {
+      "name": "base64UrlEncode – no raw / characters",
+      "status": "pass",
+      "durationMs": 3.1795,
+      "error": null
+    },
+    {
+      "name": "base64UrlEncode – no padding = characters",
+      "status": "pass",
+      "durationMs": 4.9493,
+      "error": null
+    },
+    {
+      "name": "base64UrlEncode – only valid base64url charset",
+      "status": "pass",
+      "durationMs": 6.2828,
+      "error": null
+    },
+    {
+      "name": "generateCodeVerifier – meets PKCE minimum length (43 chars)",
+      "status": "pass",
+      "durationMs": 0.7711,
+      "error": null
+    },
+    {
+      "name": "generateCodeVerifier – within PKCE maximum length (128 chars)",
+      "status": "pass",
+      "durationMs": 0.8491,
+      "error": null
+    },
+    {
+      "name": "generateCodeVerifier – only valid unreserved chars",
+      "status": "pass",
+      "durationMs": 0.8654,
+      "error": null
+    },
+    {
+      "name": "generateCodeChallenge – is non-empty",
+      "status": "pass",
+      "durationMs": 1.7177,
+      "error": null
+    },
+    {
+      "name": "generateCodeChallenge – is deterministic for the same verifier",
+      "status": "pass",
+      "durationMs": 0.7555,
+      "error": null
+    },
+    {
+      "name": "generateCodeChallenge – differs for different verifiers",
+      "status": "pass",
+      "durationMs": 1.9526,
+      "error": null
+    },
+    {
+      "name": "generateCodeChallenge – is valid base64url",
+      "status": "pass",
+      "durationMs": 1.3299,
+      "error": null
+    },
+    {
+      "name": "POST /api/queue-sync – returns 401 without auth",
+      "status": "pass",
+      "durationMs": 5267.8483,
+      "error": null
+    },
+    {
+      "name": "POST /api/queue-sync – returns 400 when guildId is missing",
+      "status": "pass",
+      "durationMs": 3.5267,
+      "error": null
+    },
+    {
+      "name": "POST /api/queue-sync – returns 400 for invalid JSON body",
+      "status": "pass",
+      "durationMs": 1.348,
+      "error": null
+    },
+    {
+      "name": "POST /api/queue-sync – accepts valid payload with auth (200 or 500 if no DB)",
+      "status": "pass",
+      "durationMs": 16393.878,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – lowercases the input",
+      "status": "pass",
+      "durationMs": 2.3036,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – replaces spaces with hyphens",
+      "status": "pass",
+      "durationMs": 2.4898,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – strips leading hyphens",
+      "status": "pass",
+      "durationMs": 0.3656,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – strips trailing hyphens",
+      "status": "pass",
+      "durationMs": 0.4728,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – collapses multiple hyphens into one",
+      "status": "pass",
+      "durationMs": 0.4262,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – removes special characters",
+      "status": "pass",
+      "durationMs": 0.4748,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – handles empty string",
+      "status": "pass",
+      "durationMs": 0.815,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – handles already valid slug unchanged",
+      "status": "pass",
+      "durationMs": 0.32,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – handles uppercase letters",
+      "status": "pass",
+      "durationMs": 0.344,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – handles unicode / non-ascii chars",
+      "status": "pass",
+      "durationMs": 0.6613,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – preserves numbers",
+      "status": "pass",
+      "durationMs": 0.4084,
+      "error": null
+    },
+    {
+      "name": "sanitizeSlug – handles only special characters",
+      "status": "pass",
+      "durationMs": 0.3464,
+      "error": null
+    },
+    {
+      "name": "verifyRequestForUser returns profile when session is valid",
+      "status": "pass",
+      "durationMs": 8.8382,
+      "error": null
+    },
+    {
+      "name": "verifyRequestForUser rejects invalid sessions",
+      "status": "pass",
+      "durationMs": 1.9217,
+      "error": null
+    },
+    {
+      "name": "verifyRequestForUser rejects when no token present",
+      "status": "pass",
+      "durationMs": 1.1688,
+      "error": null
+    }
+  ]
+}

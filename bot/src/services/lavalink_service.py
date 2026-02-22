@@ -21,8 +21,8 @@ class VectoPlayer(lavalink.DefaultPlayer):
 
     __slots__ = ("text_channel_id",)
 
-    def __init__(self, guild_id: int, client: lavalink.Client) -> None:
-        super().__init__(guild_id, client)
+    def __init__(self, guild_id: int, node: lavalink.Node) -> None:
+        super().__init__(guild_id, node)
         self.text_channel_id: int | None = None
 
 
@@ -32,14 +32,14 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
     def __init__(self, client: discord.Client, channel: discord.abc.Connectable) -> None:
         self.client = client
         self.channel = channel
-        self.guild_id = channel.guild.id
+        self.guild_id = getattr(channel, "guild").id
         self._destroyed = False
         self.logger = logging.getLogger("VectoBeat.LavalinkVoice")
 
         if not hasattr(self.client, "lavalink"):
             raise RuntimeError("Lavalink client has not been initialised.")
 
-        self.lavalink: lavalink.Client[VectoPlayer] = self.client.lavalink
+        self.lavalink: lavalink.Client[VectoPlayer] = getattr(self.client, "lavalink")
 
     async def connect(
         self,
@@ -51,19 +51,19 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
     ) -> None:
         """Create or reuse a player and join the voice channel."""
         self.lavalink.player_manager.create(self.guild_id)
-        await self.channel.guild.change_voice_state(
+        await getattr(self.channel, "guild").change_voice_state(
             channel=self.channel, self_deaf=self_deaf, self_mute=self_mute
         )
 
-    async def on_voice_server_update(self, data: dict[str, Any]) -> None:
+    async def on_voice_server_update(self, data: Any) -> None:
         payload = {
             "t": "VOICE_SERVER_UPDATE",
             "d": data,
         }
         await self.lavalink.voice_update_handler(payload)
 
-    async def on_voice_state_update(self, data: dict[str, Any]) -> None:
-        channel_id = data.get("channel_id")
+    async def on_voice_state_update(self, data: Any) -> None:
+        channel_id = data.get("channel_id") if isinstance(data, dict) else None
 
         if not channel_id:
             await self._destroy()
@@ -80,10 +80,13 @@ class LavalinkVoiceClient(discord.VoiceProtocol):
     async def disconnect(self, *, force: bool = False) -> None:
         player = self.lavalink.player_manager.get(self.guild_id)
 
+        if not player:
+            return
+
         if not force and not player.is_connected:
             return
 
-        await self.channel.guild.change_voice_state(channel=None)
+        await getattr(self.channel, "guild").change_voice_state(channel=None)
         player.channel_id = None
         await self._destroy()
 
@@ -121,11 +124,11 @@ class LavalinkManager:
 
     async def connect(self) -> None:
         if not hasattr(self.bot, "lavalink"):
-            self.bot.lavalink = lavalink.Client(
+            setattr(self.bot, "lavalink", lavalink.Client(
                 self.bot.user.id, player=VectoPlayer  # type: ignore[arg-type]
-            )
+            ))
 
-        client: lavalink.Client[VectoPlayer] = self.bot.lavalink
+        client: lavalink.Client[VectoPlayer] = getattr(self.bot, "lavalink")
         tasks = [self._register_node(client, config) for config in self.nodes]
         await asyncio.gather(*tasks)
 
@@ -208,7 +211,7 @@ class LavalinkManager:
     async def close(self) -> None:
         if hasattr(self.bot, "lavalink"):
             try:
-                await self.bot.lavalink.close()
+                await getattr(self.bot, "lavalink").close()
             except Exception as exc:  # pragma: no cover - defensive
                 self.logger.error("Error closing Lavalink: %s", exc)
 

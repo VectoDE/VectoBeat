@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Any, Optional
+from typing import TYPE_CHECKING, cast, Dict, Any, Optional
 import io
 from datetime import datetime, timezone
 
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import TYPE_CHECKING, cast
+if TYPE_CHECKING:
+    from src.main import VectoBeat
 
 from src.utils.embeds import EmbedFactory
 from src.utils.security import SensitiveScope, has_scope, log_sensitive_action
@@ -17,7 +20,7 @@ if TYPE_CHECKING:
     from src.services.analytics_export_service import AnalyticsExportService
 
 
-def _service(bot: commands.Bot) -> AnalyticsExportService:
+def _service(bot: "VectoBeat") -> AnalyticsExportService:
     svc = getattr(bot, "analytics_export", None)
     if not svc:
         raise RuntimeError("Analytics export service not configured.")
@@ -28,7 +31,7 @@ class ComplianceCommands(commands.Cog):
     """Expose compliance-friendly exports for privileged staff."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        self.bot = cast("VectoBeat", bot)
 
     compliance = app_commands.Group(name="compliance", description="Compliance export controls", guild_only=True)
 
@@ -90,6 +93,9 @@ class ComplianceCommands(commands.Cog):
         if not self._is_admin(inter):
             await inter.response.send_message("Compliance privileges required.", ephemeral=True)
             return
+        if not inter.guild:
+            await inter.response.send_message("This command must be used in a guild.", ephemeral=True)
+            return
         if confirm != "CONFIRM":
             await inter.response.send_message("You must type 'CONFIRM' to execute deletion.", ephemeral=True)
             return
@@ -104,7 +110,8 @@ class ComplianceCommands(commands.Cog):
     @compliance.command(name="status", description="Check compliance mode and data retention status.")
     async def status(self, inter: discord.Interaction) -> None:
         if not inter.guild:
-            return await inter.response.send_message("Guild only.", ephemeral=True)
+            await inter.response.send_message("Guild only.", ephemeral=True)
+            return
 
         # Check Profile
         profile_manager = getattr(self.bot, "profile_manager", None)

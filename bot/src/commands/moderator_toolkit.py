@@ -6,6 +6,9 @@ from typing import TypedDict, List
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import TYPE_CHECKING, cast
+if TYPE_CHECKING:
+    from src.main import VectoBeat
 
 class Macro(TypedDict):
     id: str
@@ -41,7 +44,7 @@ class ModeratorToolkit(commands.Cog):
     """Macros and badges to speed up moderator responses."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        self.bot = cast("VectoBeat", bot)
 
     @staticmethod
     def _is_moderator(member: discord.Member | None) -> bool:
@@ -54,11 +57,13 @@ class ModeratorToolkit(commands.Cog):
     @app_commands.describe(macro="Pick a macro", post_public="Send to the channel instead of privately copying it.")
     async def macro(self, inter: discord.Interaction, macro: str, post_public: bool = False) -> None:
         if not isinstance(inter.user, discord.Member) or not self._is_moderator(inter.user):
-            return await inter.response.send_message("Moderator permissions required.", ephemeral=True)
+            await inter.response.send_message("Moderator permissions required.", ephemeral=True)
+            return
 
         macro_def = next((item for item in MODERATOR_MACROS if item["id"] == macro), None)
         if not macro_def:
-            return await inter.response.send_message("Unknown macro.", ephemeral=True)
+            await inter.response.send_message("Unknown macro.", ephemeral=True)
+            return
 
         content = macro_def["body"]
         if post_public:
@@ -79,7 +84,8 @@ class ModeratorToolkit(commands.Cog):
     @app_commands.command(name="badges", description="List available moderator badges.")
     async def badges(self, inter: discord.Interaction) -> None:
         if not isinstance(inter.user, discord.Member) or not self._is_moderator(inter.user):
-            return await inter.response.send_message("Moderator permissions required.", ephemeral=True)
+            await inter.response.send_message("Moderator permissions required.", ephemeral=True)
+            return
 
         lines = [f"• **{name}** — {desc}" for name, desc in BADGES]
         await inter.response.send_message(

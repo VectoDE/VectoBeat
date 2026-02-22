@@ -35,7 +35,8 @@ export async function generateMetadata({ params }: BlogPageParams) {
 
 export default async function BlogPostPage({ params }: BlogPageParams) {
   const { slug } = await resolveParams(params)
-  const post = await getBlogPostByIdentifier(slug)
+  const sanitizedSlug = sanitizeSlug(slug)
+  const post = await getBlogPostByIdentifier(sanitizedSlug)
 
   if (!post) {
     notFound()

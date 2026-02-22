@@ -92,7 +92,8 @@ class MembershipCommands(commands.Cog):
     @membership.command(name="status", description="Show the current plan for this server.")
     async def status(self, inter: discord.Interaction) -> None:
         if not inter.guild:
-            return await inter.response.send_message("This command only works inside a server.", ephemeral=True)
+            await inter.response.send_message("This command only works inside a server.", ephemeral=True)
+            return
         await inter.response.defer(ephemeral=True, thinking=True)
 
         tier = await self._current_tier(inter.guild.id)
@@ -145,11 +146,14 @@ class MembershipCommands(commands.Cog):
         email: str,
     ) -> None:
         if not inter.guild:
-            return await inter.response.send_message("Checkout only works inside a Discord server.", ephemeral=True)
+            await inter.response.send_message("Checkout only works inside a Discord server.", ephemeral=True)
+            return
         if "@" not in email or "." not in email:
-            return await inter.response.send_message("Please provide a valid billing email for Stripe.", ephemeral=True)
+            await inter.response.send_message("Please provide a valid billing email for Stripe.", ephemeral=True)
+            return
 
         await inter.response.defer(ephemeral=True, thinking=True)
+        checkout_url = None
         try:
             checkout_url = await self._create_checkout_link(
                 guild_id=inter.guild.id,
@@ -161,12 +165,12 @@ class MembershipCommands(commands.Cog):
                 requester_name=getattr(inter.user, "global_name", None) or inter.user.display_name,
             )
         except Exception as exc:
-            return await inter.followup.send(
+            await inter.followup.send(
                 f"Stripe checkout could not start: {exc}", ephemeral=True
             )
 
         if not checkout_url:
-            return await inter.followup.send(
+            await inter.followup.send(
                 "Stripe did not return a link. Please try again or use the dashboard.",
                 ephemeral=True,
             )

@@ -499,7 +499,8 @@ class ServerSettingsService:
         state = self.cached_state(resolved)
         accent = str(state.settings.get("brandingAccentColor") or self._default_brand_color)
         prefix = str(state.settings.get("customPrefix") or self.default_prefix)
-        white_label = bool(state.settings.get("whiteLabelBranding"))
+        white_label_bool = bool(state.settings.get("whiteLabelBranding"))
+        white_label = "true" if white_label_bool else "false"
         custom_domain = str(state.settings.get("customDomain") or "")
         asset_pack = str(state.settings.get("assetPackUrl") or "")
         mail_from = str(state.settings.get("mailFromAddress") or "")
@@ -561,7 +562,8 @@ class ServerSettingsService:
         try:
             limit = int(value)
         except (TypeError, ValueError):
-            limit = DEFAULT_SERVER_SETTINGS["queueLimit"]
+            limit_val = DEFAULT_SERVER_SETTINGS["queueLimit"]
+            limit = int(limit_val) if isinstance(limit_val, (int, float, str)) else 500
         return max(1, limit)
 
     def _plan_queue_cap(self, tier: str) -> Optional[int]:

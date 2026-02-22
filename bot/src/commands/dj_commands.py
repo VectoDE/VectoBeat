@@ -7,12 +7,15 @@ from typing import Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
+from typing import TYPE_CHECKING, cast
+if TYPE_CHECKING:
+    from src.main import VectoBeat
 
 from src.services.dj_permission_service import DJPermissionManager
 from src.utils.embeds import EmbedFactory
 
 
-def _manager(bot: commands.Bot) -> DJPermissionManager:
+def _manager(bot: "VectoBeat") -> DJPermissionManager:
     manager = getattr(bot, "dj_permissions", None)
     if not manager:
         raise RuntimeError("DJPermissionManager not initialised on bot.")
@@ -23,7 +26,7 @@ class DJCommands(commands.Cog):
     """Guild-level DJ role configuration and auditing helpers."""
 
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        self.bot = cast("VectoBeat", bot)
 
     dj = app_commands.Group(
         name="dj",
@@ -57,7 +60,8 @@ class DJCommands(commands.Cog):
     async def show(self, inter: discord.Interaction) -> None:
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            return await inter.response.send_message("Guild only command.", ephemeral=True)
+            await inter.response.send_message("Guild only command.", ephemeral=True)
+            return
 
         manager = _manager(self.bot)
         roles = manager.get_roles(inter.guild.id)
@@ -88,7 +92,8 @@ class DJCommands(commands.Cog):
     @dj.command(name="add-role", description="Grant DJ permissions to a role.")
     async def add_role(self, inter: discord.Interaction, role: discord.Role) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         assert inter.guild is not None
 
         manager = _manager(self.bot)
@@ -106,7 +111,8 @@ class DJCommands(commands.Cog):
     @dj.command(name="remove-role", description="Revoke DJ permissions from a role.")
     async def remove_role(self, inter: discord.Interaction, role: discord.Role) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         assert inter.guild is not None
 
         manager = _manager(self.bot)
@@ -124,7 +130,8 @@ class DJCommands(commands.Cog):
     @dj.command(name="clear", description="Allow anyone to control the queue by clearing DJ roles.")
     async def clear(self, inter: discord.Interaction) -> None:
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         assert inter.guild is not None
 
         manager = _manager(self.bot)
