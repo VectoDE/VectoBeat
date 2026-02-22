@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Any
 
 import aiohttp
 import discord
@@ -15,8 +15,10 @@ from src.utils.embeds import EmbedFactory
 if TYPE_CHECKING:
     from src.services.profile_service import GuildProfile
 
+MSG_GUILD_ONLY = "This command can only be used inside a guild."
 
-def _manager(bot: commands.Bot) -> GuildProfileManager:
+
+def _manager(bot: Any) -> GuildProfileManager:
     manager = getattr(bot, "profile_manager", None)
     if not manager:
         raise RuntimeError("GuildProfileManager not initialised on bot.")
@@ -27,7 +29,9 @@ class ProfileCommands(commands.Cog):
     """Expose guild-level configuration toggles for playback behaviour."""
 
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        from typing import cast, Any
+        from src.main import VectoBeat
+        self.bot: VectoBeat = cast(Any, bot)
 
     profile = app_commands.Group(
         name="profile",
@@ -40,7 +44,7 @@ class ProfileCommands(commands.Cog):
     def _ensure_manage_guild(inter: discord.Interaction) -> Optional[str]:
         """Verify the invoker has manage_guild permissions."""
         if not inter.guild:
-            return "This command can only be used inside a guild."
+            return MSG_GUILD_ONLY
         member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
         if not isinstance(member, discord.Member):
             return "Unable to resolve invoking member."
@@ -63,12 +67,14 @@ class ProfileCommands(commands.Cog):
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
                 async with session.put(url, json=payload, headers=headers) as resp:
-                    if resp.status >= 400 and hasattr(self.bot, "logger"):
-                        body = (await resp.text())[:200]
-                        self.bot.logger.warning("Bot defaults sync failed (%s): %s", resp.status, body)
+                        bot_logger = getattr(self.bot, "logger", None)
+                        if bot_logger:
+                            body = (await resp.text())[:200]
+                            bot_logger.warning("Bot defaults sync failed (%s): %s", resp.status, body)
         except Exception as exc:  # pragma: no cover - defensive best-effort
-            if hasattr(self.bot, "logger"):
-                self.bot.logger.debug("Bot defaults sync error: %s", exc)
+            bot_logger = getattr(self.bot, "logger", None)
+            if bot_logger:
+                bot_logger.debug("Bot defaults sync error: %s", exc)
 
     @staticmethod
     def _profile_embed(inter: discord.Interaction, profile: GuildProfile) -> discord.Embed:
@@ -86,16 +92,23 @@ class ProfileCommands(commands.Cog):
     # ------------------------------------------------------------------ slash commands
     @profile.command(name="show", description="Display the current playback profile for this guild.")
     async def show(self, inter: discord.Interaction) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         profile = _manager(self.bot).get(inter.guild.id)  # type: ignore[union-attr]
         await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
 
     @profile.command(name="set-volume", description="Set the default playback volume for this guild.")
     @app_commands.describe(level="Volume percent to apply automatically (0-200).")
     async def set_volume(self, inter: discord.Interaction, level: app_commands.Range[int, 0, 200]) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         manager = _manager(self.bot)
-        profile = await manager.update(inter.guild.id, volume=level)  # type: ignore[union-attr]
+        profile = await manager.update(inter.guild.id, default_volume=level)  # type: ignore[union-attr]
 
         player = self.bot.lavalink.player_manager.get(inter.guild.id)  # type: ignore[union-attr]
         if player:
@@ -111,8 +124,12 @@ class ProfileCommands(commands.Cog):
 
     @profile.command(name="set-autoplay", description="Enable or disable autoplay when the queue finishes.")
     async def set_autoplay(self, inter: discord.Interaction, enabled: bool) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         if enabled:
             service = getattr(self.bot, "server_settings", None)
             if service and not await service.allows_ai_recommendations(inter.guild.id):
@@ -120,7 +137,8 @@ class ProfileCommands(commands.Cog):
                 warning = factory.warning(
                     "Autoplay requires the Pro plan. Upgrade via the control panel to enable AI recommendations."
                 )
-                return await inter.response.send_message(embed=warning, ephemeral=True)
+                await inter.response.send_message(embed=warning, ephemeral=True)
+                return
         manager = _manager(self.bot)
         profile = await manager.update(inter.guild.id, autoplay=enabled)  # type: ignore[union-attr]
 
@@ -142,10 +160,14 @@ class ProfileCommands(commands.Cog):
         ]
     )
     async def set_announcement(self, inter: discord.Interaction, style: app_commands.Choice[str]) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         manager = _manager(self.bot)
-        profile = manager.update(inter.guild.id, announcement_style=style.value)  # type: ignore[union-attr]
+        profile = await manager.update(inter.guild.id, announcement_style=style.value)  # type: ignore[union-attr]
 
         player = self.bot.lavalink.player_manager.get(inter.guild.id)  # type: ignore[union-attr]
         if player:
@@ -158,8 +180,12 @@ class ProfileCommands(commands.Cog):
 
     @profile.command(name="set-mastering", description="Enable or disable adaptive mastering (loudness normalization).")
     async def set_mastering(self, inter: discord.Interaction, enabled: bool) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         manager = _manager(self.bot)
         profile = await manager.update(inter.guild.id, adaptive_mastering=enabled)
 
@@ -167,14 +193,19 @@ class ProfileCommands(commands.Cog):
         if player:
             cog = self.bot.get_cog("MusicEvents")
             if cog and hasattr(cog, "_apply_adaptive_mastering"):
-                await cog._apply_adaptive_mastering(player)
+                from typing import cast, Any
+                await cast(Any, cog)._apply_adaptive_mastering(player)
 
         await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
 
     @profile.command(name="set-compliance", description="Enable compliance mode (export-ready safety logs).")
     async def set_compliance(self, inter: discord.Interaction, enabled: bool) -> None:
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         manager = _manager(self.bot)
         profile = await manager.update(inter.guild.id, compliance_mode=enabled)
         await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)

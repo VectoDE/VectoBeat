@@ -77,8 +77,7 @@ class PlaylistService:
             if not track_id or not info:
                 continue
             requester = entry.get("requester", default_requester)
-            audio = lavalink.AudioTrack(track_id, info, requester=requester)
-            audio.requester = requester
+            audio = lavalink.AudioTrack(entry, requester=requester or 0)
             tracks.append(audio)
         return tracks
 
@@ -173,7 +172,7 @@ class PlaylistService:
     async def ping(self) -> bool:
         """Check connectivity with the backing Redis instance."""
         try:
-            await self._redis.ping()
+            await self._redis.ping()  # type: ignore[misc]
             if self.logger:
                 self.logger.info(
                     "Playlist storage reachable at %s:%s db=%s",

@@ -10,6 +10,8 @@
 
 # production
 /build
+tsc_*
+npm_*
 
 # debug
 npm-debug.log*
@@ -26,6 +28,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+eslint_report.json
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md

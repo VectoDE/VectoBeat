@@ -119,13 +119,14 @@ class LyricsService:
             self._cache_set(cache_key, None)
             return None
 
-        result = {
+        from typing import cast
+        result = cast(LyricsResult, {
             "source": "LRCLIB",
             "provider_url": f"https://lrclib.net/songs/{candidate.get('id')}" if candidate.get("id") else None,
             "track": candidate.get("trackName") or title,
             "artist": candidate.get("artistName") or artist or "unknown",
             "lines": lines,
-        }
+        })
         self._cache_set(cache_key, result)
         return result
 

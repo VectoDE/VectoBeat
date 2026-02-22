@@ -83,7 +83,9 @@ class QueueCommands(commands.Cog):
     """Queue management commands."""
 
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        from typing import cast, Any
+        from src.main import VectoBeat
+        self.bot: VectoBeat = cast(Any, bot)
 
     def _dj_manager(self) -> Optional[DJPermissionManager]:
         return getattr(self.bot, "dj_permissions", None)
@@ -256,10 +258,10 @@ class QueueCommands(commands.Cog):
             )
         return "Only configured DJ roles may use this command. Ask an admin to run `/dj add-role`."
 
-    def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:
+    async def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:
         manager = self._dj_manager()
         if manager and inter.guild:
-            manager.record_action(inter.guild.id, inter.user, action, details=details)
+            await manager.record_action(inter.guild.id, inter.user, action, details=details)
 
     async def _player(self, guild: discord.Guild) -> Optional[lavalink.DefaultPlayer]:
         """Fetch the guild-specific Lavalink player instance."""
@@ -412,7 +414,8 @@ class QueueCommands(commands.Cog):
     @staticmethod
     def _automation_description(action: str, origin: str, metadata: Dict[str, Any]) -> str:
         if action == "queue_trim":
-            removed = int(metadata.get("removed") or 0)
+            removed_val = metadata.get("removed")
+            removed = int(removed_val) if removed_val is not None else 0
             return f"Removed {removed} duplicate track(s) during {origin}."
         if action == "auto_restart":
             queue_length = metadata.get("queueLength")
@@ -420,7 +423,8 @@ class QueueCommands(commands.Cog):
         if action == "command_throttled":
             retry = metadata.get("retryAfter")
             command = metadata.get("command") or origin
-            return f"Throttled `{command}` for {int(retry)}s to protect shard capacity."
+            retry_val = float(retry) if retry is not None else 0.0
+            return f"Throttled `{command}` for {int(retry_val)}s to protect shard capacity."
         return f"Automation recorded {action} via {origin}."
 
     @staticmethod
@@ -495,11 +499,13 @@ class QueueCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             error_embed = factory.error("Guild only command.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or (not player.queue and not player.current):
-            return await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            return
 
         items: List[str] = []
         if player.current:
@@ -531,23 +537,27 @@ class QueueCommands(commands.Cog):
         if inter.guild and not await self._throttle_command(inter, "queue_remove"):
             return
         if not inter.guild:
-            return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            return
         if (error := self._require_dj(inter)) is not None:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or not player.queue:
-            return await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            return
 
         idx = index - 1
         if not 0 <= idx < len(player.queue):
-            return await inter.response.send_message(embed=factory.warning("Index out of range."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Index out of range."), ephemeral=True)
+            return
 
         removed = player.queue.pop(idx)
         embed = factory.success("Removed", track_str(removed))
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "queue:remove", details=track_str(removed))
+        await self._log_dj_action(inter, "queue:remove", details=track_str(removed))
         await self._publish_queue_state(inter.guild.id, player, "queue_remove", {"index": idx})
         await self._apply_automation_rules(inter.guild.id, player, "remove")
         await self._record_compliance(
@@ -568,19 +578,22 @@ class QueueCommands(commands.Cog):
         if inter.guild and not await self._throttle_command(inter, "queue_clear"):
             return
         if not inter.guild:
-            return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            return
         if (error := self._require_dj(inter)) is not None:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or not player.queue:
-            return await inter.response.send_message(embed=factory.warning("Queue is already empty."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Queue is already empty."), ephemeral=True)
+            return
 
         cleared = len(player.queue)
         player.queue.clear()
         embed = factory.success("Queue Cleared", f"Removed **{cleared}** track(s).")
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "queue:clear", details=f"{cleared} tracks removed")
+        await self._log_dj_action(inter, "queue:clear", details=f"{cleared} tracks removed")
         await self._publish_queue_state(inter.guild.id, player, "queue_clear", {"removed": cleared})
         await self._apply_automation_rules(inter.guild.id, player, "clear")
         await self._record_compliance(inter.guild.id, "queue_clear", {"removed": cleared})
@@ -597,20 +610,23 @@ class QueueCommands(commands.Cog):
         if inter.guild and not await self._throttle_command(inter, "queue_shuffle"):
             return
         if not inter.guild:
-            return await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            await inter.response.send_message(embed=factory.error("Guild only command."), ephemeral=True)
+            return
         if (error := self._require_dj(inter)) is not None:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or len(player.queue) < 2:
             warning_embed = factory.warning("Need at least 2 tracks to shuffle.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         shuffle_tracks(player.queue)
         embed = factory.primary("🔀 Shuffled")
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "queue:shuffle", details=f"{len(player.queue)} tracks")
+        await self._log_dj_action(inter, "queue:shuffle", details=f"{len(player.queue)} tracks")
         await self._publish_queue_state(inter.guild.id, player, "queue_shuffle")
         await self._apply_automation_rules(inter.guild.id, player, "shuffle")
         await self._record_compliance(inter.guild.id, "queue_shuffle", {"size": len(player.queue)})
@@ -634,19 +650,23 @@ class QueueCommands(commands.Cog):
             return
         if not inter.guild:
             error_embed = factory.error("Guild only command.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
         if (error := self._require_dj(inter)) is not None:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or not player.queue:
             warning_embed = factory.warning("Queue is empty.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         src_idx = src - 1
         dest_idx = dest - 1
         if not (0 <= src_idx < len(player.queue) and 0 <= dest_idx < len(player.queue)):
-            return await inter.response.send_message(embed=factory.warning("Index out of range."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Index out of range."), ephemeral=True)
+            return
 
         track = player.queue.pop(src_idx)
         player.queue.insert(dest_idx, track)
@@ -654,7 +674,7 @@ class QueueCommands(commands.Cog):
         embed.add_field(name="Track", value=track_str(track), inline=False)
         embed.add_field(name="Queue Summary", value=self._queue_summary(player), inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
-        self._log_dj_action(inter, "queue:move", details=f"{src}->{dest} {track.title}")
+        await self._log_dj_action(inter, "queue:move", details=f"{src}->{dest} {track.title}")
         await self._publish_queue_state(inter.guild.id, player, "queue_move", {"from": src, "to": dest})
         await self._apply_automation_rules(inter.guild.id, player, "move")
         await self._record_compliance(
@@ -673,11 +693,13 @@ class QueueCommands(commands.Cog):
         """Return a concise summary of the queue including statistics."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            return await inter.response.send_message("This command can only be used in a guild.", ephemeral=True)
+            await inter.response.send_message("This command can only be used in a guild.", ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or (not player.queue and not player.current):
-            return await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning("Queue is empty."), ephemeral=True)
+            return
 
         total_tracks = len(player.queue)
         total_duration = sum(track.duration or 0 for track in player.queue)
@@ -721,28 +743,35 @@ class QueueCommands(commands.Cog):
         include_current="Include the currently playing track in the saved playlist.",
     )
     async def playlist_save(self, inter: discord.Interaction, name: str, include_current: bool = True) -> None:
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if inter.guild and not await self._throttle_command(inter, "playlist_save"):
+        if not inter.guild:
+            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            return
+        factory = EmbedFactory(inter.guild.id)
+        if not await self._throttle_command(inter, "playlist_save"):
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
 
         cleaned = name.strip()
         if not cleaned or len(cleaned) > 64:
             error_embed = factory.error("Playlist name must be 1-64 characters.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or (not player.queue and not player.current):
             warning_embed = factory.warning("No tracks to persist.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         plan_tier, playlist_cap = await self._playlist_plan_state(inter.guild.id)
         if playlist_cap <= 0:
             upgrade_embed = factory.error(
                 "Playlist storage is locked on the Free plan. Upgrade to Starter to sync Redis-backed playlists."
             )
-            return await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            return
 
         tracks: List[lavalink.AudioTrack] = []
         if include_current and player.current:
@@ -760,7 +789,8 @@ class QueueCommands(commands.Cog):
                     exc,
                 )
             error_embed = factory.error("Unable to verify playlist storage. Please try again later.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
 
         normalised = cleaned.lower()
         existing_lookup = {entry.lower() for entry in existing_names}
@@ -775,7 +805,8 @@ class QueueCommands(commands.Cog):
                 f"{self._plan_label(plan_tier)} plans can store up to {limit_label}. "
                 "Delete older playlists or upgrade your plan to persist more.",
             )
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         try:
             count = await service.save_playlist(inter.guild.id, cleaned, tracks)
@@ -797,7 +828,8 @@ class QueueCommands(commands.Cog):
                     exc,
                 )
             error_embed = factory.error("Failed to save playlist. Please try again later.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
         save_message = f"Stored **{count}** track(s) as `{cleaned}`."
         embed = factory.success("Playlist Saved", save_message)
         embed.add_field(name="Tip", value="Use `/playlist load` to queue the playlist later.", inline=False)
@@ -814,13 +846,15 @@ class QueueCommands(commands.Cog):
         replace_queue="Clear the existing queue (and stop current track) before loading.",
     )
     async def playlist_load(self, inter: discord.Interaction, name: str, replace_queue: bool = False) -> None:
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if inter.guild and not await self._throttle_command(inter, "playlist_load"):
-            return
         if not inter.guild:
-            return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            return
+        factory = EmbedFactory(inter.guild.id)
+        if not await self._throttle_command(inter, "playlist_load"):
+            return
         if (error := self._require_dj(inter)) is not None:
-            return await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return
 
         player = await self._player(inter.guild)
         if not player or not player.is_connected:
@@ -829,14 +863,16 @@ class QueueCommands(commands.Cog):
                 "Use `/connect` first."
             )
             error_embed = factory.error(message)
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
 
         plan_tier, playlist_cap = await self._playlist_plan_state(inter.guild.id)
         if playlist_cap <= 0:
             upgrade_embed = factory.error(
                 "Playlist storage is available on Starter plans. Upgrade to load saved queues."
             )
-            return await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            return
 
         await inter.response.defer(ephemeral=True)
         progress = SlashProgress(inter, "Playlist Loader")
@@ -949,7 +985,9 @@ class QueueCommands(commands.Cog):
             try:
                 copilot_meta = await copilot.on_tracks_added(player, tracks, guild_id=inter.guild.id)
             except Exception as exc:  # pragma: no cover - defensive
-                self.bot.logger and self.bot.logger.debug("Queue copilot failed: %s", exc)
+                bot_logger = getattr(self.bot, "logger", None)
+                if bot_logger:
+                    bot_logger.debug("Queue copilot failed: %s", exc)
 
         if should_start:
             player.store("suppress_next_announcement", True)
@@ -970,7 +1008,7 @@ class QueueCommands(commands.Cog):
         if policy_hint:
             embed.add_field(name="Source Policy", value=policy_hint, inline=False)
         await progress.finish(embed)
-        self._log_dj_action(
+        await self._log_dj_action(
             inter,
             "playlist:load",
             details=f"{name} ({len(tracks)} tracks, replace={'yes' if replace_queue else 'no'})",
@@ -996,13 +1034,15 @@ class QueueCommands(commands.Cog):
         if inter.guild and not await self._throttle_command(inter, "playlist_sync"):
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
         if not inter.guild:
-            return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            return
 
         cleaned = name.strip()
         if not cleaned or len(cleaned) > 64:
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 embed=factory.error("Playlist name must be 1-64 characters."), ephemeral=True
             )
 
@@ -1010,11 +1050,12 @@ class QueueCommands(commands.Cog):
             message = (
                 "Playlist sync is disabled for this guild. Enable it in the control panel (Starter plan or higher)."
             )
-            return await inter.response.send_message(embed=factory.error(message), ephemeral=True)
+            await inter.response.send_message(embed=factory.error(message), ephemeral=True)
+            return
 
         normalised_url = source_url.strip()
         if not self._looks_like_url(normalised_url):
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 embed=factory.error("Enter a valid HTTP or HTTPS playlist URL."), ephemeral=True
             )
 
@@ -1023,7 +1064,8 @@ class QueueCommands(commands.Cog):
             upgrade_embed = factory.error(
                 "Playlist storage is locked for Free plans. Upgrade to Starter to link remote playlists."
             )
-            return await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            return
 
         service = self._playlist_service()
         try:
@@ -1035,9 +1077,10 @@ class QueueCommands(commands.Cog):
                     inter.guild.id,
                     exc,
                 )
-            return await inter.response.send_message(
+            await inter.response.send_message(
                 embed=factory.error("Unable to verify playlist storage right now."), ephemeral=True
             )
+            return
 
         normalised = cleaned.lower()
         existing_lookup = {entry.lower() for entry in existing_names}
@@ -1052,7 +1095,8 @@ class QueueCommands(commands.Cog):
                 f"{self._plan_label(plan_tier)} plans can store up to {limit_label}. "
                 "Delete older playlists or upgrade your plan to add more.",
             )
-            return await inter.response.send_message(embed=warning, ephemeral=True)
+            await inter.response.send_message(embed=warning, ephemeral=True)
+            return
 
         await inter.response.defer(ephemeral=True)
         progress = SlashProgress(inter, "Playlist Sync")
@@ -1120,14 +1164,16 @@ class QueueCommands(commands.Cog):
     async def playlist_list(self, inter: discord.Interaction):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            return await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            await inter.response.send_message("This command is guild-only.", ephemeral=True)
+            return
 
         _, playlist_cap = await self._playlist_plan_state(inter.guild.id)
         if playlist_cap <= 0:
             upgrade_embed = factory.error(
                 "Playlist storage is locked for Free plans. Upgrade to Starter to view saved playlists."
             )
-            return await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            return
 
         service = self._playlist_service()
         try:
@@ -1138,10 +1184,12 @@ class QueueCommands(commands.Cog):
             if self.bot.logger:
                 self.bot.logger.error("Failed to list playlists for guild %s: %s", inter.guild.id, exc)
             error_embed = factory.error("Unable to query playlists from storage. Please try again later.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
         if not names:
             warning_embed = factory.warning("No playlists saved yet.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         embed = factory.primary("Saved Playlists")
         embed.description = "\n".join(f"- `{name}`" for name in names)
@@ -1149,16 +1197,21 @@ class QueueCommands(commands.Cog):
 
     @playlist.command(name="delete", description="Remove a saved playlist.")
     async def playlist_delete(self, inter: discord.Interaction, name: str):
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if not inter.guild:
+            await inter.response.send_message("Guild only command.", ephemeral=True)
+            return
+        factory = EmbedFactory(inter.guild.id)
         if (error := self._ensure_manage_guild(inter)) is not None:
-            return await inter.response.send_message(error, ephemeral=True)
+            await inter.response.send_message(error, ephemeral=True)
+            return
 
         plan_tier, playlist_cap = await self._playlist_plan_state(inter.guild.id)
         if playlist_cap <= 0:
             upgrade_embed = factory.error(
                 "Playlist storage is only available on Starter plans. Upgrade to remove saved playlists."
             )
-            return await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            await inter.response.send_message(embed=upgrade_embed, ephemeral=True)
+            return
 
         service = self._playlist_service()
         cleaned = name.strip()
@@ -1181,10 +1234,12 @@ class QueueCommands(commands.Cog):
                     exc,
                 )
             error_embed = factory.error("Failed to delete playlist from storage. Please try again later.")
-            return await inter.response.send_message(embed=error_embed, ephemeral=True)
+            await inter.response.send_message(embed=error_embed, ephemeral=True)
+            return
         if not removed:
             warning_embed = factory.warning(f"No playlist found with the name `{cleaned}`.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         embed = factory.success("Playlist Deleted", f"Removed `{cleaned}` from storage.")
         await inter.response.send_message(embed=embed, ephemeral=True)

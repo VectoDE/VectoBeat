@@ -31,10 +31,12 @@ class MusicEvents(commands.Cog):
     """React to Lavalink events and emit informative embeds."""
 
     def __init__(self, bot: commands.Bot) -> None:
-        self.bot = bot
+        from typing import cast, Any
+        from src.main import VectoBeat
+        self.bot: VectoBeat = cast(Any, bot)
         self._fade_tasks: Dict[int, asyncio.Task] = {}
-        if hasattr(bot, "lavalink"):
-            bot.lavalink.add_event_hooks(self)
+        if getattr(self.bot, "lavalink", None):
+            self.bot.lavalink.add_event_hooks(self)
         self._queue_copilot = getattr(bot, "queue_copilot", None)
 
     def _telemetry(self) -> Optional[QueueTelemetryService]:
@@ -216,7 +218,7 @@ class MusicEvents(commands.Cog):
             return
         start_volume = player.volume
         floor = max(0, min(player.volume, CONFIG.crossfade.floor_volume))
-        await self._ramp_volume(player, start_volume, floor)
+        await self._ramp_volume(player, int(start_volume), int(floor))
         player.store("crossfade_restore_volume", start_volume)
 
     async def _apply_adaptive_mastering(self, player: VectoPlayer) -> None:
@@ -240,7 +242,7 @@ class MusicEvents(commands.Cog):
                     (0, 0.15), (1, 0.1), (2, 0.05),   # Lows
                     (12, 0.05), (13, 0.1), (14, 0.15) # Highs
                 ]
-                await player.set_filter(lavalink.Equalizer(bands=bands))
+                await player.set_filter(lavalink.Equalizer(bands))  # type: ignore[arg-type]
                 logger.debug("Applied adaptive mastering for guild %s", player.guild_id)
             else:
                 await player.remove_filter(lavalink.Equalizer)
@@ -526,45 +528,46 @@ class MusicEvents(commands.Cog):
                         )
                         return
                     recommendation = filtered_tracks[0]
-                player.add(recommendation)
-                try:
-                    await player.play()
-                except Exception as exc:  # pragma: no cover - lavalink behaviour
-                    logger.error("Failed to start autoplay track: %s", exc)
-                else:
-                    if isinstance(channel, discord.abc.GuildChannel):
-                        guild_id = channel.guild.id
-                    else:
-                        guild_id = None
-                    factory = EmbedFactory(guild_id)
-                    bot_logger = getattr(self.bot, "logger", None)
-                    if bot_logger:
-                        bot_logger.info(
-                            "Autoplay queued '%s' (%s) for guild %s",
-                            recommendation.title,
-                            getattr(recommendation, "identifier", "unknown"),
-                            player.guild_id,
-                        )
+                if recommendation:
+                    player.add(requester=getattr(self.bot.user, "id", 0), track=recommendation)  # type: ignore
                     try:
-                        await channel.send(
-                            embed=factory.primary(
-                                "Autoplay Continuing",
-                                f"Queued **{recommendation.title}** — `{recommendation.author}`",
-                            ),
-                            silent=True,
+                        await player.play()
+                    except Exception as exc:  # pragma: no cover - lavalink behaviour
+                        logger.error("Failed to start autoplay track: %s", exc)
+                    else:
+                        if isinstance(channel, discord.abc.GuildChannel):
+                            guild_id = channel.guild.id
+                        else:
+                            guild_id = None
+                        factory = EmbedFactory(guild_id)
+                        bot_logger = getattr(self.bot, "logger", None)
+                        if bot_logger:
+                            bot_logger.info(
+                                "Autoplay queued '%s' (%s) for guild %s",
+                                getattr(recommendation, "title", "Unknown"),
+                                getattr(recommendation, "identifier", "unknown"),
+                                player.guild_id,
+                            )
+                        try:
+                            await channel.send(
+                                embed=factory.primary(
+                                    "Autoplay Continuing",
+                                    f"Queued **{recommendation.title}** — `{recommendation.author}`",
+                                ),
+                                silent=True,
+                            )
+                        except Exception as exc:
+                            logger.error("Failed to send autoplay announcement: %s", exc)
+                        await self._record_compliance(
+                            player,
+                            "autoplay_continue",
+                            {
+                                "title": getattr(recommendation, "title", "Unknown"),
+                                "author": getattr(recommendation, "author", "Unknown"),
+                                "identifier": getattr(recommendation, "identifier", None),
+                            },
                         )
-                    except Exception as exc:
-                        logger.error("Failed to send autoplay announcement: %s", exc)
-                    await self._record_compliance(
-                        player,
-                        "autoplay_continue",
-                        {
-                            "title": recommendation.title,
-                            "author": recommendation.author,
-                            "identifier": getattr(recommendation, "identifier", None),
-                        },
-                    )
-                    return
+                        return
 
         if isinstance(channel, discord.abc.GuildChannel):
             guild_id = channel.guild.id

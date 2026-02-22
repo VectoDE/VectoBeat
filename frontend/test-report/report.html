@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>VectoBeat – Test Report</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;line-height:1.6;padding:40px 20px}
+    h1{font-size:28px;font-weight:800;margin-bottom:4px;color:#f8fafc}
+    .subtitle{color:#94a3b8;font-size:14px;margin-bottom:32px}
+    .summary{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:32px}
+    .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px 28px;min-width:140px;text-align:center}
+    .card .val{font-size:36px;font-weight:800}
+    .card .lbl{font-size:12px;color:#94a3b8;margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+    .pass-rate .val{color:#22c55e}
+    .passes .val{color:#22c55e}
+    .failures .val{color:#ef4444}
+    .skips .val{color:#f59e0b}
+    .totals .val{color:#60a5fa}
+    table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden;border:1px solid #334155}
+    thead tr{background:#0f172a}
+    th{padding:12px 16px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+    td{padding:10px 16px;border-top:1px solid #1e293b}
+    tr.test-row{background:#1e293b;transition:background .15s}
+    tr.test-row:hover{background:#263148}
+    tr.fail td{background:#2d1515 !important}
+    tr.error-row td{padding:0 16px 12px;background:#2d1515 !important;border-top:none}
+    pre.error{background:#1a0a0a;color:#fca5a5;padding:12px 16px;border-radius:8px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;border:1px solid #7f1d1d}
+    .idx{width:48px;color:#475569;font-size:13px}
+    .duration{width:100px;text-align:right;color:#64748b;font-size:13px}
+    .badge{width:120px}
+    .footer{margin-top:24px;color:#475569;font-size:12px}
+    .badge-bar{display:flex;gap:8px;margin-bottom:24px;align-items:center;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <h1>🎵 VectoBeat – Test Report</h1>
+  <p class="subtitle">Generated: 22.2.2026, 22:55:38 · Duration: 30.24s</p>
+
+  <div class="summary">
+    <div class="card pass-rate"><div class="val">100.0%</div><div class="lbl">Pass Rate</div></div>
+    <div class="card totals"><div class="val">127</div><div class="lbl">Total Tests</div></div>
+    <div class="card passes"><div class="val">127</div><div class="lbl">Passed</div></div>
+    <div class="card failures"><div class="val">0</div><div class="lbl">Failed</div></div>
+    <div class="card skips"><div class="val">0</div><div class="lbl">Skipped</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Test Name</th>
+        <th>Status</th>
+        <th style="text-align:right">Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+  <tr class="test-row pass">
+    <td class="idx">1</td>
+    <td class="name">account contact endpoints require valid session</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">38.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">2</td>
+    <td class="name">account profile update rejects unauthorized access</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">3</td>
+    <td class="name">account privacy update rejects unauthorized access</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">7.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">4</td>
+    <td class="name">notification settings update requires a valid session</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">5.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">5</td>
+    <td class="name">bot settings endpoints are locked down</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4188.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">6</td>
+    <td class="name">linked accounts routes enforce session ownership</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">6.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">7</td>
+    <td class="name">API token creation records actor identity</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4198.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">8</td>
+    <td class="name">API token rotation falls back to discordId when profile missing</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">5.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">9</td>
+    <td class="name">API token leak marker includes actor metadata</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">10</td>
+    <td class="name">bot concierge blocks unauthorized callers</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">18.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">11</td>
+    <td class="name">bot concierge returns usage for authorized caller</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">13.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">12</td>
+    <td class="name">bot concierge create enforces quota and returns usage</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">16.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">13</td>
+    <td class="name">bot concierge resolve updates requests</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">5.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">14</td>
+    <td class="name">bot concierge rejects unauthorized usage</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">67.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">15</td>
+    <td class="name">bot success-pod requires auth header</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4197.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">16</td>
+    <td class="name">bot automation-actions enforces authorization</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4114.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">17</td>
+    <td class="name">bot scale-contact requires auth</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4057.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">18</td>
+    <td class="name">env files are anchored to the repo root</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">121.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">19</td>
+    <td class="name">.env.example stays in sync with the working .env</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">20</td>
+    <td class="name">docs index is present and links resolve</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">21</td>
+    <td class="name">README exposes public bot badges</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">22</td>
+    <td class="name">concierge GET requires valid session</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">18.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">23</td>
+    <td class="name">concierge GET blocks users without an active subscription for the guild</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4271.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">24</td>
+    <td class="name">concierge POST requires valid session</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">17.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">25</td>
+    <td class="name">concierge POST blocks users without an active subscription</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4114.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">26</td>
+    <td class="name">concierge POST uses subscription tier for limits</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">27</td>
+    <td class="name">verifyControlPanelGuildAccess rejects invalid sessions</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">28</td>
+    <td class="name">verifyControlPanelGuildAccess blocks cross-tenant access</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">29</td>
+    <td class="name">verifyControlPanelGuildAccess returns membership details when authorized</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">30</td>
+    <td class="name">server settings GET denies unauthorized guild access</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4243.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">31</td>
+    <td class="name">server settings PUT denies unauthorized writes</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">45.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">32</td>
+    <td class="name">dashboard analytics pulls queue snapshot from durable store</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4308.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">33</td>
+    <td class="name">dashboard overview denies requests without a valid session</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">17.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">34</td>
+    <td class="name">subscriptions endpoint blocks unauthorized access</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">35</td>
+    <td class="name">sanitizeDomain normalizes input correctly</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">36</td>
+    <td class="name">sanitizeUrl enforces https and valid structure</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">37</td>
+    <td class="name">sanitizeEmail validates format and allowed characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">38</td>
+    <td class="name">POST enforces authentication</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">28.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">39</td>
+    <td class="name">POST enforces plan requirements</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">5.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">40</td>
+    <td class="name">POST saves valid branding settings</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">41</td>
+    <td class="name">POST handles mark_active action</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">42</td>
+    <td class="name">POST handles reset action</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">43</td>
+    <td class="name">detects queue sync underutilization and automation exceedance</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">44</td>
+    <td class="name">flags entitlement exceedance for free guild with queue sync and API tokens</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">45</td>
+    <td class="name">PdfGenerator creates a valid PDF with branding</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">192.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">46</td>
+    <td class="name">queue snapshot API follows plan capabilities</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">47</td>
+    <td class="name">control-panel server settings returns tiered settings</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">8222.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">48</td>
+    <td class="name">concierge denies when guild not accessible</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">49</td>
+    <td class="name">success pod creation uses plan gate and returns request</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">7.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">50</td>
+    <td class="name">API token leak marker logs actor</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">51</td>
+    <td class="name">security audit export respects plan gate</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">52</td>
+    <td class="name">analytics export requires predictive analytics</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">53</td>
+    <td class="name">queue-sync survives multiple writers with recency wins</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">54</td>
+    <td class="name">concierge handles concurrent creation attempts</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">18.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">55</td>
+    <td class="name">rapid API token churn keeps actor metadata</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4163.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">56</td>
+    <td class="name">normalizeTierId coerces casing and trims whitespace</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">57</td>
+    <td class="name">normalizeTierId defaults unknown values to free</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">58</td>
+    <td class="name">isMembershipTier recognises canonical ids</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">59</td>
+    <td class="name">free tier ignores premium toggles</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">60</td>
+    <td class="name">plan upgrades provision expected defaults and quotas</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">61</td>
+    <td class="name">plan downgrades clamp quotas and UI gates to tier policies</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">62</td>
+    <td class="name">starter provisioning enables extended sources, playlists sync, and large queue</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">63</td>
+    <td class="name">existing settings are upgraded but user overrides persist</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">64</td>
+    <td class="name">provisioning for pro unlocks hi-res playback and AI recommendations</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">65</td>
+    <td class="name">concurrent writers do not clobber newer queue snapshots</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">66</td>
+    <td class="name">queue store persists with tier-based TTL</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">67</td>
+    <td class="name">queue store evicts expired snapshots</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">68</td>
+    <td class="name">free tier clamps queue limit and disables premium controls</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">6.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">69</td>
+    <td class="name">free tier rejects invalid inputs gracefully</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">70</td>
+    <td class="name">starter tier unlocks advanced controls while enforcing tier caps</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">71</td>
+    <td class="name">pro tier keeps premium toggles without clamping values</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">72</td>
+    <td class="name">normalizeToken – trims whitespace</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">73</td>
+    <td class="name">normalizeToken – strips surrounding quotes</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">74</td>
+    <td class="name">normalizeToken – returns empty string for null/undefined</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">75</td>
+    <td class="name">extractToken – extracts Bearer token from Authorization header</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">8.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">76</td>
+    <td class="name">extractToken – extracts token from x-api-key header</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">77</td>
+    <td class="name">extractToken – extracts token from x-status-api-key header</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">78</td>
+    <td class="name">extractToken – extracts token from query param ?token=</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">79</td>
+    <td class="name">extractToken – returns null when no token present</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">80</td>
+    <td class="name">extractToken – prefers Authorization header over x-api-key</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">81</td>
+    <td class="name">authorizeRequest – returns true for correct Bearer token</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">82</td>
+    <td class="name">authorizeRequest – returns false for wrong token</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">83</td>
+    <td class="name">authorizeRequest – returns false when no token provided</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">84</td>
+    <td class="name">authorizeRequest – returns true when allowedSecrets is empty</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">85</td>
+    <td class="name">authorizeRequest – allows localhost when allowLocalhost=true</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">86</td>
+    <td class="name">authorizeRequest – does NOT bypass non-localhost when allowLocalhost=true</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">87</td>
+    <td class="name">normalizeApiKeyType – maps 'status_api' to canonical form</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">88</td>
+    <td class="name">normalizeApiKeyType – maps 'STATUS_API_KEY' alias to status_api</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">89</td>
+    <td class="name">normalizeApiKeyType – maps 'BOT_STATUS_API_KEY' alias to status_api</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">90</td>
+    <td class="name">normalizeApiKeyType – maps 'status_events' correctly</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">91</td>
+    <td class="name">normalizeApiKeyType – maps 'CONTROL_PANEL_API_KEY' to control_panel</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">92</td>
+    <td class="name">normalizeApiKeyType – maps 'QUEUE_SYNC_API_KEY' to queue_sync</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">93</td>
+    <td class="name">normalizeApiKeyType – lowercases unknown types as fallback</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">94</td>
+    <td class="name">getApiKeySecrets – returns env fallback for status_api when includeEnv=true</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4149.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">95</td>
+    <td class="name">getApiKeySecrets – skips env fallback when includeEnv=false</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4080.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">96</td>
+    <td class="name">getApiKeySecrets – returns empty array for unknown type with no env</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4098.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">97</td>
+    <td class="name">getApiKeySecrets – deduplicates returned secrets</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4096.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">98</td>
+    <td class="name">base64UrlEncode – no raw + characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">7.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">99</td>
+    <td class="name">base64UrlEncode – no raw / characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">5.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">100</td>
+    <td class="name">base64UrlEncode – no padding = characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">101</td>
+    <td class="name">base64UrlEncode – only valid base64url charset</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">6.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">102</td>
+    <td class="name">generateCodeVerifier – meets PKCE minimum length (43 chars)</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.1 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">103</td>
+    <td class="name">generateCodeVerifier – within PKCE maximum length (128 chars)</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">3.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">104</td>
+    <td class="name">generateCodeVerifier – only valid unreserved chars</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">105</td>
+    <td class="name">generateCodeChallenge – is non-empty</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">106</td>
+    <td class="name">generateCodeChallenge – is deterministic for the same verifier</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">107</td>
+    <td class="name">generateCodeChallenge – differs for different verifiers</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">108</td>
+    <td class="name">generateCodeChallenge – is valid base64url</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">109</td>
+    <td class="name">POST /api/queue-sync – returns 401 without auth</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4935.7 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">110</td>
+    <td class="name">POST /api/queue-sync – returns 400 when guildId is missing</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">4.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">111</td>
+    <td class="name">POST /api/queue-sync – returns 400 for invalid JSON body</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">112</td>
+    <td class="name">POST /api/queue-sync – accepts valid payload with auth (200 or 500 if no DB)</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">16332.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">113</td>
+    <td class="name">sanitizeSlug – lowercases the input</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">114</td>
+    <td class="name">sanitizeSlug – replaces spaces with hyphens</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">115</td>
+    <td class="name">sanitizeSlug – strips leading hyphens</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">116</td>
+    <td class="name">sanitizeSlug – strips trailing hyphens</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.2 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">117</td>
+    <td class="name">sanitizeSlug – collapses multiple hyphens into one</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">118</td>
+    <td class="name">sanitizeSlug – removes special characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.6 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">119</td>
+    <td class="name">sanitizeSlug – handles empty string</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">120</td>
+    <td class="name">sanitizeSlug – handles already valid slug unchanged</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.3 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">121</td>
+    <td class="name">sanitizeSlug – handles uppercase letters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">122</td>
+    <td class="name">sanitizeSlug – handles unicode / non-ascii chars</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.0 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">123</td>
+    <td class="name">sanitizeSlug – preserves numbers</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">0.5 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">124</td>
+    <td class="name">sanitizeSlug – handles only special characters</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.9 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">125</td>
+    <td class="name">verifyRequestForUser returns profile when session is valid</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">6.8 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">126</td>
+    <td class="name">verifyRequestForUser rejects invalid sessions</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">2.4 ms</td>
+  </tr>
+  
+
+  <tr class="test-row pass">
+    <td class="idx">127</td>
+    <td class="name">verifyRequestForUser rejects when no token present</td>
+    <td class="badge"><span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;">✅ PASS</span></td>
+    <td class="duration">1.8 ms</td>
+  </tr>
+  
+    </tbody>
+  </table>
+
+  <p class="footer">VectoBeat Frontend Test Suite · node:test · 2026-02-22T21:55:38.396Z</p>
+</body>
+</html>

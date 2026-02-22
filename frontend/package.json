@@ -10,6 +10,8 @@
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "node --test -r ./tests/register-ts.js tests/*.test.ts",
+    "test:report": "node --test --test-reporter=./tests/reporter.mjs -r ./tests/register-ts.js tests/*.test.ts",
+    "test:new": "node --test -r ./tests/register-ts.js tests/test-oauth-pkce.test.ts tests/test-sanitize-slug.test.ts tests/test-api-auth.test.ts tests/test-api-keys.test.ts tests/test-queue-sync-route.test.ts",
     "test:server-settings": "node --test -r ./tests/register-ts.js ./tests/server-settings-smoke.test.ts ./tests/membership-tier-normalize.test.ts ./tests/plan-gate-free.test.ts ./tests/provision-defaults.test.ts ./tests/external-queue-access.test.ts ./tests/plan-upgrade-regressions.test.ts ./tests/control-panel-auth.test.ts ./tests/control-panel-server-settings-auth.test.ts ./tests/account-settings-auth.test.ts ./tests/dashboard-subscriptions-auth.test.ts ./tests/concierge-auth.test.ts ./tests/bot-concierge-api.test.ts ./tests/queue-sync-store.test.ts ./tests/dashboard-analytics-queue.test.ts ./tests/queue-sync-concurrency.test.ts ./tests/verify-request-for-user.test.ts ./tests/api-tokens-actor.test.ts ./tests/high-risk-api-integration.test.ts ./tests/bot-contracts.test.ts ./tests/load-failover-simulations.test.ts ./tests/ci-safety.test.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",

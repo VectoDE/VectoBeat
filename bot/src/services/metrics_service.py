@@ -110,8 +110,8 @@ class MetricsService:
         if snapshot and snapshot.shards:
             for shard_id, latency_ms in snapshot.shards.items():
                 self.shard_latency_gauge.labels(shard=str(shard_id)).set(latency_ms / 1000)
-        elif hasattr(self.bot, "shards") and self.bot.shards:
-            for shard_id, shard in self.bot.shards.items():
+        elif hasattr(self.bot, "shards") and getattr(self.bot, "shards"):
+            for shard_id, shard in getattr(self.bot, "shards").items():
                 latency = getattr(shard, "latency", None) or 0.0
                 self.shard_latency_gauge.labels(shard=str(shard_id)).set(latency)
         else:

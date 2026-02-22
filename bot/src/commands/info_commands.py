@@ -28,7 +28,9 @@ class InfoCommands(commands.Cog):
     """Diagnostic commands for VectoBeat."""
 
     def __init__(self, bot: commands.Bot):
-        self.bot = bot
+        from typing import cast, Any
+        from src.main import VectoBeat
+        self.bot: VectoBeat = cast(Any, bot)
         self._status_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------ helpers
@@ -64,8 +66,7 @@ class InfoCommands(commands.Cog):
             return cpu_percent, mem_mb
         try:  # pragma: no cover - platform specific fallback
             import resource  # type: ignore
-
-            usage = resource.getrusage(resource.RUSAGE_SELF)
+            usage = resource.getrusage(resource.RUSAGE_SELF)  # type: ignore
             mem_mb = usage.ru_maxrss / 1024
             return None, mem_mb
         except Exception:
@@ -105,7 +106,7 @@ class InfoCommands(commands.Cog):
             # Derive SSL flag from URI scheme with fallback to node.ssl.
             ssl_flag = bool(getattr(node, "ssl", False))
             if endpoint_str:
-                lowered = endpoint_str.lower()
+                lowered = str(endpoint_str).lower()
                 if lowered.startswith("https://"):
                     ssl_flag = True
                 elif lowered.startswith("http://"):
@@ -152,12 +153,13 @@ class InfoCommands(commands.Cog):
         """Format a byte value into a human readable string."""
         if num is None:
             return "n/a"
+        num_f = float(num)
         step_unit = 1024
         for unit in ["B", "KB", "MB", "GB", "TB"]:
-            if num < step_unit:
-                return f"{num:.1f} {unit}"
-            num /= step_unit
-        return f"{num:.1f} PB"
+            if num_f < step_unit:
+                return f"{num_f:.1f} {unit}"
+            num_f /= step_unit
+        return f"{num_f:.1f} PB"
 
     @staticmethod
     def _format_datetime(dt: Optional[datetime.datetime]) -> str:
@@ -525,15 +527,16 @@ class InfoCommands(commands.Cog):
     async def guildinfo(self, inter: discord.Interaction) -> None:
         """Show information about the guild the command is run in."""
         if not inter.guild:
-            return await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            return
 
         guild = inter.guild
         factory = EmbedFactory(guild.id)
         embed = factory.primary(f"🏠 Guild Information — {guild.name}")
         embed.description = self._format_datetime(guild.created_at)
 
-        owner = guild.owner or await self.bot.fetch_user(guild.owner_id)
-        owner_value = f"{owner} (`||{owner.id}||`)"
+        owner = guild.owner or (await self.bot.fetch_user(guild.owner_id) if guild.owner_id else None)
+        owner_value = getattr(owner, "name", "Unknown") + f" (`||{getattr(owner, 'id', 'N/A')}||`)"
         embed.add_field(name="Owner", value=owner_value, inline=True)
 
         total_members = guild.member_count or len(guild.members) or 0
@@ -653,7 +656,8 @@ class InfoCommands(commands.Cog):
         nodes = self._lavalink_nodes()
         if not nodes:
             warning_embed = factory.warning("Lavalink is not connected.")
-            return await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            await inter.response.send_message(embed=warning_embed, ephemeral=True)
+            return
 
         embed = factory.primary("🎛️ Lavalink Nodes")
         for node in nodes:
@@ -708,14 +712,16 @@ class InfoCommands(commands.Cog):
     @app_commands.command(name="permissions", description="Show the bot's permissions in this channel.")
     async def permissions(self, inter: discord.Interaction) -> None:
         """Display the bot's effective permissions for the current channel."""
-        if not inter.guild or not inter.channel:
+        if not inter.guild or not isinstance(inter.channel, discord.abc.GuildChannel):
             message = "This command must be invoked inside a guild channel."
-            return await inter.response.send_message(message, ephemeral=True)
+            await inter.response.send_message(message, ephemeral=True)
+            return
 
         guild = inter.guild
         me = guild.me or guild.get_member(self.bot.user.id)  # type: ignore
         if not me:
-            return await inter.response.send_message("Unable to identify myself in this guild.", ephemeral=True)
+            await inter.response.send_message("Unable to identify myself in this guild.", ephemeral=True)
+            return
 
         perms = inter.channel.permissions_for(me)
         factory = EmbedFactory(guild.id)
@@ -764,8 +770,9 @@ class InfoCommands(commands.Cog):
             embed.add_field(name="Missing (recommended)", value=", ".join(missing), inline=False)
         embed.add_field(name="Permission Integer", value=f"`{me.guild_permissions.value}`", inline=True)
 
+        bot_id = self.bot.user.id if self.bot.user else 0
         invite_url = (
-            f"https://discord.com/api/oauth2/authorize?client_id={self.bot.user.id}"
+            f"https://discord.com/api/oauth2/authorize?client_id={bot_id}"
             "&permissions=36768832&scope=bot%20applications.commands%20identify"
         )
         view = discord.ui.View()

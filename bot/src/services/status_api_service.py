@@ -19,7 +19,7 @@ import aiofiles
 import discord
 from discord import app_commands
 import lavalink
-from aiohttp import ClientSession, web
+from aiohttp import ClientSession, web, ClientTimeout
 from lavalink.events import TrackStartEvent
 
 from src.configs.schema import StatusAPIConfig
@@ -412,12 +412,12 @@ class StatusAPIService:
             self._listener_events.popleft()
 
     def _trigger_usage_sync(self) -> None:
-        if not self._usage_endpoint or not self._http_session:
-            self._persist_usage()
-            return
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
+            return
+        if not self._usage_endpoint or not self._http_session:
+            loop.create_task(self._persist_usage())
             return
         if self._usage_sync_inflight:
             self._usage_sync_pending = True
@@ -447,7 +447,7 @@ class StatusAPIService:
             "incidentsTotal": self._incidents_total,
         }
         try:
-            async with self._http_session.post(self._usage_endpoint, json=payload, headers=headers, timeout=5) as resp:
+            async with self._http_session.post(self._usage_endpoint, json=payload, headers=headers, timeout=ClientTimeout(total=5)) as resp:
                 if resp.status >= 400:
                     text = await resp.text()
                     self.logger.warning("Bot usage totals push failed (%s): %s", resp.status, text[:200])
@@ -463,7 +463,7 @@ class StatusAPIService:
         if self._usage_token:
             headers["Authorization"] = f"Bearer {self._usage_token}"
         try:
-            async with self._http_session.get(self._usage_endpoint, headers=headers, timeout=5) as resp:
+            async with self._http_session.get(self._usage_endpoint, headers=headers, timeout=ClientTimeout(total=5)) as resp:
                 if resp.status >= 400:
                     text = await resp.text()
                     self.logger.debug("Failed to load usage totals (%s): %s", resp.status, text[:200])
@@ -521,7 +521,7 @@ class StatusAPIService:
             async with self._http_session.get(
                 self._push_endpoint.replace("/api/bot/metrics", "/api/bot/metrics"),
                 headers={"Authorization": f"Bearer {self._push_token}"} if self._push_token else None,
-                timeout=5,
+                timeout=ClientTimeout(total=5),
             ) as resp:
                 if resp.status >= 400:
                     return
@@ -561,7 +561,7 @@ class StatusAPIService:
         if self._push_token:
             headers["Authorization"] = f"Bearer {self._push_token}"
         try:
-            async with self._http_session.post(self._push_endpoint, json=payload, headers=headers, timeout=10) as resp:
+            async with self._http_session.post(self._push_endpoint, json=payload, headers=headers, timeout=ClientTimeout(total=10)) as resp:
                 if resp.status >= 400:
                     text = await resp.text()
                     self.logger.warning("Bot metrics push failed (%s): %s", resp.status, text[:200])
@@ -585,7 +585,7 @@ class StatusAPIService:
         if self._event_token:
             headers["Authorization"] = f"Bearer {self._event_token}"
         try:
-            async with self._http_session.post(self._event_endpoint, json=event, headers=headers, timeout=5) as resp:
+            async with self._http_session.post(self._event_endpoint, json=event, headers=headers, timeout=ClientTimeout(total=5)) as resp:
                 if resp.status >= 400:
                     text = await resp.text()
                     self.logger.warning("Bot event push failed (%s): %s", resp.status, text[:200])
@@ -594,13 +594,19 @@ class StatusAPIService:
 
     async def _reapply_all_server_policies(self) -> None:
         """Re-apply playback/queue policies to all active players."""
-        players = list(getattr(self.bot.lavalink.player_manager, "players", {}).values())
+        lavalink_client = getattr(self.bot, "lavalink", None)
+        if not lavalink_client:
+            return
+        players = list(getattr(lavalink_client.player_manager, "players", {}).values())
         for player in players:
             await self._reapply_guild_server_policies(player.guild_id)
 
     async def _reapply_guild_server_policies(self, guild_id: int) -> None:
         """Apply current control-panel settings (volume/quality/queue) to a guild's player."""
-        player = self.bot.lavalink.player_manager.get(guild_id)
+        lavalink_client = getattr(self.bot, "lavalink", None)
+        if not lavalink_client:
+            return
+        player = lavalink_client.player_manager.get(guild_id)
         if not player:
             return
         settings_service = getattr(self.bot, "server_settings", None)
@@ -827,8 +833,8 @@ class StatusAPIService:
         if search_cache and hasattr(search_cache, "clear"):
             try:
                 search_cache.clear()
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.debug("Suppressed error clearing search cache: %s", e)
         # Drop status payload cache so next poll refreshes metrics
         self._cache = {"payload": None, "expires": 0.0}
 
@@ -851,7 +857,8 @@ class StatusAPIService:
         sync_fn = getattr(bot, "_sync_application_commands", None)
         if callable(sync_fn):
             try:
-                await sync_fn()
+                from typing import Any, cast
+                await cast(Any, sync_fn)()
                 self.logger.info("Slash commands re-synced after control action.")
             except Exception as exc:
                 self.logger.warning("Slash command resync failed: %s", exc)
@@ -1074,5 +1081,5 @@ class StatusAPIService:
             path.parent.mkdir(parents=True, exist_ok=True)
             async with aiofiles.open(path, "w", encoding="utf-8") as f:
                 await f.write(json.dumps(payload))
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning("Failed to persist usage metrics: %s", e)

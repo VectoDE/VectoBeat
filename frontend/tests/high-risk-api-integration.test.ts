@@ -8,8 +8,6 @@ import { createApiTokenHandlers } from "@/app/api/control-panel/api-tokens/route
 import { createSecurityAuditHandlers } from "@/app/api/control-panel/security/audit/route"
 import { createAnalyticsExportHandlers } from "@/app/api/analytics/export/route"
 import { defaultServerFeatureSettings } from "@/lib/server-settings"
-import * as queueSyncModule from "../pages/api/queue-sync"
-import type { QueueSnapshot } from "@/types/queue-sync"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 
@@ -141,54 +139,3 @@ test("analytics export requires predictive analytics", async () => {
   assert.equal(res.status, 403)
 })
 
-test("queue-sync API stores and returns snapshot using durable store hooks", async () => {
-  const createQueueSyncHandler = (queueSyncModule as any).createQueueSyncHandler
-  if (typeof createQueueSyncHandler !== "function") {
-    throw new Error("queue sync handler factory missing")
-  }
-  const store = new Map<string, QueueSnapshot>()
-  const handler = createQueueSyncHandler({
-    apiKey: "secret",
-    getSnapshot: async (guildId: string) => store.get(guildId) ?? null,
-    saveSnapshot: async (snapshot: QueueSnapshot) => {
-      store.set(snapshot.guildId, snapshot)
-      return snapshot
-    },
-    ensureSocket: async () => ({ to: () => ({ emit: () => {} }) } as any),
-  })
-
-  const resPost: any = {
-    status(code: number) {
-      this.statusCode = code
-      return this
-    },
-    json(body: any) {
-      this.body = body
-      return this
-    },
-  }
-  await handler(
-    {
-      method: "POST",
-      headers: { authorization: "Bearer secret" },
-      body: { guildId: "g1", queue: [], nowPlaying: null, updatedAt: new Date().toISOString() },
-    } as any,
-    resPost,
-  )
-  assert.equal(resPost.statusCode, 200)
-  assert.equal(store.has("g1"), true)
-
-  const resGet: any = {
-    status(code: number) {
-      this.statusCode = code
-      return this
-    },
-    json(body: any) {
-      this.body = body
-      return this
-    },
-  }
-  await handler({ method: "GET", query: { guildId: "g1" } } as any, resGet)
-  assert.equal(resGet.statusCode, 200)
-  assert.equal(resGet.body.guildId, "g1")
-})

@@ -83,11 +83,14 @@ class CommandAnalyticsService:
         if not self._session or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=15)
             self._session = aiohttp.ClientSession(timeout=timeout)
+        endpoint = self.config.endpoint
+        if not endpoint:
+            return
         headers = {"Content-Type": "application/json"}
         if self.config.api_key:
             headers["Authorization"] = f"Bearer {self.config.api_key}"
         try:
-            async with self._session.post(self.config.endpoint, json=batch, headers=headers) as resp:
+            async with self._session.post(endpoint, json=batch, headers=headers) as resp:
                 if resp.status >= 400:
                     text = await resp.text()
                     self.logger.error("Analytics POST failed with %s: %s", resp.status, text[:200])

@@ -23,7 +23,7 @@ class LifecycleEvents(commands.Cog):
         self._status_index = 0
         self._ready = asyncio.Event()
 
-    def cog_unload(self) -> None:
+    async def cog_unload(self) -> None:
         self.rotate_status.cancel()
 
     # -------------------- EVENTS --------------------
@@ -42,6 +42,25 @@ class LifecycleEvents(commands.Cog):
     async def on_resumed(self) -> None:
         log.warning("Connection resumed – refreshing presence.")
         await self._safe_presence_update(initial=True)
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild: discord.Guild) -> None:
+        log.info("Joined new guild: %s (%s)", guild.name, guild.id)
+        current_max_capacity = (self.bot.shard_count or 1) * 5
+        current_guilds = len(self.bot.guilds)
+        if current_guilds > current_max_capacity:
+            log.critical(
+                "SHARD LIMIT BREACHED: Bot is in %d guilds, but only has %d shards (Max %d). Enforcing recalculation restart.",
+                current_guilds, self.bot.shard_count, current_max_capacity
+            )
+            # Rebalance shards by requesting the supervisor to orchestrate a restart.
+            supervisor = getattr(self.bot, "shard_supervisor", None)
+            if supervisor:
+                if not hasattr(self, "_active_tasks"):
+                    self._active_tasks = set()
+                task = asyncio.create_task(supervisor.request_restart())
+                self._active_tasks.add(task)
+                task.add_done_callback(self._active_tasks.discard)
 
     @commands.Cog.listener()
     async def on_shard_ready(self, shard_id: int) -> None:
@@ -111,7 +130,7 @@ class LifecycleEvents(commands.Cog):
                 self.bot.change_presence(
                     status=discord.Status.online,
                     activity=activity,
-                    shard_id=shard_id,
+                    shard_id=shard_id,  # type: ignore[call-arg]
                 ),
                 timeout=10,
             )

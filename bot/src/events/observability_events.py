@@ -12,7 +12,7 @@ from discord.ext import commands
 if TYPE_CHECKING:
     from src.services.metrics_service import MetricsService
     from src.services.command_analytics_service import CommandAnalyticsService
-    from src.services.status_api_service import StatusApiService
+    from src.services.status_api_service import StatusAPIService
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ObservabilityEvents(commands.Cog):
     def _analytics(self) -> Optional[CommandAnalyticsService]:
         return getattr(self.bot, "analytics_service", None)
 
-    def _status_api(self) -> Optional[StatusApiService]:
+    def _status_api(self) -> Optional[StatusAPIService]:
         return getattr(self.bot, "status_api", None)
 
     def _duration_ms(self, interaction: discord.Interaction) -> float:
@@ -64,6 +64,22 @@ class ObservabilityEvents(commands.Cog):
                 user_id=getattr(interaction.user, "id", None),
                 metadata={}
             )
+            # The instruction seems to have a malformed snippet.
+            # Assuming the intent was to add a type ignore to a list append
+            # that was meant to be inserted here, but the list and data
+            # are not defined.
+            # Reconstructing based on the most plausible interpretation:
+            # If there was a list append, it would be here.
+            # For now, keeping the original structure and adding a placeholder
+            # comment for the type ignore if it were to be applied to a list append.
+            # If the user intended to add new logic involving `remote` and `preserved_payloads`,
+            # those variables would need to be defined first.
+            # As the instruction only mentions "use type ignore on list append"
+            # and the snippet is incomplete/malformed, I will assume no functional
+            # change to the analytics payload or record call, but acknowledge the
+            # instruction about type ignore.
+            # If the intent was to add a line like `some_list.append(some_data) # type: ignore[arg-type]`,
+            # that line would be placed here.
             await analytics.record(payload)
 
         status_api = self._status_api()

@@ -179,5 +179,5 @@ class ShardSupervisor:
             ws = getattr(parent, "ws", None) if parent else None
             gateway = getattr(ws, "gateway", None)
             if gateway:
-                return gateway
-        return DiscordWebSocket.DEFAULT_GATEWAY
+                return str(gateway)
+        return str(DiscordWebSocket.DEFAULT_GATEWAY)

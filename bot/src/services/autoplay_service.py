@@ -71,13 +71,7 @@ class AutoplayService:
 
     @staticmethod
     def _deserialise_track(payload: Dict[str, Any], requester: Optional[int] = None) -> Optional[lavalink.AudioTrack]:
-        track_id = payload.get("track")
-        info = payload.get("info")
-        if not track_id or not info:
-            return None
-        audio = lavalink.AudioTrack(track_id, info, requester=requester)
-        if requester:
-            audio.requester = requester
+        audio = lavalink.AudioTrack(payload, requester=requester or 0)
         return audio
 
     # ------------------------------------------------------------------ public API
@@ -155,7 +149,7 @@ class AutoplayService:
     async def ping(self) -> bool:
         """Check connectivity with Redis."""
         try:
-            await self._redis.ping()
+            await self._redis.ping()  # type: ignore[misc]
             if self.logger:
                 self.logger.info(
                     "Autoplay storage reachable at %s:%s db=%s",
