@@ -46,9 +46,15 @@ const escapeHtml = (str) =>
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
 
+const getTestStatus = (t) => {
+    if (t.details?.error) return "fail"
+    if (t.skip) return "skip"
+    return "pass"
+}
+
 const renderTest = (t, idx) => {
     const durationMs = t.details?.duration_ms ?? 0
-    const status = t.details?.error ? "fail" : t.skip ? "skip" : "pass"
+    const status = getTestStatus(t)
     const err = t.details?.error
         ? `<pre class="error">${escapeHtml(t.details.error.message ?? JSON.stringify(t.details.error))}\n${escapeHtml(t.details.error.stack ?? "")}</pre>`
         : ""
@@ -198,7 +204,7 @@ export default class HtmlReporter extends Transform {
                         : "0.0%",
                     tests: results.tests.map((t) => ({
                         name: t.name,
-                        status: t.details?.error ? "fail" : t.skip ? "skip" : "pass",
+                        status: getTestStatus(t),
                         durationMs: t.details?.duration_ms ?? 0,
                         error: t.details?.error
                             ? { message: t.details.error.message, stack: t.details.error.stack }

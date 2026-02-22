@@ -327,6 +327,27 @@ class VectoBeat(commands.AutoShardedBot):
                 return
             raise
 
+    async def _get_preserved_entry_commands(self, commands: list[discord.app_commands.Command | discord.app_commands.Group], use_cached: bool) -> tuple[List[dict], List[str]]:
+        if use_cached and self._entrypoint_payloads:
+            preserved_payloads = list(self._entrypoint_payloads)
+            preserved_names = [item.get("name", "unknown") for item in preserved_payloads]
+            return preserved_payloads, preserved_names
+
+        existing = await self.tree.fetch_commands()
+        local_keys = {self._command_signature(command) for command in commands}
+        preserved_payloads = []
+        preserved_names = []
+
+        for remote in existing:
+            key = self._command_signature(remote)
+            if key not in local_keys:
+                data = remote.to_dict()
+                preserved_payloads.append(data)  # type: ignore[arg-type]
+                preserved_names.append(remote.name)
+
+        self._entrypoint_payloads = preserved_payloads
+        return preserved_payloads, preserved_names
+
     async def _sync_preserving_entry_points(self, *, use_cached: bool = False) -> None:
         """Include remote-only entry commands so Discord does not reject bulk updates."""
         assert self.application_id is not None
@@ -337,37 +358,15 @@ class VectoBeat(commands.AutoShardedBot):
         else:
             payload = [command.to_dict(self.tree) for command in commands]
 
-        preserved_payloads: List[dict]
-        preserved_names: List[str]
-
-        if use_cached and self._entrypoint_payloads:
-            preserved_payloads = list(self._entrypoint_payloads)
-            preserved_names = [item.get("name", "unknown") for item in preserved_payloads]
-        else:
-            existing = await self.tree.fetch_commands()
-            local_keys = {self._command_signature(command) for command in commands}
-            preserved_payloads = []
-            preserved_names = []
-
-            for remote in existing:
-                key = self._command_signature(remote)
-                if key not in local_keys:
-                    data = remote.to_dict()
-                    preserved_payloads.append(data)  # type: ignore[arg-type]
-                    preserved_names.append(remote.name)
-
-            self._entrypoint_payloads = preserved_payloads
-
+        preserved_payloads, preserved_names = await self._get_preserved_entry_commands(commands, use_cached)
         payload.extend(preserved_payloads)
 
-        if preserved_names:
-            if self.logger:
-                self.logger.warning(
-                    "Preserving remote entry-point commands during sync: %s", ", ".join(sorted(set(preserved_names)))
-                )
-        elif not preserved_payloads:
-            if self.logger:
-                self.logger.warning("Entry-point sync error detected but no remote commands were found to preserve.")
+        if preserved_names and self.logger:
+            self.logger.warning(
+                "Preserving remote entry-point commands during sync: %s", ", ".join(sorted(set(preserved_names)))
+            )
+        elif not preserved_payloads and self.logger:
+            self.logger.warning("Entry-point sync error detected but no remote commands were found to preserve.")
 
         for command_payload in payload:
             command_payload.pop("integration_types", None)
