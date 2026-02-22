@@ -19,7 +19,7 @@ from src.configs.schema import ControlPanelAPIConfig
 def svc():
     cfg = ControlPanelAPIConfig(
         enabled=True,
-        base_url="http://vectobeat.test",
+        base_url="https://vectobeat.test",
         api_key="test-key",
     )
     with patch("src.services.server_settings_service.get_plan_capabilities") as mock_plan:

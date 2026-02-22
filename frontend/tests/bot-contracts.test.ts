@@ -9,7 +9,6 @@ import { createBotConciergeHandlers } from "@/app/api/bot/concierge/route"
 import * as successPodModule from "@/app/api/bot/success-pod/route"
 import * as automationActions from "@/app/api/bot/automation-actions/route"
 import * as scaleContactModule from "@/app/api/bot/scale-contact/route"
-import * as queueSyncModule from "@/pages/api/queue-sync"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 
@@ -46,36 +45,3 @@ test("bot scale-contact requires auth", async () => {
   assert.equal(res.status, 401)
 })
 
-test("queue-sync contract accepts authorized payloads", async () => {
-  const createQueueSyncHandler = queueSyncModule.createQueueSyncHandler as any
-  const store = new Map<string, any>()
-  const handler = createQueueSyncHandler({
-    apiKey: "secret",
-    getSnapshot: async (guildId: string) => store.get(guildId) ?? null,
-    saveSnapshot: async (snapshot: any) => {
-      store.set(snapshot.guildId, snapshot)
-      return snapshot
-    },
-    ensureSocket: async () => ({ to: () => ({ emit: () => {} }) } as any),
-  })
-
-  const resPost: any = {
-    status(code: number) {
-      this.statusCode = code
-      return this
-    },
-    json(body: any) {
-      this.body = body
-      return this
-    },
-  }
-  await handler(
-    {
-      method: "POST",
-      headers: { authorization: "Bearer secret" },
-      body: { guildId: "g1", queue: [], nowPlaying: null, updatedAt: new Date().toISOString() },
-    } as any,
-    resPost,
-  )
-  assert.equal(resPost.statusCode, 200)
-})

@@ -795,7 +795,7 @@ class MusicControls(commands.Cog):
             selected = tracks
         elif results.load_type == "SEARCH_RESULT":
             count = min(3, len(tracks))
-            indices = secrets.SystemRandom().sample(range(len(tracks)), count)
+            indices = secrets.SystemRandom().sample(range(len(tracks)), count)  # NOSONAR
             selected = [tracks[i] for i in indices]
         else:
             selected = tracks[:1]

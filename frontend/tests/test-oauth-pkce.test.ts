@@ -11,12 +11,7 @@ import crypto from "node:crypto"
 
 // ─── Inline the helpers under test (same logic as login/route.ts) ─────────────
 
-const base64UrlEncode = (input: Buffer): string =>
-    input
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/g, "")
+const base64UrlEncode = (input: Buffer): string => input.toString("base64url")
 
 const generateCodeVerifier = (): string => base64UrlEncode(crypto.randomBytes(64))
 
