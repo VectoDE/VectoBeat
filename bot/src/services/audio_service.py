@@ -127,4 +127,9 @@ class AudioService:
     @staticmethod
     def _is_spotify_link(query: str) -> bool:
         """Return True if the query references Spotify."""
-        return "spotify.com" in query.lower()
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(query)
+            return "spotify.com" in (parsed.netloc or "").lower()
+        except ValueError:
+            return "spotify.com" in query.lower()

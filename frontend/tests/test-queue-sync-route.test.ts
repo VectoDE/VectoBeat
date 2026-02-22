@@ -31,7 +31,6 @@ const buildReq = (body: unknown, headers: Record<string, string> = {}) =>
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 test("POST /api/queue-sync – returns 401 without auth", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { POST } = require("@/app/api/queue-sync/route")
     const res = await POST(buildReq({ guildId: "g1", queue: [] }))
     assert.equal(res.status, 401)
