@@ -128,18 +128,19 @@ class AudioService:
     def _is_spotify_link(query: str) -> bool:
         """Return True if the query references Spotify."""
         from urllib.parse import urlparse
+        SPOTIFY_DOMAIN = "spotify.com"
 
         try:
             parsed = urlparse(query)
             host = (parsed.hostname or "").lower().rstrip(".")
-            return host == "spotify.com" or host.endswith(".spotify.com")
+            return host == SPOTIFY_DOMAIN or host.endswith(f".{SPOTIFY_DOMAIN}")
         except ValueError:
             lowered = query.lower()
             # Fallback: perform a conservative check that avoids matching attacker-controlled
             # domains like "evil-spotify.com" while still allowing subdomains of spotify.com.
-            if "spotify.com" not in lowered:
+            if SPOTIFY_DOMAIN not in lowered:
                 return False
             # Best-effort: try parsing again; if we get a hostname, reuse the safe check.
             parsed_fallback = urlparse(query if "://" in query else f"https://{query}")
             host = (parsed_fallback.hostname or "").lower().rstrip(".")
-            return host == "spotify.com" or host.endswith(".spotify.com")
+            return host == SPOTIFY_DOMAIN or host.endswith(f".{SPOTIFY_DOMAIN}")

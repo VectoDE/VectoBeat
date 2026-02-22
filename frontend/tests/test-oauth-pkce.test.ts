@@ -20,87 +20,41 @@ const generateCodeChallenge = (verifier: string): string =>
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
-test("base64UrlEncode – no raw + characters", () => {
-    // Run many samples to catch probabilistic failures
-    for (let i = 0; i < 200; i++) {
-        const encoded = base64UrlEncode(crypto.randomBytes(64))
-        assert.ok(!encoded.includes("+"), `Encoded string contains '+': ${encoded}`)
-    }
-})
+const runEncodingCheck = (name: string, checkFn: (encoded: string) => void) => {
+    test(`base64UrlEncode – ${name}`, () => {
+        for (let i = 0; i < 200; i++) {
+            checkFn(base64UrlEncode(crypto.randomBytes(64)))
+        }
+    })
+}
 
-test("base64UrlEncode – no raw / characters", () => {
-    for (let i = 0; i < 200; i++) {
-        const encoded = base64UrlEncode(crypto.randomBytes(64))
-        assert.ok(!encoded.includes("/"), `Encoded string contains '/': ${encoded}`)
-    }
-})
+runEncodingCheck("no raw + characters", (encoded) => assert.ok(!encoded.includes("+"), `Encoded string contains '+': ${encoded}`))
+runEncodingCheck("no raw / characters", (encoded) => assert.ok(!encoded.includes("/"), `Encoded string contains '/': ${encoded}`))
+runEncodingCheck("no padding = characters", (encoded) => assert.ok(!encoded.includes("="), `Encoded string contains '=': ${encoded}`))
+runEncodingCheck("only valid base64url charset", (encoded) => assert.match(encoded, /^[A-Za-z0-9\-_]+$/, `Invalid chars in: ${encoded}`))
 
-test("base64UrlEncode – no padding = characters", () => {
-    for (let i = 0; i < 200; i++) {
-        const encoded = base64UrlEncode(crypto.randomBytes(64))
-        assert.ok(!encoded.includes("="), `Encoded string contains '=': ${encoded}`)
-    }
-})
+const runVerifierCheck = (name: string, checkFn: (verifier: string) => void) => {
+    test(`generateCodeVerifier – ${name}`, () => {
+        for (let i = 0; i < 20; i++) {
+            checkFn(generateCodeVerifier())
+        }
+    })
+}
 
-test("base64UrlEncode – only valid base64url charset", () => {
-    const validChars = /^[A-Za-z0-9\-_]+$/
-    for (let i = 0; i < 200; i++) {
-        const encoded = base64UrlEncode(crypto.randomBytes(64))
-        assert.match(encoded, validChars, `Invalid chars in: ${encoded}`)
-    }
-})
-
-test("generateCodeVerifier – meets PKCE minimum length (43 chars)", () => {
-    for (let i = 0; i < 20; i++) {
-        const verifier = generateCodeVerifier()
-        assert.ok(
-            verifier.length >= 43,
-            `Verifier too short (${verifier.length}): ${verifier}`,
-        )
-    }
-})
-
-test("generateCodeVerifier – within PKCE maximum length (128 chars)", () => {
-    for (let i = 0; i < 20; i++) {
-        const verifier = generateCodeVerifier()
-        assert.ok(
-            verifier.length <= 128,
-            `Verifier too long (${verifier.length}): ${verifier}`,
-        )
-    }
-})
-
-test("generateCodeVerifier – only valid unreserved chars", () => {
-    const validChars = /^[A-Za-z0-9\-._~]+$/
-    for (let i = 0; i < 20; i++) {
-        const verifier = generateCodeVerifier()
-        assert.match(verifier, validChars, `Invalid verifier chars: ${verifier}`)
-    }
-})
+runVerifierCheck("meets PKCE minimum length (43 chars)", (ver) => assert.ok(ver.length >= 43, `Too short: ${ver}`))
+runVerifierCheck("within PKCE maximum length (128 chars)", (ver) => assert.ok(ver.length <= 128, `Too long: ${ver}`))
+runVerifierCheck("only valid unreserved chars", (ver) => assert.match(ver, /^[A-Za-z0-9\-._~]+$/, `Invalid chars: ${ver}`))
 
 test("generateCodeChallenge – is non-empty", () => {
-    const verifier = generateCodeVerifier()
-    const challenge = generateCodeChallenge(verifier)
-    assert.ok(challenge.length > 0)
+    assert.ok(generateCodeChallenge(generateCodeVerifier()).length > 0)
 })
 
-test("generateCodeChallenge – is deterministic for the same verifier", () => {
+test("generateCodeChallenge – properties", () => {
     const verifier = "fixed-verifier-string"
-    const c1 = generateCodeChallenge(verifier)
-    const c2 = generateCodeChallenge(verifier)
-    assert.equal(c1, c2)
-})
+    assert.equal(generateCodeChallenge(verifier), generateCodeChallenge(verifier), "deterministic")
+    assert.notEqual(generateCodeChallenge(generateCodeVerifier()), generateCodeChallenge(generateCodeVerifier()), "differs for different verifiers")
 
-test("generateCodeChallenge – differs for different verifiers", () => {
-    const c1 = generateCodeChallenge(generateCodeVerifier())
-    const c2 = generateCodeChallenge(generateCodeVerifier())
-    assert.notEqual(c1, c2)
-})
-
-test("generateCodeChallenge – is valid base64url", () => {
-    const verifier = generateCodeVerifier()
-    const challenge = generateCodeChallenge(verifier)
-    const validChars = /^[A-Za-z0-9\-_]+$/
-    assert.match(challenge, validChars)
-    assert.ok(!challenge.includes("="))
+    const challenge = generateCodeChallenge(generateCodeVerifier())
+    assert.match(challenge, /^[A-Za-z0-9\-_]+$/, "valid base64url")
+    assert.ok(!challenge.includes("="), "no padding")
 })

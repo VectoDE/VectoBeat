@@ -15,6 +15,8 @@ from src.utils.embeds import EmbedFactory
 if TYPE_CHECKING:
     from src.services.profile_service import GuildProfile
 
+MSG_GUILD_ONLY = "This command can only be used inside a guild."
+
 
 def _manager(bot: Any) -> GuildProfileManager:
     manager = getattr(bot, "profile_manager", None)
@@ -42,7 +44,7 @@ class ProfileCommands(commands.Cog):
     def _ensure_manage_guild(inter: discord.Interaction) -> Optional[str]:
         """Verify the invoker has manage_guild permissions."""
         if not inter.guild:
-            return "This command can only be used inside a guild."
+            return MSG_GUILD_ONLY
         member = inter.guild.get_member(inter.user.id) if isinstance(inter.user, discord.User) else inter.user
         if not isinstance(member, discord.Member):
             return "Unable to resolve invoking member."
@@ -91,7 +93,7 @@ class ProfileCommands(commands.Cog):
     @profile.command(name="show", description="Display the current playback profile for this guild.")
     async def show(self, inter: discord.Interaction) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         profile = _manager(self.bot).get(inter.guild.id)  # type: ignore[union-attr]
         await inter.response.send_message(embed=self._profile_embed(inter, profile), ephemeral=True)
@@ -100,7 +102,7 @@ class ProfileCommands(commands.Cog):
     @app_commands.describe(level="Volume percent to apply automatically (0-200).")
     async def set_volume(self, inter: discord.Interaction, level: app_commands.Range[int, 0, 200]) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
             await inter.response.send_message(error, ephemeral=True)
@@ -123,7 +125,7 @@ class ProfileCommands(commands.Cog):
     @profile.command(name="set-autoplay", description="Enable or disable autoplay when the queue finishes.")
     async def set_autoplay(self, inter: discord.Interaction, enabled: bool) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
             await inter.response.send_message(error, ephemeral=True)
@@ -159,7 +161,7 @@ class ProfileCommands(commands.Cog):
     )
     async def set_announcement(self, inter: discord.Interaction, style: app_commands.Choice[str]) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
             await inter.response.send_message(error, ephemeral=True)
@@ -179,7 +181,7 @@ class ProfileCommands(commands.Cog):
     @profile.command(name="set-mastering", description="Enable or disable adaptive mastering (loudness normalization).")
     async def set_mastering(self, inter: discord.Interaction, enabled: bool) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
             await inter.response.send_message(error, ephemeral=True)
@@ -199,7 +201,7 @@ class ProfileCommands(commands.Cog):
     @profile.command(name="set-compliance", description="Enable compliance mode (export-ready safety logs).")
     async def set_compliance(self, inter: discord.Interaction, enabled: bool) -> None:
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a guild.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if (error := self._ensure_manage_guild(inter)) is not None:
             await inter.response.send_message(error, ephemeral=True)

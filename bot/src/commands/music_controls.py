@@ -14,16 +14,16 @@ from discord.ext import commands
 
 from src.services.lavalink_service import LavalinkVoiceClient
 from src.services.server_settings_service import QueueCapacity
+from src.services.server_settings import ServerSettingsService
 from src.utils.embeds import EmbedFactory
+from src.utils.time import ms_to_clock
 from lavalink.errors import ClientError
 
+MSG_GUILD_ONLY = "This command can only be used inside a server."
+MSG_NOT_CONNECTED = "Not connected."
+MSG_NOTHING_PLAYING = "Nothing is playing."
+
 if TYPE_CHECKING:
-    from src.services.queue_sync_service import QueueSyncService
-    from src.services.shard_supervisor import ShardSupervisor
-    from src.services.alert_service import AlertService
-    from src.services.automation_audit_service import AutomationAuditService
-    from src.services.command_throttle_service import CommandThrottleService
-    from src.services.analytics_export_service import AnalyticsExportService
     from src.services.queue_copilot_service import QueueCopilotService
     from src.services.server_settings_service import ServerSettingsService
     from src.services.dj_permission_service import DJPermissionManager
@@ -486,6 +486,23 @@ class MusicControls(commands.Cog):
             )
         return "Only configured DJ roles may use this command. Ask an admin to run `/dj add-role`."
 
+    async def _prepare_dj_command(self, inter: discord.Interaction, *, check_playing: bool = True) -> tuple[Optional[EmbedFactory], Optional[lavalink.DefaultPlayer]]:
+        factory = EmbedFactory(inter.guild.id if inter.guild else None)
+        if not inter.guild:
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
+            return None, None
+        if (error := self._require_dj(inter)) is not None:
+            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
+            return None, None
+        player = self.bot.lavalink.player_manager.get(inter.guild.id)
+        if not player:
+            await inter.response.send_message(embed=factory.warning(MSG_NOT_CONNECTED), ephemeral=True)
+            return None, None
+        if check_playing and not player.is_playing:
+            await inter.response.send_message(embed=factory.warning(MSG_NOTHING_PLAYING), ephemeral=True)
+            return None, None
+        return factory, player
+
     async def _log_dj_action(self, inter: discord.Interaction, action: str, *, details: Optional[str] = None) -> None:
         manager = self._dj_manager()
         if manager and inter.guild:
@@ -743,7 +760,7 @@ class MusicControls(commands.Cog):
         """Queue one or more tracks based on a search query or direct URL."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         if not await self._throttle_command(inter, "play"):
             return
@@ -876,18 +893,8 @@ class MusicControls(commands.Cog):
     @app_commands.command(name="skip", description="Skip the current track.")
     async def skip(self, inter: discord.Interaction) -> None:
         """Skip the active track and continue with the next track in queue."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if not await self._throttle_command(inter, "skip"):
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player or not player.is_playing:
-            await inter.response.send_message(embed=factory.warning("Nothing to skip."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=True)
+        if not factory or not player:
             return
         current = getattr(player, "current", None)
         await player.skip()
@@ -912,18 +919,8 @@ class MusicControls(commands.Cog):
     @app_commands.command(name="stop", description="Stop playback and clear the queue.")
     async def stop(self, inter: discord.Interaction) -> None:
         """Stop playback completely and clear the queue."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if not await self._throttle_command(inter, "stop"):
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player:
-            await inter.response.send_message(embed=factory.warning("Not connected."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=False)
+        if not factory or not player:
             return
         player.queue.clear()
         await player.stop()
@@ -942,16 +939,8 @@ class MusicControls(commands.Cog):
     @app_commands.command(name="pause", description="Pause playback.")
     async def pause(self, inter: discord.Interaction) -> None:
         """Pause the player."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player or not player.is_playing:
-            await inter.response.send_message(embed=factory.warning("Nothing is playing."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=True)
+        if not factory or not player:
             return
         if player.paused:
             await inter.response.send_message(embed=factory.warning("Already paused."), ephemeral=True)
@@ -966,16 +955,8 @@ class MusicControls(commands.Cog):
     @app_commands.command(name="resume", description="Resume playback.")
     async def resume(self, inter: discord.Interaction) -> None:
         """Resume the player if it is paused."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player or not player.is_playing:
-            await inter.response.send_message(embed=factory.warning("Nothing is playing."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=True)
+        if not factory or not player:
             return
         if not player.paused:
             await inter.response.send_message(embed=factory.warning("Playback is not paused."), ephemeral=True)
@@ -992,11 +973,11 @@ class MusicControls(commands.Cog):
         """Display the currently playing track with live updates."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
+            await inter.response.send_message(MSG_GUILD_ONLY, ephemeral=True)
             return
         player = self.bot.lavalink.player_manager.get(inter.guild.id)
         if not player or not player.is_playing or not player.current:
-            await inter.response.send_message(embed=factory.warning("Nothing is playing."), ephemeral=True)
+            await inter.response.send_message(embed=factory.warning(MSG_NOTHING_PLAYING), ephemeral=True)
             return
 
         embed = self._build_nowplaying_embed(player, inter.guild, factory)
@@ -1013,16 +994,8 @@ class MusicControls(commands.Cog):
     @app_commands.describe(level="Volume percentage between 0 and 200.")
     async def volume(self, inter: discord.Interaction, level: app_commands.Range[int, 0, 200]) -> None:
         """Adjust the playback volume."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player:
-            await inter.response.send_message(embed=factory.warning("Not connected."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=False)
+        if not factory or not player:
             return
         await player.set_volume(level)
         embed = factory.primary("🔊 Volume Updated", f"Set to **{level}%**")
@@ -1035,7 +1008,7 @@ class MusicControls(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
             await inter.response.send_message(
-                embed=factory.warning("This command can only be used inside a server."),
+                embed=factory.warning(MSG_GUILD_ONLY),
                 ephemeral=True,
             )
             return
@@ -1086,16 +1059,8 @@ class MusicControls(commands.Cog):
     )
     async def loop(self, inter: discord.Interaction, mode: app_commands.Choice[int]) -> None:
         """Set the loop mode for the player."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player:
-            await inter.response.send_message(embed=factory.warning("Not connected."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=False)
+        if not factory or not player:
             return
         player.loop = mode.value  # type: ignore
         embed = factory.primary("🔁 Loop Mode", f"Loop set to **{mode.name}**")
@@ -1106,16 +1071,8 @@ class MusicControls(commands.Cog):
     @app_commands.describe(position="Timestamp to move to, e.g. 1:30")
     async def timeshift(self, inter: discord.Interaction, position: str):
         """Move to a timestamp within the current track without restarting playback."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player or not player.is_playing or not player.current:
-            await inter.response.send_message(embed=factory.warning("Nothing is playing."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=True)
+        if not factory or not player:
             return
 
         try:
@@ -1143,16 +1100,8 @@ class MusicControls(commands.Cog):
     @app_commands.command(name="replay", description="Restart the current track from the beginning.")
     async def replay(self, inter: discord.Interaction) -> None:
         """Restart the current track from the beginning."""
-        factory = EmbedFactory(inter.guild.id if inter.guild else None)
-        if not inter.guild:
-            await inter.response.send_message("This command can only be used inside a server.", ephemeral=True)
-            return
-        if (error := self._require_dj(inter)) is not None:
-            await inter.response.send_message(embed=factory.error(error), ephemeral=True)
-            return
-        player = self.bot.lavalink.player_manager.get(inter.guild.id)
-        if not player or not player.is_playing or not player.current:
-            await inter.response.send_message(embed=factory.warning("Nothing is playing."), ephemeral=True)
+        factory, player = await self._prepare_dj_command(inter, check_playing=True)
+        if not factory or not player:
             return
         await player.seek(0)
         embed = factory.primary("🔁 Replay", f"Restarted **{player.current.title}**")  # type: ignore
@@ -1257,7 +1206,7 @@ class NowPlayingView(discord.ui.View):
         """Cycle loop mode."""
         player = self.controls.bot.lavalink.player_manager.get(self.guild_id)
         if not player:
-            await interaction.response.send_message("Not connected.", ephemeral=True)
+            await interaction.response.send_message(MSG_NOT_CONNECTED, ephemeral=True)
             return
 
         # 0=Off, 1=Track, 2=Queue

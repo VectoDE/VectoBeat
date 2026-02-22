@@ -19,6 +19,7 @@ from src.services.lavalink_service import LavalinkVoiceClient
 from src.utils.embeds import EmbedFactory
 
 REQUIRED_VOICE_PERMS = ("connect", "speak", "view_channel", "use_voice_activation")
+GUILD_ONLY_MSG = "This command can only be used within a guild."
 
 
 class ConnectionCommands(commands.Cog):
@@ -93,7 +94,7 @@ class ConnectionCommands(commands.Cog):
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
 
         if not inter.guild:
-            await inter.response.send_message("This command can only be used within a guild.", ephemeral=True)
+            await inter.response.send_message(GUILD_ONLY_MSG, ephemeral=True)
             return
         assert inter.guild is not None
 
@@ -183,7 +184,7 @@ class ConnectionCommands(commands.Cog):
         """Disconnect from voice and destroy the Lavalink player."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            await inter.response.send_message("This command can only be used within a guild.", ephemeral=True)
+            await inter.response.send_message(GUILD_ONLY_MSG, ephemeral=True)
             return
 
         voice_client = inter.guild.voice_client
@@ -216,7 +217,7 @@ class ConnectionCommands(commands.Cog):
         """Display diagnostics for the current voice session."""
         factory = EmbedFactory(inter.guild.id if inter.guild else None)
         if not inter.guild:
-            await inter.response.send_message("This command can only be used within a guild.", ephemeral=True)
+            await inter.response.send_message(GUILD_ONLY_MSG, ephemeral=True)
             return
 
         player = self._find_player(self.bot, inter.guild.id)
