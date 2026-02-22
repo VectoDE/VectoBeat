@@ -28,7 +28,7 @@ test("normalizeToken – strips surrounding quotes", () => {
 
 test("normalizeToken – returns empty string for null/undefined", () => {
     assert.equal(normalizeToken(null), "")
-    assert.equal(normalizeToken(undefined), "")
+    assert.equal(normalizeToken(), "")
 })
 
 // ─── extractToken ─────────────────────────────────────────────────────────────

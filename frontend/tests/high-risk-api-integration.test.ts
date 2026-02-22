@@ -8,7 +8,6 @@ import { createApiTokenHandlers } from "@/app/api/control-panel/api-tokens/route
 import { createSecurityAuditHandlers } from "@/app/api/control-panel/security/audit/route"
 import { createAnalyticsExportHandlers } from "@/app/api/analytics/export/route"
 import { defaultServerFeatureSettings } from "@/lib/server-settings"
-import type { QueueSnapshot } from "@/types/queue-sync"
 
 const buildRequest = (url: string, init?: RequestInit) => new NextRequest(new Request(url, init))
 

@@ -35,5 +35,5 @@ test("sanitizeSlug – handles unicode / non-ascii chars", () => {
 
 test("sanitizeSlug – handles only special characters", () => {
     const result = sanitizeSlug("!!!###")
-    assert.ok(result === "" || /^[-]*$/.test(result))
+    assert.ok(result === "" || /^-*$/.test(result))
 })

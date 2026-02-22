@@ -22,9 +22,9 @@ def test_embed_factory_defaults(mock_config):
     
     assert embed.title == "Title"
     assert embed.description == "Desc"
-    assert embed.color is not None and embed.color.value == 0x123456
-    assert embed.footer is not None and embed.footer.text == "Footer"
-    assert embed.footer is not None and embed.footer.icon_url == "https://footer.icon"
+    assert embed.color.value == 0x123456
+    assert embed.footer.text == "Footer"
+    assert embed.footer.icon_url == "https://footer.icon"
 
 def test_embed_factory_branding(mock_config):
     resolver = MagicMock(return_value={
@@ -37,8 +37,8 @@ def test_embed_factory_branding(mock_config):
     embed = factory.primary("Title", "Desc")
     
     resolver.assert_called_with(123)
-    assert embed.color is not None and embed.color.value == 0xABCDEF
-    assert embed.thumbnail is not None and embed.thumbnail.url == "https://logo.url"
+    assert embed.color.value == 0xABCDEF
+    assert embed.thumbnail.url == "https://logo.url"
 
 def test_branding_sanitization(mock_config):
     # Test hex string sanitization
@@ -50,4 +50,4 @@ def test_branding_sanitization(mock_config):
     factory = EmbedFactory(guild_id=123)
     embed = factory.primary("Title")
     
-    assert embed.color is not None and embed.color.value == 0xFF00FF
+    assert embed.color.value == 0xFF00FF
