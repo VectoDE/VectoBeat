@@ -1,15 +1,38 @@
 name-template: "v$NEXT_PATCH_VERSION"
 tag-template: "v$NEXT_PATCH_VERSION"
+
+version-resolver:
+  major:
+    labels:
+      - "major"
+      - "breaking"
+  minor:
+    labels:
+      - "minor"
+      - "feature"
+      - "enhancement"
+  patch:
+    labels:
+      - "patch"
+      - "bug"
+  default: patch
+
 categories:
   - title: "🚀 Features"
     labels:
       - feature
       - enhancement
-  - title: "🐛 Fixes"
+      - feat
+  - title: "🐛 Bug Fixes"
     labels:
       - bug
       - fix
       - bugfix
+  - title: "🛡️ Security"
+    labels:
+      - security
+      - CVE
+      - CWE
   - title: "🛠 Maintenance"
     labels:
       - chore
@@ -23,6 +46,37 @@ categories:
     labels:
       - test
       - tests
+
+autolabeler:
+  - label: "feature"
+    branch:
+      - "/feature/.+/"
+    title:
+      - "/^feat:.+/"
+  - label: "bug"
+    branch:
+      - "/bug/.+/"
+      - "/fix/.+/"
+    title:
+      - "/^fix:.+/"
+  - label: "security"
+    title:
+      - "/CVE-.+/"
+      - "/CWE-.+/"
+      - "/security/i"
+  - label: "chore"
+    title:
+      - "/^chore:.+/"
+  - label: "documentation"
+    title:
+      - "/^docs:.+/"
+
+replacers:
+  - search: "/CVE-(\\d{4}-\\d+)/g"
+    replace: "[CVE-$1](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-$1)"
+  - search: "/CWE-(\\d+)/g"
+    replace: "[CWE-$1](https://cwe.mitre.org/node/index.html?608?id=$1)"
+
 change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
 no-changes-template: "No changes in this release."
 template: |
