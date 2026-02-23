@@ -13,8 +13,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from src.services.lavalink_service import LavalinkVoiceClient
-from src.services.server_settings_service import QueueCapacity
-from src.services.server_settings import ServerSettingsService
+from src.services.server_settings_service import QueueCapacity, ServerSettingsService
 from src.utils.embeds import EmbedFactory
 from src.utils.time import ms_to_clock
 from lavalink.errors import ClientError
