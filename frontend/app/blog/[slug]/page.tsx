@@ -8,6 +8,7 @@ import { sanitizeSlug, resolveParams } from "@/lib/utils"
 import Navigation from "@/components/navigation"
 import Footer from "@/components/footer"
 import DOMPurify from "isomorphic-dompurify"
+import { BlogViewTracker } from "@/components/blog-view-tracker"
 
 type BlogPageParams = { params: Promise<{ slug: string }> | { slug: string } }
 
@@ -48,6 +49,7 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
 
   return (
     <div className="min-h-screen bg-background">
+      <BlogViewTracker identifier={post.id} />
       <Navigation />
       <main className="py-20 px-4">
         <article className="max-w-4xl mx-auto">

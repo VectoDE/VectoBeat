@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { PDFDocument } from "pdf-lib"
 import path from "path"
-import { getFullUserData, getStoredUserProfile } from "@/lib/db"
+import { getFullUserData, getStoredUserProfile, getPool } from "@/lib/db"
 import { ensureStripeCustomerForUser } from "@/lib/stripe-customers"
 import { verifyRequestForUser } from "@/lib/auth"
 import { PdfGenerator } from "@/lib/pdf-generator"
@@ -44,10 +44,10 @@ export async function GET(request: NextRequest) {
 
   // --- Generate PDF ---
   const doc = await PDFDocument.create()
-  
+
   // Attempt to resolve logo path
   const logoPath = path.join(process.cwd(), "public", "logo.png")
-  
+
   const gen = new PdfGenerator(doc, logoPath)
   await gen.init()
 
@@ -77,13 +77,13 @@ export async function GET(request: NextRequest) {
 
   // 2. Contact Information
   gen.drawSectionTitle("Contact Information")
-  
+
   const email = storedProfile?.email ?? userData.contact?.email ?? "-"
   const phone = storedProfile?.phone ?? userData.contact?.phone ?? "-"
-  
-  let stripeId = userData.contact?.stripeCustomerId ?? 
-                   userData.subscriptions?.find((s: any) => s.stripeCustomerId)?.stripeCustomerId ?? 
-                   "-"
+
+  let stripeId = userData.contact?.stripeCustomerId ??
+    userData.subscriptions?.find((s: any) => s.stripeCustomerId)?.stripeCustomerId ??
+    "-"
 
   // Attempt to resolve Stripe ID if missing but we have an email
   if ((stripeId === "-" || !stripeId) && email !== "-") {
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     gen.drawSectionTitle("Address")
     const street = [userData.preferences.addressStreet, userData.preferences.addressHouseNumber].filter(Boolean).join(" ")
     const city = [userData.preferences.addressPostalCode, userData.preferences.addressCity].filter(Boolean).join(" ")
-    
+
     gen.drawKeyValue("Street", street)
     gen.drawKeyValue("City", city)
     gen.drawKeyValue("State", userData.preferences.addressState)
@@ -125,10 +125,10 @@ export async function GET(request: NextRequest) {
     gen.drawKeyValue("Headline", userData.settings.headline)
     gen.drawKeyValue("Location", userData.settings.location)
     gen.drawKeyValue("Website", userData.settings.website)
-    
+
     if (userData.settings.bio) {
-        gen.checkPageBreak(40)
-        gen.drawKeyValue("Bio", userData.settings.bio.substring(0, 100) + (userData.settings.bio.length > 100 ? "..." : ""))
+      gen.checkPageBreak(40)
+      gen.drawKeyValue("Bio", userData.settings.bio.substring(0, 100) + (userData.settings.bio.length > 100 ? "..." : ""))
     }
   }
 
@@ -168,25 +168,25 @@ export async function GET(request: NextRequest) {
   gen.drawKeyValue("Analytics Opt-In", userData.privacy?.analyticsOptIn ? "Yes" : "No")
 
   if (userData.userBackupCodes && userData.userBackupCodes.length > 0) {
-      gen.checkPageBreak(40)
-      
-      const rows = userData.userBackupCodes.map(code => [
-          "****" + code.id.slice(-4), // Mask ID
-          formatDate(code.createdAt),
-          code.usedAt ? formatDate(code.usedAt) : "Unused"
-      ])
-      gen.drawTable(["Backup Code (Masked)", "Created", "Status"], rows, [150, 150, 150])
+    gen.checkPageBreak(40)
+
+    const rows = userData.userBackupCodes.map(code => [
+      "****" + code.id.slice(-4), // Mask ID
+      formatDate(code.createdAt),
+      code.usedAt ? formatDate(code.usedAt) : "Unused"
+    ])
+    gen.drawTable(["Backup Code (Masked)", "Created", "Status"], rows, [150, 150, 150])
   }
 
   // 6b. Password History
   if (userData.passwordHistory && userData.passwordHistory.length > 0) {
-      gen.checkPageBreak(40)
-      gen.drawSectionTitle("Password History")
-      const rows = userData.passwordHistory.map((h: any) => [
-          formatDate(h.createdAt),
-          h.password
-      ])
-      gen.drawTable(["Date", "Password (Hash/Encrypted)"], rows, [150, 300])
+    gen.checkPageBreak(40)
+    gen.drawSectionTitle("Password History")
+    const rows = userData.passwordHistory.map((h: any) => [
+      formatDate(h.createdAt),
+      h.password
+    ])
+    gen.drawTable(["Date", "Password (Hash/Encrypted)"], rows, [150, 300])
   }
 
   // 7. Preferences
@@ -303,6 +303,20 @@ export async function GET(request: NextRequest) {
   gen.addLegalPage()
 
   const pdfBytes = await doc.save()
+
+  const db = getPool()
+  if (db) {
+    try {
+      await db.dataExportRequest.create({
+        data: {
+          discordId,
+          status: "completed",
+        }
+      })
+    } catch (err) {
+      console.error("[VectoBeat] Failed to log compliance data export request:", err)
+    }
+  }
 
   return new NextResponse(Buffer.from(pdfBytes), {
     headers: {

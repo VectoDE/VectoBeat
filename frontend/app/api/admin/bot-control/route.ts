@@ -11,6 +11,7 @@ const ACTIONS: Record<string, string> = {
   reload_commands: "reload-commands",
   reload_config: "reload-config",
   restart_frontend: "restart-frontend",
+  hot_patch: "hot-patch",
 }
 
 export async function POST(request: NextRequest) {

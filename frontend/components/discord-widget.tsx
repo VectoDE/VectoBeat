@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { Users, UserCheck, ExternalLink } from "lucide-react"
-import { apiClient } from "@/lib/api-client"
 
 interface DiscordWidgetMember {
   status: string
@@ -33,7 +32,10 @@ export default function DiscordWidget() {
 
     const fetchDiscordWidget = async () => {
       try {
-        const data = await apiClient<DiscordWidgetResponse>(`https://discord.com/api/guilds/${DISCORD_SERVER_ID}/widget.json`)
+        // Native fetch avoids apiClient injecting Content-Type which triggers CORS preflight rejections
+        const res = await fetch(`https://discord.com/api/guilds/${DISCORD_SERVER_ID}/widget.json`)
+        if (!res.ok) throw new Error("Failed to fetch widget")
+        const data = await res.json() as DiscordWidgetResponse
         const normalizedMembers = Array.isArray(data.members) ? data.members : []
         const baseOnline = typeof data.presence_count === "number" ? data.presence_count : normalizedMembers.length
 
@@ -44,11 +46,12 @@ export default function DiscordWidget() {
         const inviteCode = inviteUrl.split("/").filter(Boolean).pop()?.split("?")[0]
         if (inviteCode) {
           try {
-            const inviteData = await apiClient<any>(
-              `https://discord.com/api/v10/invites/${inviteCode}?with_counts=true&with_expiration=true`
-            )
-            onlineMembers = inviteData.approximate_presence_count ?? onlineMembers
-            totalMembers = inviteData.approximate_member_count ?? totalMembers
+            const inviteRes = await fetch(`https://discord.com/api/v10/invites/${inviteCode}?with_counts=true&with_expiration=true`)
+            if (inviteRes.ok) {
+              const inviteData = await inviteRes.json()
+              onlineMembers = inviteData.approximate_presence_count ?? onlineMembers
+              totalMembers = inviteData.approximate_member_count ?? totalMembers
+            }
           } catch (error) {
             console.error("Failed to fetch invite counts:", error)
           }

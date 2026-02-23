@@ -174,8 +174,8 @@ export const getBotStatus = async () => {
         expires: now + 30 * 1000,
       }
       return payload
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+    } catch (error: any) {
+      if (error?.name === "AbortError") {
         // Drop aborted attempts quietly; we'll fall through to other endpoints.
         lastError = new Error(`Bot status request timed out after ${FETCH_TIMEOUT_MS}ms (${endpoint})`)
       } else {

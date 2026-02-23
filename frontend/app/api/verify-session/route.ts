@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { cookies } from "next/headers"
+import { extractBearerToken } from "@/lib/auth"
 import { verifyRequestForUser } from "@/lib/auth"
-import { getUserSubscriptions, getUserRole, getUserSecurity, type SubscriptionSummary } from "@/lib/db"
+import { hashSessionToken } from "@/lib/session"
+import { getUserSubscriptions, getUserRole, getUserSecurity, getSessionByHash, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 import { apiClient } from "@/lib/api-client"
 
@@ -12,7 +14,17 @@ const resolveDiscordId = async (request: NextRequest) => {
     cookieStore.get("discord_id")?.value ||
     cookieStore.get("discordId")?.value
   const queryId = request.nextUrl.searchParams.get("discordId")
-  return cookieId || queryId
+  if (cookieId || queryId) {
+    return cookieId || queryId
+  }
+
+  const token = extractBearerToken(request)
+  if (token) {
+    const sessionHash = hashSessionToken(token)
+    return await getSessionByHash(sessionHash)
+  }
+
+  return null
 }
 
 export async function GET(request: NextRequest) {
@@ -93,7 +105,7 @@ const resolveGuilds = async (verification: any): Promise<ResolvedGuild[]> => {
         ...guild,
         // We do not preserve prior.hasBot because it might be stale or incorrect (e.g. defaulted to true).
         // The frontend will determine actual bot presence via the bot status API and subscription data.
-        hasBot: false, 
+        hasBot: false,
       }
     })
     return fresh

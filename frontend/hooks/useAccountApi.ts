@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { apiClient } from '@/lib/api-client'
 
 export interface ContactInfo {
@@ -39,8 +39,8 @@ export interface BillingInfo {
 
 export const useAccountApi = () => {
   const fetchContactInfo = useCallback(async (discordId: string): Promise<ContactInfo> => {
-    return apiClient<ContactInfo>(`/api/account/contact?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<ContactInfo>(`/api/account/contact?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
@@ -52,8 +52,8 @@ export const useAccountApi = () => {
   }, [])
 
   const fetchPreferences = useCallback(async (discordId: string): Promise<Preferences> => {
-    return apiClient<Preferences>(`/api/preferences?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<Preferences>(`/api/preferences?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
@@ -65,8 +65,8 @@ export const useAccountApi = () => {
   }, [])
 
   const fetchNotifications = useCallback(async (discordId: string): Promise<NotificationSettings> => {
-    return apiClient<NotificationSettings>(`/api/notifications?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<NotificationSettings>(`/api/notifications?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
@@ -78,8 +78,8 @@ export const useAccountApi = () => {
   }, [])
 
   const fetchPrivacySettings = useCallback(async (discordId: string): Promise<PrivacySettings> => {
-    return apiClient<PrivacySettings>(`/api/privacy?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<PrivacySettings>(`/api/privacy?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
@@ -91,8 +91,8 @@ export const useAccountApi = () => {
   }, [])
 
   const fetchBillingInfo = useCallback(async (discordId: string): Promise<BillingInfo> => {
-    return apiClient<BillingInfo>(`/api/billing?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<BillingInfo>(`/api/billing?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
@@ -120,12 +120,12 @@ export const useAccountApi = () => {
   }, [])
 
   const fetchUserData = useCallback(async (discordId: string): Promise<any> => {
-    return apiClient<any>(`/api/account?discordId=${discordId}`, { 
-      cache: "no-store" 
+    return apiClient<any>(`/api/account?discordId=${discordId}`, {
+      cache: "no-store"
     })
   }, [])
 
-  return {
+  return useMemo(() => ({
     fetchContactInfo,
     updateContactInfo,
     fetchPreferences,
@@ -139,5 +139,19 @@ export const useAccountApi = () => {
     deleteAccount,
     exportData,
     fetchUserData
-  }
+  }), [
+    fetchContactInfo,
+    updateContactInfo,
+    fetchPreferences,
+    updatePreferences,
+    fetchNotifications,
+    updateNotifications,
+    fetchPrivacySettings,
+    updatePrivacySettings,
+    fetchBillingInfo,
+    updateBillingInfo,
+    deleteAccount,
+    exportData,
+    fetchUserData
+  ])
 }
