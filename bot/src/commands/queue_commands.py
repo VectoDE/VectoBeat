@@ -14,6 +14,7 @@ from discord.ext import commands
 from src.services.playlist_service import PlaylistService, PlaylistStorageError
 from src.services.server_settings_service import QueueCapacity
 from src.utils.embeds import EmbedFactory
+from src.utils.time import ms_to_clock
 from src.utils.progress import SlashProgress
 from src.utils.pagination import EmbedPaginator
 
@@ -28,26 +29,7 @@ if TYPE_CHECKING:
     from src.services.analytics_export_service import AnalyticsExportService
     from src.services.queue_copilot_service import QueueCopilotService
 
-if TYPE_CHECKING:
-    from src.services.dj_permission_service import DJPermissionManager
-    from src.services.server_settings_service import ServerSettingsService
-    from src.services.queue_sync_service import QueueSyncService
-    from src.services.shard_supervisor import ShardSupervisor
-    from src.services.alert_service import AlertService
-    from src.services.automation_audit_service import AutomationAuditService
-    from src.services.command_throttle_service import CommandThrottleService
-    from src.services.analytics_export_service import AnalyticsExportService
-    from src.services.queue_copilot_service import QueueCopilotService
 
-
-def ms_to_clock(ms: int) -> str:
-    """Convert milliseconds to ``H:MM:SS`` or ``M:SS`` for queue displays."""
-    seconds = max(0, int(ms // 1000))
-    minutes, sec = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours:d}:{minutes:02d}:{sec:02d}"
-    return f"{minutes:d}:{sec:02d}"
 
 
 def track_str(track: lavalink.AudioTrack) -> str:

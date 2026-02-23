@@ -547,7 +547,7 @@ export function SupportDeskPanel() {
     setFeedback(null)
     setError(null)
     try {
-      await apiClient<any>("/api/support-tickets", {
+      const response = await apiClient<any>("/api/support-tickets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -555,13 +555,23 @@ export function SupportDeskPanel() {
         },
         body: JSON.stringify({ name, email, subject, category, priority, message, discordId: sessionInfo.discordId }),
       })
+      
+      const newTicket = response?.ticket
+      if (newTicket) {
+        setTickets(prev => [newTicket, ...prev])
+      }
+
       setFeedback("Thank you! Your ticket has been received. We'll respond via email.")
       setMessage("")
       setSubject("")
       if (!ticketEmail && email) {
         setTicketEmail(email)
       }
-      await loadTickets({ silent: true })
+      
+      // Delay refresh slightly to ensure database consistency
+      setTimeout(() => {
+        void loadTickets({ silent: true })
+      }, 800)
       setTimeout(() => setFeedback(null), 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error")

@@ -45,6 +45,7 @@ type AdminTabKey =
   | "compliance"
   | "enterprise"
   | "federation"
+  | "appeals"
 
 type NewsletterSubscriber = {
   email: string
@@ -218,6 +219,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
   { key: "enterprise", label: "Enterprise", description: "Manage SSO, White-label & Custom Domains" },
   { key: "federation", label: "Federation", description: "Monitor Bot instances and shards across regions" },
+  { key: "appeals", label: "Appeals", description: "Manage ban appeals and user infractions" },
 ]
 
 const initialForm = {
@@ -429,7 +431,13 @@ export default function AdminControlPanelPage() {
   const [envForm, setEnvForm] = useState({ key: "", value: "" })
   const [botActionLoading, setBotActionLoading] = useState<string | null>(null)
   const [botActionMessage, setBotActionMessage] = useState<string | null>(null)
-  const [confirmModal, setConfirmModal] = useState<{ action: string; label: string } | null>(null)
+  const [confirmModal, setConfirmModal] = useState<{
+    onConfirm: () => void
+    title: string
+    message: string
+    label?: string
+    action?: string
+  } | null>(null)
   const [systemHealth, setSystemHealth] = useState<any | null>(null)
   const [systemHealthError, setSystemHealthError] = useState<string | null>(null)
   const [healthMetrics, setHealthMetrics] = useState<any[]>([])
@@ -451,6 +459,11 @@ export default function AdminControlPanelPage() {
     description: "",
     required: true,
   })
+  const [infractions, setInfractions] = useState<any[]>([])
+  const [banAppeals, setBanAppeals] = useState<any[]>([])
+  const [appealsLoading, setAppealsLoading] = useState(false)
+  const [appealsError, setAppealsError] = useState<string | null>(null)
+  const [selectedAppeal, setSelectedAppeal] = useState<any>(null)
   const [packageSearch, setPackageSearch] = useState("")
   const [runtimeInfo, setRuntimeInfo] = useState<{
     nodeVersion: string | null
@@ -627,19 +640,26 @@ export default function AdminControlPanelPage() {
   const handleDeleteForumThread = useCallback(
     async (threadId: string) => {
       if (!discordId) return
-      setForumActionMessage(null)
-      try {
-        const params = new URLSearchParams({ discordId, threadId })
-        await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-        setForumActionMessage("Thread removed.")
-        setForumSelectedThread("")
-        await loadForumData({ category: forumSelectedCategory })
-      } catch (error) {
-        setForumActionMessage(error instanceof Error ? error.message : "Failed to delete thread.")
-      }
+      setConfirmModal({
+        title: "Delete Forum Thread",
+        message: "Are you sure you want to delete this thread? All posts within it will also be removed.",
+        onConfirm: async () => {
+          setForumActionMessage(null)
+          try {
+            const params = new URLSearchParams({ discordId, threadId })
+            await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
+              method: "DELETE",
+              credentials: "include",
+            })
+            setForumActionMessage("Thread removed.")
+            setForumSelectedThread("")
+            setConfirmModal(null)
+            await loadForumData({ category: forumSelectedCategory })
+          } catch (error) {
+            setForumActionMessage(error instanceof Error ? error.message : "Failed to delete thread.")
+          }
+        }
+      })
     },
     [discordId, forumSelectedCategory, loadForumData],
   )
@@ -647,18 +667,25 @@ export default function AdminControlPanelPage() {
   const handleDeleteForumPost = useCallback(
     async (postId: string) => {
       if (!discordId) return
-      setForumActionMessage(null)
-      try {
-        const params = new URLSearchParams({ discordId, postId })
-        await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
-          method: "DELETE",
-          credentials: "include",
-        })
-        setForumActionMessage("Post removed.")
-        await loadForumData({ category: forumSelectedCategory, threadId: forumSelectedThread })
-      } catch (error) {
-        setForumActionMessage(error instanceof Error ? error.message : "Failed to delete post.")
-      }
+      setConfirmModal({
+        title: "Delete Forum Post",
+        message: "Are you sure you want to delete this post?",
+        onConfirm: async () => {
+          setForumActionMessage(null)
+          try {
+            const params = new URLSearchParams({ discordId, postId })
+            await apiClient<any>(`/api/admin/forum?${params.toString()}`, {
+              method: "DELETE",
+              credentials: "include",
+            })
+            setForumActionMessage("Post removed.")
+            setConfirmModal(null)
+            await loadForumData({ category: forumSelectedCategory, threadId: forumSelectedThread })
+          } catch (error) {
+            setForumActionMessage(error instanceof Error ? error.message : "Failed to delete post.")
+          }
+        }
+      })
     },
     [discordId, forumSelectedCategory, forumSelectedThread, loadForumData],
   )
@@ -987,6 +1014,29 @@ export default function AdminControlPanelPage() {
     return () => clearInterval(id)
   }, [loadLogs, logsLive])
 
+  const loadAppealsData = useCallback(async () => {
+    if (!discordId) return
+    setAppealsLoading(true)
+    setAppealsError(null)
+    try {
+      const headers: HeadersInit = {}
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`
+      }
+      const [infractionsData, appealsData] = await Promise.all([
+        apiClient<any>(`/api/admin/infractions?discordId=${discordId}`, { headers, credentials: "include" }),
+        apiClient<any>(`/api/admin/appeals?discordId=${discordId}`, { headers, credentials: "include" }),
+      ])
+      setInfractions(Array.isArray(infractionsData.infractions) ? infractionsData.infractions : [])
+      setBanAppeals(Array.isArray(appealsData.appeals) ? appealsData.appeals : [])
+    } catch (error) {
+      console.error("Failed to load appeals data:", error)
+      setAppealsError("Unable to load bans and appeals data.")
+    } finally {
+      setAppealsLoading(false)
+    }
+  }, [authToken, discordId])
+
   useEffect(() => {
     if (!loading && !accessDenied) {
       loadPosts()
@@ -1003,6 +1053,7 @@ export default function AdminControlPanelPage() {
       loadRuntimeInfo()
       loadConnectivity()
       loadForumData()
+      loadAppealsData()
     }
   }, [
     loading,
@@ -1021,6 +1072,7 @@ export default function AdminControlPanelPage() {
     loadRuntimeInfo,
     loadConnectivity,
     loadForumData,
+    loadAppealsData,
   ])
 
   useEffect(() => {
@@ -2372,7 +2424,32 @@ export default function AdminControlPanelPage() {
                         type="button"
                         className="px-3 py-2 text-sm rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                         disabled={botActionLoading === action.key || (action.key === "start" && isBotOnline)}
-                        onClick={() => setConfirmModal({ action: action.key, label: action.label })}
+                         onClick={() => setConfirmModal({
+                           title: `Run Bot Action: ${action.label}`,
+                           message: `Are you sure you want to trigger the "${action.label}" action? This may cause temporary downtime.`,
+                           onConfirm: async () => {
+                             setBotActionLoading(action.key)
+                             setBotActionMessage(null)
+                             try {
+                               const headers: HeadersInit = { "Content-Type": "application/json" }
+                               if (authToken) {
+                                 headers.Authorization = `Bearer ${authToken}`
+                               }
+                               await apiClient<any>("/api/bot/control", {
+                                 method: "POST",
+                                 headers,
+                                 credentials: "include",
+                                 body: JSON.stringify({ discordId, action: action.key }),
+                               })
+                               setBotActionMessage(`${action.label} executed.`)
+                               setConfirmModal(null)
+                             } catch (error) {
+                               setBotActionMessage(error instanceof Error ? error.message : "Action failed.")
+                             } finally {
+                               setBotActionLoading(null)
+                             }
+                           }
+                         })}
                       >
                         {botActionLoading === action.key
                           ? "Running..."
@@ -3722,6 +3799,30 @@ export default function AdminControlPanelPage() {
               </div>
               {forumActionMessage && <p className="text-xs text-primary">{forumActionMessage}</p>}
 
+              {forumStats && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="rounded-xl border border-border/40 bg-card/20 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/50 mb-1">Total Threads</p>
+                    <p className="text-xl font-bold">{forumStats.totalThreads || 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-card/20 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/50 mb-1">Total Posts</p>
+                    <p className="text-xl font-bold">{forumStats.totalPosts || 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-card/20 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/50 mb-1">Active Authors</p>
+                    <p className="text-xl font-bold">{forumStats.activeAuthors || 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-card/20 p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-foreground/50 mb-1">Last Activity</p>
+                    <p className="text-sm font-semibold truncate">
+                      {forumStats.lastActivityAt ? new Date(forumStats.lastActivityAt).toLocaleDateString() : "No recent activity"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+
               <div className="grid lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-border/50 bg-card/40 p-4 space-y-2">
                   <div className="flex items-center justify-between">
@@ -3868,6 +3969,109 @@ export default function AdminControlPanelPage() {
       case "federation": {
         return <AdminFederationManager />
       }
+      case "appeals":
+        return (
+          <>
+            <section className="grid lg:grid-cols-4 md:grid-cols-2 gap-4">
+              {[
+                { label: "Active Bans", value: infractions.filter(i => i.type === 'ban').length, detail: "Users currently banned" },
+                { label: "Pending Appeals", value: banAppeals.filter(a => a.status === 'pending').length, detail: "Awaiting review" },
+                { label: "Accepted", value: banAppeals.filter(a => a.status === 'accepted').length, detail: "Appeals approved" },
+                { label: "Total Infractions", value: infractions.length, detail: "Warnings, kicks, bans" },
+              ].map((card) => (
+                <div key={card.label} className="rounded-xl border border-border/50 bg-card/40 p-5">
+                  <p className="text-xs uppercase tracking-[0.3em] text-foreground/50 mb-2">{card.label}</p>
+                  <p className="text-3xl font-bold">
+                    {card.value.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-foreground/60 mt-1">{card.detail}</p>
+                </div>
+              ))}
+            </section>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-4">
+                <h3 className="text-xl font-bold">Recent Appeals</h3>
+                {appealsLoading ? (
+                  <p className="text-sm text-foreground/60">Loading appeals...</p>
+                ) : banAppeals.length ? (
+                  <div className="space-y-3">
+                    {banAppeals.map((appeal) => (
+                      <div key={appeal.id} className="border border-border/40 rounded-lg p-4 bg-background/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-sm">Discord ID: {appeal.discordId}</p>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            appeal.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                            appeal.status === 'accepted' ? 'bg-green-500/20 text-green-500' :
+                            'bg-red-500/20 text-red-500'
+                          }`}>
+                            {appeal.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground/80 line-clamp-2 italic">"{appeal.message}"</p>
+                        <div className="flex gap-2 justify-end">
+                          <button 
+                            className="px-3 py-1 text-xs border border-border/60 rounded-lg hover:bg-card/50"
+                            onClick={() => setSelectedAppeal(appeal)}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground/60">No pending appeals.</p>
+                )}
+              </section>
+
+              <section className="rounded-xl border border-border/50 bg-card/30 p-6 space-y-4">
+                <h3 className="text-xl font-bold">Active Infractions</h3>
+                {appealsLoading ? (
+                  <p className="text-sm text-foreground/60">Loading infractions...</p>
+                ) : infractions.length ? (
+                  <div className="space-y-3">
+                    {infractions.slice(0, 10).map((infraction) => (
+                      <div key={infraction.id} className="border border-border/40 rounded-lg p-4 bg-background/60 flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold text-sm">{infraction.type.toUpperCase()}: {infraction.discordId}</p>
+                          <p className="text-xs text-foreground/60 line-clamp-1">{infraction.reason}</p>
+                        </div>
+                        <button 
+                          className="px-3 py-1 text-xs border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10"
+                          onClick={() => setConfirmModal({
+                            title: "Revoke Infraction",
+                            message: `Are you sure you want to revoke this ${infraction.type}?`,
+                            onConfirm: async () => {
+                              try {
+                                const headers: HeadersInit = { "Content-Type": "application/json" }
+                                if (authToken) headers.Authorization = `Bearer ${authToken}`
+                                await apiClient<any>(`/api/admin/infractions/${infraction.id}`, {
+                                  method: "DELETE",
+                                  headers,
+                                  credentials: "include",
+                                  body: JSON.stringify({ discordId })
+                                })
+                                setConfirmModal(null)
+                                loadAppealsData()
+                              } catch (error) {
+                                console.error("Failed to revoke infraction:", error)
+                              }
+                            }
+                          })}
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground/60">No active infractions.</p>
+                )}
+              </section>
+            </div>
+          </>
+        )
       case "overview":
       default: {
         const overviewHighlights: MetricStat[] = [
@@ -4008,15 +4212,20 @@ export default function AdminControlPanelPage() {
 
             </section>
 
-            {healthMetrics.length > 0 && (
-              <section className="rounded-xl border border-border/50 bg-card/30 p-6">
+            {(healthMetrics.length > 0 || healthMetricsLoading) && (
+              <section className="rounded-xl border border-border/50 bg-card/30 p-6 relative overflow-hidden">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">Predictive Health Scoring</h2>
-                  <span className="text-xs text-foreground/60">
-                    Live telemetry across shards
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {healthMetricsLoading && (
+                      <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                    )}
+                    <span className="text-xs text-foreground/60">
+                      {healthMetricsLoading ? "Fetching live telemetry..." : "Live telemetry across shards"}
+                    </span>
+                  </div>
                 </div>
-                <div className="h-64 mt-4 w-full">
+                <div className={`h-64 mt-4 w-full transition-opacity duration-500 ${healthMetricsLoading ? "opacity-30 pointer-events-none" : "opacity-100"}`}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={healthMetrics}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -4037,8 +4246,14 @@ export default function AdminControlPanelPage() {
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
+                {healthMetricsLoading && healthMetrics.length === 0 && (
+                   <div className="absolute inset-0 flex items-center justify-center bg-background/20 backdrop-blur-[2px]">
+                      <p className="text-sm font-medium animate-pulse">Analyzing system health...</p>
+                   </div>
+                )}
               </section>
             )}
+
 
             <section className="rounded-xl border border-border/50 bg-card/30 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -4335,6 +4550,24 @@ export default function AdminControlPanelPage() {
     },
     [authToken, discordId, loadAdminUsers],
   )
+
+  const handleAppealAction = useCallback(async (appealId: string, status: 'accepted' | 'rejected') => {
+    if (!discordId) return
+    try {
+      const headers: HeadersInit = { "Content-Type": "application/json" }
+      if (authToken) headers.Authorization = `Bearer ${authToken}`
+      await apiClient<any>(`/api/admin/appeals/${appealId}`, {
+        method: "PATCH",
+        headers,
+        credentials: "include",
+        body: JSON.stringify({ discordId, status })
+      })
+      setSelectedAppeal(null)
+      loadAppealsData()
+    } catch (error) {
+      console.error("Failed to update appeal status:", error)
+    }
+  }, [authToken, discordId, loadAppealsData])
 
   const handleSubscriptionUpdate = useCallback(
     async (subscriptionId: string, updates: Partial<AdminSubscriptionRow>) => {
@@ -4723,26 +4956,32 @@ export default function AdminControlPanelPage() {
 
   const handleDeletePost = async (postId: string) => {
     if (!discordId) return
-    if (!window.confirm("Delete this blog post? This cannot be undone.")) {
-      return
-    }
-    try {
-      const headers: HeadersInit = { "Content-Type": "application/json" }
-      if (authToken) {
-        headers.Authorization = `Bearer ${authToken}`
-      }
-      await apiClient<any>(`/api/blog/${postId}`, {
-        method: "DELETE",
-        headers,
-        credentials: "include",
-        body: JSON.stringify({ discordId }),
-      })
-      loadPosts()
-    } catch (error) {
-      console.error("Failed to delete blog post:", error)
-      setActionMessage("Unable to delete post.")
-    }
+    setConfirmModal({
+      title: "Delete Blog Post",
+      message: "Are you sure you want to delete this blog post? This action cannot be undone.",
+      onConfirm: async () => {
+        try {
+          const headers: HeadersInit = { "Content-Type": "application/json" }
+          if (authToken) {
+            headers.Authorization = `Bearer ${authToken}`
+          }
+          await apiClient<any>(`/api/blog/${postId}`, {
+            method: "DELETE",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({ discordId }),
+          })
+          loadPosts()
+          setConfirmModal(null)
+          setActionMessage("Post deleted successfully.")
+        } catch (error) {
+          console.error("Failed to delete blog post:", error)
+          setActionMessage("Unable to delete post.")
+        }
+      },
+    })
   }
+
 
   if (loading) {
     return (
@@ -4825,34 +5064,6 @@ export default function AdminControlPanelPage() {
         <Footer />
       </div>
       <AdminPageStyles />
-      {confirmModal && (
-        <Modal title="Confirm action" onClose={() => setConfirmModal(null)}>
-          <div className="space-y-4">
-            <p className="text-sm text-foreground/70">
-              {`Are you sure you want to ${confirmModal.label.toLowerCase()}? This may impact active users.`}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 border border-border/60 rounded-lg text-sm hover:bg-card/40 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void triggerBotAction(confirmModal.action, confirmModal.label)
-                  setConfirmModal(null)
-                }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {isContactModalOpen && (
         <Modal title="Create Contact Message" onClose={() => setIsContactModalOpen(false)}>
@@ -5811,6 +6022,75 @@ export default function AdminControlPanelPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+      {confirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-background/90 backdrop-blur-sm" onClick={() => setConfirmModal(null)} />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-2xl">
+            <h3 className="text-xl font-bold mb-2">{confirmModal.title}</h3>
+            <p className="text-sm text-foreground/70 mb-6">{confirmModal.message}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 border border-border/60 rounded-lg text-sm font-semibold hover:bg-card/40 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  confirmModal.action ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                }`}
+              >
+                {confirmModal.action ? 'Continue' : 'Confirm Action'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedAppeal && (
+        <Modal title="Ban Appeal Detail" onClose={() => setSelectedAppeal(null)}>
+          <div className="space-y-4 p-2">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">Appeal From</p>
+              <p className="font-semibold text-lg">{selectedAppeal.discordId}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">Status</p>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                selectedAppeal.status === 'pending' ? 'bg-yellow-500/20 text-yellow-500' :
+                selectedAppeal.status === 'accepted' ? 'bg-green-500/20 text-green-500' :
+                'bg-red-500/20 text-red-500'
+              }`}>
+                {selectedAppeal.status}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">Appeal Message</p>
+              <div className="bg-background/80 rounded-lg p-4 border border-border/40 italic">
+                "{selectedAppeal.message}"
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t border-border/50 flex flex-wrap gap-3 justify-end">
+              <button 
+                className="px-4 py-2 border border-destructive/60 text-destructive rounded-lg font-semibold hover:bg-destructive/10"
+                onClick={() => handleAppealAction(selectedAppeal.id, 'rejected')}
+              >
+                Reject Appeal
+              </button>
+              <button 
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                onClick={() => handleAppealAction(selectedAppeal.id, 'accepted')}
+              >
+                Accept & Unban
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </>
