@@ -1965,8 +1965,8 @@ export default function ControlPanelPage() {
                         { key: "djMode", title: "DJ Mode", description: "Restrict queue controls to DJ roles only" },
                         {
                           key: "normalizeVolume",
-                          title: "Normalize Volume",
-                          description: "Smooth out loudness differences between tracks",
+                          title: "Adaptive Mastering Pipeline",
+                          description: "Normalize perceived loudness per track to keep playlists consistent",
                         },
                       ] as const
                     ).map((setting) => (

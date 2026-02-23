@@ -8,7 +8,11 @@ import Image from "next/image"
 import type { UserRole } from "@/lib/db"
 import appPackage from "../../../package.json"
 import { AdminPluginManager } from "@/components/admin-plugin-manager"
+import { AdminComplianceManager } from "@/components/admin-compliance-manager"
+import { AdminEnterpriseManager } from "@/components/admin-enterprise-manager"
+import { AdminFederationManager } from "@/components/admin-federation-manager"
 import { apiClient } from "@/lib/api-client"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 interface BlogPost {
   id: string
@@ -38,6 +42,9 @@ type AdminTabKey =
   | "apiKeys"
   | "plugins"
   | "forum"
+  | "compliance"
+  | "enterprise"
+  | "federation"
 
 type NewsletterSubscriber = {
   email: string
@@ -186,6 +193,7 @@ type AdminEnvEntry = {
 const BOT_ACTIONS = [
   { key: "start", label: "Start bot", description: "Start the bot service if it is stopped." },
   { key: "restart", label: "Restart bot", description: "Restart the bot process across all shards." },
+  { key: "hot_patch", label: "Hot patch", description: "Zero-downtime patch: reload config + extensions without restart." },
   { key: "reload", label: "Reload bot", description: "Reload configuration and caches without a full restart." },
   { key: "reload_commands", label: "Reload commands", description: "Refresh slash commands and permissions." },
   { key: "stop", label: "Stop bot", description: "Gracefully stop the bot service." },
@@ -197,6 +205,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "blog", label: "Blogs", description: "Publish news and manage posts" },
   { key: "newsletter", label: "Newsletters", description: "Send announcements to subscribers" },
   { key: "ticket", label: "Tickets", description: "Respond to support tickets and attachments" },
+  { key: "compliance", label: "Compliance", description: "Trust & Safety export logs, GDPR, and data residency" },
   { key: "contacts", label: "Contacts", description: "Inbound contact form submissions and replies" },
   { key: "forum", label: "Forum", description: "Manage forum categories, threads, and telemetry" },
   { key: "subscriptions", label: "Subscriptions", description: "Oversee guild plans and entitlements" },
@@ -207,6 +216,8 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "botControl", label: "Bot Controls", description: "Manage bot lifecycle actions and deploys" },
   { key: "system", label: "System", description: "Runtime health, endpoints, and service versions" },
   { key: "logs", label: "Logs", description: "Recent admin and bot activity for audit" },
+  { key: "enterprise", label: "Enterprise", description: "Manage SSO, White-label & Custom Domains" },
+  { key: "federation", label: "Federation", description: "Monitor Bot instances and shards across regions" },
 ]
 
 const initialForm = {
@@ -217,6 +228,7 @@ const initialForm = {
   author: "",
   category: "Announcement",
   image: "",
+  publishedAt: "",
 }
 
 function stripMarkdown(content: string): string {
@@ -420,6 +432,8 @@ export default function AdminControlPanelPage() {
   const [confirmModal, setConfirmModal] = useState<{ action: string; label: string } | null>(null)
   const [systemHealth, setSystemHealth] = useState<any | null>(null)
   const [systemHealthError, setSystemHealthError] = useState<string | null>(null)
+  const [healthMetrics, setHealthMetrics] = useState<any[]>([])
+  const [healthMetricsLoading, setHealthMetricsLoading] = useState(false)
   const [systemEndpointSearch, setSystemEndpointSearch] = useState("")
   const [logEvents, setLogEvents] = useState<any[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
@@ -827,6 +841,23 @@ export default function AdminControlPanelPage() {
     }
   }, [])
 
+  const loadHealthMetrics = useCallback(async () => {
+    if (!discordId) return
+    setHealthMetricsLoading(true)
+    try {
+      const headers: HeadersInit = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+      const payload = await apiClient<any>(`/api/admin/metrics/health?discordId=${discordId}`, {
+        headers,
+        credentials: "include",
+      })
+      setHealthMetrics(Array.isArray(payload) ? payload : [])
+    } catch (error) {
+      console.error("Failed to load health metrics array:", error)
+    } finally {
+      setHealthMetricsLoading(false)
+    }
+  }, [authToken, discordId])
+
   const loadLogs = useCallback(async () => {
     if (!discordId) return
     setLogsLoading(true)
@@ -967,6 +998,7 @@ export default function AdminControlPanelPage() {
       loadSystemKeys()
       loadEnvEntries()
       loadSystemHealth()
+      loadHealthMetrics()
       loadLogs()
       loadRuntimeInfo()
       loadConnectivity()
@@ -984,6 +1016,7 @@ export default function AdminControlPanelPage() {
     loadSystemKeys,
     loadEnvEntries,
     loadSystemHealth,
+    loadHealthMetrics,
     loadLogs,
     loadRuntimeInfo,
     loadConnectivity,
@@ -2419,11 +2452,20 @@ export default function AdminControlPanelPage() {
         const configChecks = [
           { label: "Database URL", key: "DATABASE_URL" },
           { label: "Bot status API", key: "BOT_STATUS_API_URL" },
-          { label: "Server settings API", key: "SERVER_SETTINGS_API_URL", alt: systemEndpoints.serverSettings },
-          { label: "Queue sync secret", key: "QUEUE_SYNC_API_KEY", alt: process.env.QUEUE_SYNC_SECRET },
-          { label: "Log ingest token", key: "LOG_INGEST_TOKEN" },
+          { label: "Server settings API", key: "SERVER_SETTINGS_API_URL", searchKey: "server_settings" },
+          { label: "Queue sync secret", key: "QUEUE_SYNC_API_KEY", searchKey: "queue_sync" },
+          { label: "Log ingest token", key: "LOG_INGEST_TOKEN", searchKey: "telemetry" },
         ].map((item) => {
-          const value = envMap[item.key] || item.alt || process.env[item.key]
+          // Check systemKeys state first if it applies to an API token
+          const systemKeyRecord = item.searchKey ? systemKeys.find((k) => k.id === item.searchKey) : null
+          if (systemKeyRecord) {
+            return {
+              ...item,
+              configured: systemKeyRecord.configured,
+            }
+          }
+          // Otherwise fall back to local environment and proxy alt overrides
+          const value = envMap[item.key] || process.env[item.key]
           return {
             ...item,
             configured: Boolean(value),
@@ -3817,6 +3859,15 @@ export default function AdminControlPanelPage() {
           </div>
         )
       }
+      case "compliance": {
+        return <AdminComplianceManager />
+      }
+      case "enterprise": {
+        return <AdminEnterpriseManager />
+      }
+      case "federation": {
+        return <AdminFederationManager />
+      }
       case "overview":
       default: {
         const overviewHighlights: MetricStat[] = [
@@ -3957,6 +4008,38 @@ export default function AdminControlPanelPage() {
 
             </section>
 
+            {healthMetrics.length > 0 && (
+              <section className="rounded-xl border border-border/50 bg-card/30 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold">Predictive Health Scoring</h2>
+                  <span className="text-xs text-foreground/60">
+                    Live telemetry across shards
+                  </span>
+                </div>
+                <div className="h-64 mt-4 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={healthMetrics}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                      <XAxis 
+                        dataKey="recordedAt" 
+                        tickFormatter={(val) => new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                        stroke="#888" 
+                        fontSize={12}
+                      />
+                      <YAxis stroke="#888" fontSize={12} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#111', borderColor: '#333' }}
+                        labelFormatter={(val) => new Date(val).toLocaleString()}
+                      />
+                      <Line type="monotone" dataKey="uptimePercent" stroke="#10b981" strokeWidth={2} name="Uptime %" dot={false} />
+                      <Line type="monotone" dataKey="avgResponseMs" stroke="#8b5cf6" strokeWidth={2} name="Avg Response (ms)" dot={false} />
+                      <Line type="monotone" dataKey="incidents24h" stroke="#ef4444" strokeWidth={2} name="Incidents" dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+
             <section className="rounded-xl border border-border/50 bg-card/30 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold">Priority Tickets</h2>
@@ -4054,6 +4137,7 @@ export default function AdminControlPanelPage() {
         body: JSON.stringify({
           discordId,
           ...form,
+          publishedAt: form.publishedAt || new Date().toISOString(),
           image: form.image?.trim() ? form.image.trim() : null,
           author: form.author || "VectoBeat Team",
         }),
@@ -5491,6 +5575,16 @@ export default function AdminControlPanelPage() {
                   className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold mb-2 block">Publish Date (Optional for Scheduled Posts)</label>
+              <input
+                type="datetime-local"
+                value={form.publishedAt}
+                onChange={(e) => setForm((prev) => ({ ...prev, publishedAt: e.target.value }))}
+                className="w-full px-4 py-2 rounded-lg bg-background border border-border/50 focus:border-primary/50 outline-none"
+              />
+              <p className="text-xs text-foreground/60 mt-1">Leave empty to publish immediately. Future dates will schedule the post.</p>
             </div>
             <div>
               <label className="text-sm font-semibold mb-2 block">Blog Image</label>

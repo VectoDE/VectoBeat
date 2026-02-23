@@ -128,6 +128,7 @@ class StatusAPIConfig(BaseModel):
     usage_token: Optional[str] = None
     control_start_cmd: Optional[str] = None
     control_stop_cmd: Optional[str] = None
+    control_restart_cmd: Optional[str] = None
     control_reload_cmd: Optional[str] = None
     control_reload_commands_cmd: Optional[str] = None
     control_restart_frontend_cmd: Optional[str] = None

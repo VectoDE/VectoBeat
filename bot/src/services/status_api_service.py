@@ -807,6 +807,8 @@ class StatusAPIService:
             await self._run_or_fallback(self.config.control_restart_frontend_cmd, self._noop)
         elif action in {"start", "start-bot", "start_bot"}:
             await self._run_or_fallback(self.config.control_start_cmd, self._noop)
+        elif action in {"restart", "restart-bot", "restart_bot"}:
+            await self._run_or_fallback(self.config.control_restart_cmd, self._noop)
         elif action in {"stop", "stop-bot", "stop_bot"}:
             await self._run_or_fallback(self.config.control_stop_cmd, self._noop)
         elif action in {"hot-patch", "hot_patch"}:

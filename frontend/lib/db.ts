@@ -14,7 +14,7 @@ import type { QueueSnapshot } from "@/types/queue-sync"
 
 export { getPrismaClient, handlePrismaError }
 
-const getPool = () => getPrismaClient()
+export const getPool = () => getPrismaClient()
 
 const asJsonObject = <T>(value: unknown | null | undefined): T | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -1500,6 +1500,26 @@ export const validateSessionHash = async (discordId: string, sessionHash: string
   } catch (error) {
     logDbError("[VectoBeat] Failed to validate session hash:", error)
     return false
+  }
+}
+
+export const getSessionByHash = async (sessionHash: string) => {
+  try {
+    const db = getPool()
+    if (!db) return null
+
+    const session = await db.userSession.findFirst({
+      where: {
+        sessionHash,
+        revokedAt: null,
+      },
+      select: { discordId: true },
+    })
+
+    return session?.discordId || null
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to lookup session by hash:", error)
+    return null
   }
 }
 
@@ -3297,15 +3317,15 @@ export const getSiteTrafficSummary = async (days = 30) => {
         uniquePaths: 0,
         uniqueVisitors: 0,
         last24hViews: 0,
-      last24hVisitors: 0,
-      topPages: [],
-      referrers: [],
-      referrerHosts: [],
-      referrerPaths: [],
-      geo: [],
-      dailySeries: [],
-      monthlySeries: [],
-    }
+        last24hVisitors: 0,
+        topPages: [],
+        referrers: [],
+        referrerHosts: [],
+        referrerPaths: [],
+        geo: [],
+        dailySeries: [],
+        monthlySeries: [],
+      }
     }
 
     const sinceDaily = new Date(Date.now() - Math.max(days, 1) * 24 * 60 * 60 * 1000)
@@ -4201,24 +4221,24 @@ export const listSecurityAccessLogs = async (
 
     const loginWhere: Prisma.UserLoginEventWhereInput | null = ownerIdArray.length
       ? {
-          discordId: { in: ownerIdArray },
-          ...(options.from || options.to
-            ? {
-                createdAt: {
-                  ...(options.from ? { gte: options.from } : {}),
-                  ...(options.to ? { lte: options.to } : {}),
-                },
-              }
-            : {}),
-        }
+        discordId: { in: ownerIdArray },
+        ...(options.from || options.to
+          ? {
+            createdAt: {
+              ...(options.from ? { gte: options.from } : {}),
+              ...(options.to ? { lte: options.to } : {}),
+            },
+          }
+          : {}),
+      }
       : null
 
     const loginRows = loginWhere
       ? await db.userLoginEvent.findMany({
-          where: loginWhere,
-          orderBy: { createdAt: "desc" },
-          take: fetchSpan,
-        })
+        where: loginWhere,
+        orderBy: { createdAt: "desc" },
+        take: fetchSpan,
+      })
       : []
 
     const profileMap = new Map<string, string>()
@@ -4251,11 +4271,11 @@ export const listSecurityAccessLogs = async (
       action: "used",
       ...(options.from || options.to
         ? {
-            createdAt: {
-              ...(options.from ? { gte: options.from } : {}),
-              ...(options.to ? { lte: options.to } : {}),
-            },
-          }
+          createdAt: {
+            ...(options.from ? { gte: options.from } : {}),
+            ...(options.to ? { lte: options.to } : {}),
+          },
+        }
         : {}),
     }
     if (actorFilter) {
@@ -4541,12 +4561,19 @@ const mapBlogPost = (row: BlogPostRow): BlogPost => ({
   image: row.image,
 })
 
-export const getBlogPosts = async (): Promise<BlogPost[]> => {
+export const getBlogPosts = async (includeScheduled = false): Promise<BlogPost[]> => {
   try {
     const db = getPool()
     if (!db) return []
 
+    const whereClause = includeScheduled ? undefined : {
+      publishedAt: {
+        lte: new Date(),
+      }
+    }
+
     const posts = await db.blogPost.findMany({
+      where: whereClause,
       orderBy: { publishedAt: "desc" },
     })
 
@@ -4570,6 +4597,33 @@ export const getBlogPosts = async (): Promise<BlogPost[]> => {
   } catch (error) {
     logDbError("[VectoBeat] Failed to load blog posts:", error)
     return []
+  }
+}
+
+export const incrementBlogPostView = async (identifier: string): Promise<void> => {
+  try {
+    const db = getPool()
+    if (!db) return
+
+    const post = await db.blogPost.findFirst({
+      where: {
+        OR: [{ id: identifier }, { slug: identifier }],
+      },
+      select: { id: true },
+    })
+
+    if (!post) return
+
+    await db.blogPost.update({
+      where: { id: post.id },
+      data: {
+        views: {
+          increment: 1,
+        },
+      },
+    })
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to increment blog post view:", error)
   }
 }
 
@@ -4621,6 +4675,7 @@ interface BlogPostInput {
   category?: string
   featured?: boolean
   image?: string | null
+  publishedAt?: Date | string | null
 }
 
 const normalizeExcerpt = (excerpt?: string | null): string | null => {
@@ -4652,12 +4707,17 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
 
     if (input.id) {
       try {
+        const updateData: any = {
+          slug: input.slug,
+          ...baseData,
+        }
+        if (input.publishedAt) {
+          updateData.publishedAt = typeof input.publishedAt === "string" ? new Date(input.publishedAt) : input.publishedAt
+        }
+
         const updated = await db.blogPost.update({
           where: { id: input.id },
-          data: {
-            slug: input.slug,
-            ...baseData,
-          },
+          data: updateData,
         })
         record = {
           id: updated.id,
@@ -4698,7 +4758,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           id: input.id,
           slug: input.slug,
           ...baseData,
-          publishedAt: new Date(),
+          publishedAt: input.publishedAt ? (typeof input.publishedAt === "string" ? new Date(input.publishedAt) : input.publishedAt) : new Date(),
         },
       })
 
@@ -5970,8 +6030,8 @@ export const createForumThread = async (payload: {
   const summary = normalizeInput(payload.summary ?? null, 400)
   const tags = Array.isArray(payload.tags)
     ? payload.tags
-        .map((tag) => normalizeInput(tag, 48))
-        .filter((value): value is string => Boolean(value))
+      .map((tag) => normalizeInput(tag, 48))
+      .filter((value): value is string => Boolean(value))
     : []
   const authorId = normalizeInput(payload.authorId ?? null, 64)
   const authorName = normalizeInput(payload.authorName ?? null, 80)

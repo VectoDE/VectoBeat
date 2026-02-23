@@ -53,9 +53,11 @@ export async function apiClient<T>(endpoint: string, options: FetchOptions = {})
   try {
     const response = await fetch(endpoint, config)
     return await handleResponse<T>(response)
-  } catch (error) {
-    if (error instanceof ApiError) {
+  } catch (error: any) {
+    if (error instanceof ApiError || error?.name === "ApiError") {
       logError(`[API Client] ${error.status} ${error.statusText}: ${error.message}`, error)
+    } else if (error?.name === "AbortError" || error?.name === "DOMException") {
+      logError(`[API Client] Timeout or Abort for endpoint ${endpoint}`, error)
     } else {
       logError(`[API Client] Network or other error for endpoint ${endpoint}`, error)
     }

@@ -33,15 +33,15 @@ const BOT_ENV_KEYS = new Set([
 const getEnvCandidates = (target: "frontend" | "bot") =>
   target === "bot"
     ? [
-        path.resolve(process.cwd(), "../bot/.env"),
-        path.resolve(process.cwd(), "../bot/.env.development"),
-        path.resolve(process.cwd(), "../bot/.env.local"),
-      ]
+      path.resolve(process.cwd(), "../bot/.env"),
+      path.resolve(process.cwd(), "../bot/.env.development"),
+      path.resolve(process.cwd(), "../bot/.env.local"),
+    ]
     : [
-        path.resolve(process.cwd(), ".env"),
-        path.resolve(process.cwd(), ".env.development"),
-        path.resolve(process.cwd(), ".env.local"),
-      ]
+      path.resolve(process.cwd(), ".env"),
+      path.resolve(process.cwd(), ".env.development"),
+      path.resolve(process.cwd(), ".env.local"),
+    ]
 
 const readEnvFile = async (target: "frontend" | "bot") => {
   const candidates = getEnvCandidates(target)
@@ -56,16 +56,24 @@ const readEnvFile = async (target: "frontend" | "bot") => {
   return {}
 }
 
-const fetchWithTimeout = async (url: string) => {
+const fetchWithTimeout = async (url: string, token: string | null = null) => {
   if (!/^https?:\/\//i.test(url)) {
     return true
   }
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), 3000)
   try {
-    await apiClient(url, { signal: controller.signal, cache: "no-store" })
+    const headers: HeadersInit = {}
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+    await apiClient(url, { signal: controller.signal, headers, cache: "no-store" })
     return true
-  } catch {
+  } catch (error: any) {
+    // If it's an API error returning 401/403/404, the server is online but rejected the ping/auth
+    if (error?.name === "ApiError" || error?.status === 401 || error?.status === 403 || error?.status === 404) {
+      return true
+    }
     return false
   } finally {
     clearTimeout(id)
@@ -94,7 +102,17 @@ export async function GET(request: NextRequest) {
       const fromBot = BOT_ENV_KEYS.has(service.envKey)
       const envVal = fromBot ? botEnv[service.envKey] || process.env[service.envKey] : frontendEnv[service.envKey] || process.env[service.envKey]
       if (!envVal) return { label: service.label, key: service.key, url: null, status: "missing" }
-      const online = await fetchWithTimeout(envVal)
+
+      // Determine authenticaton header key if applicable
+      let authKey = null
+      if (service.key === "status_api") authKey = "BOT_STATUS_API_KEY"
+      else if (service.key === "server_settings") authKey = "SERVER_SETTINGS_API_KEY"
+      else if (service.key === "queue_sync") authKey = "QUEUE_SYNC_API_KEY"
+      else if (service.key === "telemetry") authKey = "QUEUE_TELEMETRY_API_KEY"
+
+      const envAuth = authKey ? (fromBot ? botEnv[authKey] || process.env[authKey] : frontendEnv[authKey] || process.env[authKey]) : null
+
+      const online = await fetchWithTimeout(envVal, envAuth || null)
       return { label: service.label, key: service.key, url: envVal, status: online ? "online" : "offline" }
     }),
   )

@@ -159,7 +159,7 @@ export default function AccountPage() {
       const url = URL.createObjectURL(data)
       const a = document.createElement('a')
       a.href = url
-      a.download = `account-data-${state.discordId}.json`
+      a.download = `vectobeat-data-${state.discordId}.pdf`
       a.click()
       URL.revokeObjectURL(url)
       setMessageState('dataMessage', 'Data exported successfully')
@@ -358,15 +358,15 @@ export default function AccountPage() {
       <SettingsCard title="Data Management" description="Export or delete your account data">
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium text-gray-900">Export Data</h4>
-            <p className="text-sm text-gray-500">Download a copy of your account data</p>
+            <h4 className="text-sm font-medium text-gray-900">Export Data (Compliance Mode)</h4>
+            <p className="text-sm text-gray-500">Download a consolidated PDF report of your account data for GDPR compliance</p>
             <div className="mt-2">
               <SettingsButton 
                 onClick={handleExportData}
                 loading={state.dataDeleting}
                 variant="secondary"
               >
-                Export Data
+                Request Data Export
               </SettingsButton>
             </div>
           </div>
