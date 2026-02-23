@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import type { Server as HTTPServer } from "http"
 import type { Server as IOServer } from "socket.io"
 
@@ -21,4 +22,4 @@ declare module "net" {
   }
 }
 
-export {}
+export { }

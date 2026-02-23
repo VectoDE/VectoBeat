@@ -1,6 +1,7 @@
 import type { NextApiResponse } from "next"
 import { Server as IOServer } from "socket.io"
 import { getAllMetrics } from "@/lib/metrics"
+import { logError } from "./utils/error-handling"
 
 type SocketMeta = {
   metricsInterval?: NodeJS.Timeout | null
@@ -78,7 +79,7 @@ export const ensureSocketServer = async (
         const payload = await getAllMetrics()
         io.emit("stats:update", payload)
       } catch (error) {
-        console.error("[VectoBeat] Failed to broadcast analytics:", error)
+        logError("Failed to broadcast analytics", error)
       }
     }
 

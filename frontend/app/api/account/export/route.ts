@@ -5,6 +5,7 @@ import { getFullUserData, getStoredUserProfile, getPool } from "@/lib/db"
 import { ensureStripeCustomerForUser } from "@/lib/stripe-customers"
 import { verifyRequestForUser } from "@/lib/auth"
 import { PdfGenerator } from "@/lib/pdf-generator"
+import { logError } from "@/lib/utils/error-handling"
 
 // Helper to format dates for the report
 const formatDate = (date: Date | string | null | undefined) => {
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
         stripeId = resolvedId
       }
     } catch (err) {
-      console.error("Failed to resolve Stripe ID during export:", err)
+      logError("Failed to resolve Stripe ID during export", err)
     }
   }
 
@@ -314,7 +315,7 @@ export async function GET(request: NextRequest) {
         }
       })
     } catch (err) {
-      console.error("[VectoBeat] Failed to log compliance data export request:", err)
+      logError("Failed to log compliance data export request", err)
     }
   }
 

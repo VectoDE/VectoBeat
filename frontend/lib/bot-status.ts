@@ -1,5 +1,6 @@
 import { getApiKeySecrets } from "./api-keys"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 const trimTrailingSlashes = (url: string) => {
   let end = url.length
@@ -190,7 +191,7 @@ export const getBotStatus = async () => {
     const message = lastError instanceof Error ? lastError.message : String(lastError)
     const dedupeKey = `${message}`
     if (!lastErrorKey || dedupeKey !== lastErrorKey || now - lastErrorAt > 30_000) {
-      console.error("[VectoBeat] Bot status API error:", lastError)
+      logError("Bot status API error", lastError)
       lastErrorKey = dedupeKey
       lastErrorAt = now
     }
@@ -270,8 +271,7 @@ const postToBotControl = async (path: string, body: Record<string, any>): Promis
     }
   }
   if (lastError) {
-    const errMessage = lastError instanceof Error ? lastError.message : String(lastError)
-    console.error("[VectoBeat] Bot control request failed:", errMessage)
+    logError("Bot control request failed", lastError)
   }
   return false
 }

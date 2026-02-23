@@ -1,4 +1,5 @@
 import { authenticator } from "otplib"
+import { logError } from "./utils/error-handling"
 
 authenticator.options = {
   step: 30,
@@ -15,7 +16,7 @@ export const verifyTwoFactorToken = (secret: string, token: string) => {
   try {
     return authenticator.check(token, secret)
   } catch (error) {
-    console.error("[VectoBeat] 2FA verification failed:", error)
+    logError("2FA verification failed", error)
     return false
   }
 }

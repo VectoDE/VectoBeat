@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto"
 
 import { getServerSettings } from "@/lib/db"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 type TelemetryEnvelope = {
   ts: number
@@ -85,7 +86,7 @@ export const deliverTelemetryWebhook = async (params: {
     })
     return { delivered: true, status: 200, reason: "OK" }
   } catch (error) {
-    console.error("[VectoBeat] Telemetry webhook delivery failed:", error)
+    logError("Telemetry webhook delivery failed", error)
     return { delivered: false, reason: "network_error" }
   }
 }

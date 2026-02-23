@@ -1,4 +1,5 @@
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 interface SecurityAlertPayload {
   discordId: string
@@ -13,7 +14,7 @@ const isDiscordWebhook = (url?: string | null) =>
 export const sendSecurityAlert = async ({ discordId, message, meta }: SecurityAlertPayload) => {
   try {
     if (!SECURITY_ALERT_WEBHOOK_URL) {
-      console.log("[VectoBeat] Security alert", { discordId, message, meta })
+      logError("Security alert (Webhook not configured)", { discordId, message, meta })
       return
     }
 
@@ -26,10 +27,10 @@ export const sendSecurityAlert = async ({ discordId, message, meta }: SecurityAl
           color: 0xff4c6a,
           fields: entries
             ? entries.map(([key, value]) => ({
-                name: key,
-                value: String(value ?? "Unknown"),
-                inline: true,
-              }))
+              name: key,
+              value: String(value ?? "Unknown"),
+              inline: true,
+            }))
             : undefined,
           timestamp: new Date().toISOString(),
         },
@@ -41,8 +42,8 @@ export const sendSecurityAlert = async ({ discordId, message, meta }: SecurityAl
       message,
       entries
         ? entries
-            .map(([key, value]) => `• ${key}: ${value ?? "Unknown"}`)
-            .join("\n")
+          .map(([key, value]) => `• ${key}: ${value ?? "Unknown"}`)
+          .join("\n")
         : null,
     ]
       .filter(Boolean)
@@ -56,6 +57,6 @@ export const sendSecurityAlert = async ({ discordId, message, meta }: SecurityAl
       body: JSON.stringify(body),
     })
   } catch (error) {
-    console.error("[VectoBeat] Failed to deliver security alert:", error)
+    logError("Failed to deliver security alert", error)
   }
 }

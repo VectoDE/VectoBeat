@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserContact, upsertUserContact } from "@/lib/db"
+import { logError } from "@/lib/utils/error-handling"
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -48,7 +49,7 @@ export const createContactHandlers = (deps: RouteDeps = {}) => {
       const updated = await fetchContact(discordId)
       return NextResponse.json(updated)
     } catch (error) {
-      console.error("[VectoBeat] Failed to update contact:", error)
+      logError("Failed to update contact", error)
       return NextResponse.json({ error: "Failed to update contact info" }, { status: 500 })
     }
   }

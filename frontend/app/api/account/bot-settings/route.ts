@@ -5,6 +5,7 @@ import { emitBotDefaultsUpdate } from "@/lib/server-settings-sync"
 import { authorizeRequest } from "@/lib/api-auth"
 import { clamp } from "@/lib/math"
 import { getApiKeySecrets } from "@/lib/api-keys"
+import { logError } from "@/lib/utils/error-handling"
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -65,7 +66,7 @@ export const createBotSettingsHandlers = (deps: RouteDeps = {}) => {
       void emitBotDefaultsUpdate(discordId, settings as unknown as Record<string, unknown>)
       return NextResponse.json(settings)
     } catch (error) {
-      console.error("[VectoBeat] Failed to update bot settings:", error)
+      logError("Failed to update bot settings", error)
       return NextResponse.json({ error: "Failed to update bot settings" }, { status: 500 })
     }
   }

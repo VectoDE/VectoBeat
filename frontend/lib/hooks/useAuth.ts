@@ -26,7 +26,7 @@ export function useAuth(): UseAuthReturn {
         setIsLoggedIn(false)
         setUser(null)
       }
-    } catch (error) {
+    } catch (_error) {
       setIsLoggedIn(false)
       setUser(null)
     } finally {
@@ -37,7 +37,7 @@ export function useAuth(): UseAuthReturn {
   const handleLogout = async () => {
     try {
       await apiClient("/api/logout", { method: "POST" })
-    } catch (error) {
+    } catch (_error) {
       // Error is already logged by apiClient
     }
     localStorage.removeItem("discord_token")

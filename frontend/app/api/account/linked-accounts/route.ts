@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { addLinkedAccount, getLinkedAccounts, removeLinkedAccount } from "@/lib/db"
+import { logError } from "@/lib/utils/error-handling"
 
 type RouteDeps = {
   verifyUser?: typeof verifyRequestForUser
@@ -28,7 +29,7 @@ export const createLinkedAccountHandlers = (deps: RouteDeps = {}) => {
       const accounts = await fetchLinkedAccounts(discordId)
       return NextResponse.json({ accounts })
     } catch (error) {
-      console.error("[VectoBeat] Linked accounts GET failed:", error)
+      logError("Linked accounts GET failed", error)
       return NextResponse.json({ error: "Unable to load linked accounts" }, { status: 500 })
     }
   }
@@ -47,7 +48,7 @@ export const createLinkedAccountHandlers = (deps: RouteDeps = {}) => {
       const accounts = await fetchLinkedAccounts(discordId)
       return NextResponse.json({ accounts })
     } catch (error) {
-      console.error("[VectoBeat] Linked accounts POST failed:", error)
+      logError("Linked accounts POST failed", error)
       return NextResponse.json({ error: "Unable to add linked account" }, { status: 500 })
     }
   }
@@ -66,7 +67,7 @@ export const createLinkedAccountHandlers = (deps: RouteDeps = {}) => {
       const accounts = await fetchLinkedAccounts(discordId)
       return NextResponse.json({ accounts })
     } catch (error) {
-      console.error("[VectoBeat] Linked accounts DELETE failed:", error)
+      logError("Linked accounts DELETE failed", error)
       return NextResponse.json({ error: "Unable to remove linked account" }, { status: 500 })
     }
   }

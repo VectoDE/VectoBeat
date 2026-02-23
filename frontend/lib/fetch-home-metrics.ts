@@ -1,5 +1,6 @@
 import { getHomeMetrics, type HomeMetrics } from "./metrics"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 const resolveBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL ||
@@ -37,11 +38,11 @@ export const fetchHomeMetrics = async (): Promise<HomeMetrics | null> => {
     }
     return await getHomeMetrics()
   } catch (apiError) {
-    console.error("[VectoBeat] Failed to load home metrics via API:", apiError)
+    logError("Failed to load home metrics via API", apiError)
     try {
       return await getHomeMetrics()
     } catch (localError) {
-      console.error("[VectoBeat] Local metrics fallback failed:", localError)
+      logError("Local metrics fallback failed", localError)
       return null
     }
   }

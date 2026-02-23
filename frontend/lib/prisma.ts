@@ -7,14 +7,21 @@ type GlobalWithPrisma = typeof globalThis & {
 const globalForPrisma = globalThis as GlobalWithPrisma
 let prismaClient: PrismaClient | null = globalForPrisma.prisma ?? null
 
-const PrismaInitError = (Prisma as { PrismaClientInitializationError?: new (...args: any[]) => Error }).PrismaClientInitializationError
-const PrismaRustError = (Prisma as { PrismaClientRustPanicError?: new (...args: any[]) => Error }).PrismaClientRustPanicError
+const PrismaInitError = (Prisma as any).PrismaClientInitializationError
+const PrismaRustError = (Prisma as any).PrismaClientRustPanicError
+const PrismaUnknownError = (Prisma as any).PrismaClientUnknownRequestError
+const PrismaValidationError = (Prisma as any).PrismaClientValidationError
 
-const isInstanceOf = (value: unknown, ctor?: new (...args: any[]) => Error) =>
-  typeof ctor === "function" && value instanceof ctor
+export const isInstanceOf = (value: unknown, ctor?: new (..._args: any[]) => Error) =>
+  typeof ctor === "function" && !!ctor.prototype && value instanceof ctor
 
 const shouldResetPrisma = (error: unknown) => {
-  if (isInstanceOf(error, PrismaInitError) || isInstanceOf(error, PrismaRustError)) {
+  if (
+    isInstanceOf(error, PrismaInitError) ||
+    isInstanceOf(error, PrismaRustError) ||
+    isInstanceOf(error, PrismaUnknownError) ||
+    isInstanceOf(error, PrismaValidationError)
+  ) {
     return true
   }
 

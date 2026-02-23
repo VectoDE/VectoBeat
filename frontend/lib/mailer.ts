@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer"
+import { logError } from "./utils/error-handling"
 
 const smtpHost = process.env.SMTP_HOST
 const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587
@@ -11,14 +12,14 @@ const canSendMail = Boolean(smtpHost && smtpUser && smtpPass)
 
 const transporter = canSendMail
   ? nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    })
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  })
   : null
 
 export interface NotificationEmailPayload {
@@ -45,7 +46,7 @@ export const sendNotificationEmail = async (payload: NotificationEmailPayload) =
 
     return { delivered: true }
   } catch (error) {
-    console.error("[VectoBeat] Failed to send notification email:", error)
+    logError("Failed to send notification email", error)
     return { delivered: false, reason: (error as Error).message }
   }
 }

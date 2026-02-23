@@ -12,11 +12,12 @@ const TTL_BY_TIER_MINUTES: Record<MembershipTier, number> = {
   enterprise: 360,
 }
 
+/* eslint-disable no-unused-vars */
 type QueueStoreDeps = {
-  fetchTier?: (guildId: string) => Promise<MembershipTier>
-  persist?: (snapshot: QueueSnapshot, tier: MembershipTier, expiresAt: Date | null) => Promise<unknown>
-  load?: (guildId: string) => Promise<{ snapshot: QueueSnapshot; expiresAt: Date | null } | null>
-  purge?: (now?: Date) => Promise<unknown>
+  fetchTier?: (_guildId: string) => Promise<MembershipTier>
+  persist?: (_snapshot: QueueSnapshot, _tier: MembershipTier, _expiresAt: Date | null) => Promise<unknown>
+  load?: (_guildId: string) => Promise<{ snapshot: QueueSnapshot; expiresAt: Date | null } | null>
+  purge?: (_now?: Date) => Promise<unknown>
   now?: () => number
 }
 
