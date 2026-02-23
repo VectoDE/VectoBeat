@@ -1716,7 +1716,7 @@ export const getUserContact = async (discordId: string) => {
   try {
     const db = getPool()
     if (!db) {
-      return { email: null, phone: null }
+      return { email: null, phone: null, stripeCustomerId: null }
     }
 
     const record = await db.userContact.findUnique({
@@ -1727,7 +1727,7 @@ export const getUserContact = async (discordId: string) => {
     return mapContact(record as UserContactRecord | null)
   } catch (error) {
     logDbError("[VectoBeat] Failed to load user contact:", error)
-    return { email: null, phone: null }
+    return { email: null, phone: null, stripeCustomerId: null }
   }
 }
 
@@ -5198,6 +5198,8 @@ const buildContactCategoryWhere = (
     return {
       OR: [
         { conversation: { some: {} } },
+        { topic: { contains: "Ticket" } },
+        { topic: { contains: "ticket" } },
         { subject: { contains: "Ticket" } },
         { subject: { contains: "ticket" } },
         partnerPredicate,
@@ -5270,7 +5272,7 @@ export const createContactMessage = async ({
       return text.length > limit ? text.slice(0, limit) : text
     }
     // Reduce lengths to fit varchar columns in the current schema.
-    const MAX_MESSAGE_LENGTH = 190
+    const MAX_MESSAGE_LENGTH = 2000
     const MAX_SUBJECT_LENGTH = 190
 
     const result = await db.contactMessage.create({
@@ -5547,7 +5549,7 @@ export const appendContactMessageThread = async ({
       const text = value || ""
       return text.length > limit ? text.slice(0, limit) : text
     }
-    const MAX_BODY_LENGTH = 180
+    const MAX_BODY_LENGTH = 2000
 
     const created = await db.contactMessageThread.create({
       data: {

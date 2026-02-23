@@ -31,11 +31,11 @@ const getOrCreateCustomer = async (
     existing.data.length > 0
       ? existing.data[0]
       : await stripe.customers.create({
-          email,
-          metadata: {
-            discordId: options?.discordId || "",
-          },
-        })
+        email,
+        metadata: {
+          discordId: options?.discordId || "",
+        },
+      })
 
   const updatePayload: Stripe.CustomerUpdateParams = {}
   if (options?.name && options.name.trim() && options.name.trim() !== baseCustomer.name) {
@@ -106,18 +106,18 @@ export async function POST(request: NextRequest) {
     const normalizedCountry = normalizeCountry(billingAddress?.country as string | undefined)
     const normalizedAddress: Stripe.AddressParam | undefined = billingAddress
       ? {
-          country: normalizedCountry,
-          state: typeof billingAddress.state === "string" ? billingAddress.state.trim() : undefined,
-          city: typeof billingAddress.city === "string" ? billingAddress.city.trim() : undefined,
-          line1: typeof billingAddress.line1 === "string" ? billingAddress.line1.trim() : undefined,
-          line2: typeof (billingAddress as any).line2 === "string" ? (billingAddress as any).line2.trim() : undefined,
-          postal_code:
-            typeof (billingAddress as any).postalCode === "string"
-              ? (billingAddress as any).postalCode.trim()
-              : typeof (billingAddress as any).postal_code === "string"
-                ? (billingAddress as any).postal_code.trim()
-                : undefined,
-        }
+        country: normalizedCountry,
+        state: typeof billingAddress.state === "string" ? billingAddress.state.trim() : undefined,
+        city: typeof billingAddress.city === "string" ? billingAddress.city.trim() : undefined,
+        line1: typeof billingAddress.line1 === "string" ? billingAddress.line1.trim() : undefined,
+        line2: typeof (billingAddress as any).line2 === "string" ? (billingAddress as any).line2.trim() : undefined,
+        postal_code:
+          typeof (billingAddress as any).postalCode === "string"
+            ? (billingAddress as any).postalCode.trim()
+            : typeof (billingAddress as any).postal_code === "string"
+              ? (billingAddress as any).postal_code.trim()
+              : undefined,
+      }
       : undefined
 
     const preferences = discordId ? await getUserPreferences(discordId) : null
@@ -125,14 +125,14 @@ export async function POST(request: NextRequest) {
     const preferenceAddress: Stripe.AddressParam | undefined =
       preferenceCountry
         ? {
-            country: preferenceCountry,
-            state: preferences?.addressState || undefined,
-            city: preferences?.addressCity || undefined,
-            line1: preferences?.addressStreet
-              ? `${preferences.addressStreet}${preferences.addressHouseNumber ? " " + preferences.addressHouseNumber : ""}`
-              : undefined,
-            postal_code: preferences?.addressPostalCode || undefined,
-          }
+          country: preferenceCountry,
+          state: preferences?.addressState || undefined,
+          city: preferences?.addressCity || undefined,
+          line1: preferences?.addressStreet
+            ? `${preferences.addressStreet}${preferences.addressHouseNumber ? " " + preferences.addressHouseNumber : ""}`
+            : undefined,
+          postal_code: preferences?.addressPostalCode || undefined,
+        }
         : undefined
 
     const resolvedAddress = normalizedAddress || preferenceAddress
@@ -260,11 +260,11 @@ export async function POST(request: NextRequest) {
       },
       metadata: checkoutMetadata,
       billing_address_collection: "required",
-      payment_method_collection: "always",
+      payment_method_collection: "if_required",
       locale: locale as Stripe.Checkout.SessionCreateParams.Locale,
       allow_promotion_codes: true,
       automatic_tax: {
-        enabled: Boolean(resolvedAddress?.country),
+        enabled: true,
       },
       tax_id_collection: {
         enabled: true,

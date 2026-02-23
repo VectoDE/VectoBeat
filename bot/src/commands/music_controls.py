@@ -28,19 +28,17 @@ if TYPE_CHECKING:
     from src.services.dj_permission_service import DJPermissionManager
     from src.services.queue_telemetry_service import QueueTelemetryService
     from src.services.profile_service import GuildProfileManager
+    from src.services.queue_sync_service import QueueSyncService
+    from src.services.shard_supervisor import ShardSupervisor
+    from src.services.alert_service import AlertService
+    from src.services.automation_audit_service import AutomationAuditService
+    from src.services.command_throttle_service import CommandThrottleService
+    from src.services.analytics_export_service import AnalyticsExportService
 
 URL_REGEX = re.compile(r"https?://", re.IGNORECASE)
 VOICE_PERMISSIONS = ("connect", "speak", "view_channel")
 
 
-def ms_to_clock(ms: int) -> str:
-    """Convert milliseconds into a human readable duration string."""
-    seconds = max(0, int(ms // 1000))
-    minutes, secs = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours:d}:{minutes:02d}:{secs:02d}"
-    return f"{minutes:d}:{secs:02d}"
 
 
 class MusicControls(commands.Cog):

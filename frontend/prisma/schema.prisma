@@ -783,3 +783,33 @@ model BotInstance {
 
   @@map("bot_instances")
 }
+
+// Moderation
+model UserInfraction {
+  id          String   @id @default(uuid())
+  discordId   String   @map("discord_id")
+  type        String   // ban, warn, kick
+  reason      String   @db.Text
+  moderatorId String   @map("moderator_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  appeals     BanAppeal[]
+
+  @@index([discordId], name: "user_infractions_discord_idx")
+  @@map("user_infractions")
+}
+
+model BanAppeal {
+  id            String   @id @default(uuid())
+  discordId     String   @map("discord_id")
+  infractionId  String   @map("infraction_id")
+  status        String   @default("pending") // pending, accepted, denied
+  message       String   @db.Text
+  moderatorNote String?  @map("moderator_note") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  infraction    UserInfraction @relation(fields: [infractionId], references: [id], onDelete: Cascade)
+
+  @@index([discordId], name: "ban_appeals_discord_idx")
+  @@index([infractionId], name: "ban_appeals_infraction_idx")
+  @@map("ban_appeals")
+}
