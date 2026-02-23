@@ -1,4 +1,5 @@
 import type { MembershipTier } from "./memberships"
+import { logError } from "./utils/error-handling"
 
 const parsePlanCapabilities = () => {
   const payload = process.env.NEXT_PUBLIC_PLAN_CAPABILITIES
@@ -8,7 +9,7 @@ const parsePlanCapabilities = () => {
   try {
     return JSON.parse(payload) as Record<string, unknown>
   } catch (error) {
-    console.error("[VectoBeat] Failed to parse NEXT_PUBLIC_PLAN_CAPABILITIES:", error)
+    logError("Failed to parse NEXT_PUBLIC_PLAN_CAPABILITIES", error)
     throw error
   }
 }

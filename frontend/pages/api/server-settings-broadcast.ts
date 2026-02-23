@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import { ensureSocketServer } from "@/lib/socket-server"
-import { getApiKeySecret, getApiKeySecrets } from "@/lib/api-keys"
+import { getApiKeySecrets } from "@/lib/api-keys"
+import { logError } from "@/lib/utils/error-handling"
 
 const AUTH_TOKEN_TYPES = ["server_settings", "status_events"]
 
@@ -35,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     io.emit("server-settings:update", { guildId, settings, tier })
     return res.status(200).json({ ok: true })
   } catch (error) {
-    console.error("[VectoBeat] Failed to broadcast server settings:", error)
+    logError("Failed to broadcast server settings", error)
     return res.status(500).json({ error: "broadcast_failed" })
   }
 }

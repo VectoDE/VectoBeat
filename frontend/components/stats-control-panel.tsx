@@ -83,36 +83,40 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
 
     const connect = async () => {
       try {
+        console.log("[VectoBeat] Initializing analytics socket...")
         await apiClient<any>("/api/socket")
         socket = io({ path: "/api/socket" })
 
         socket.on("connect", () => {
+          console.log("[VectoBeat] Analytics socket connected")
           if (!mounted) return
           setConnectionState("connected")
           stopPolling()
         })
 
         socket.on("connect_error", (error) => {
-          console.error("[VectoBeat] Socket connection failed:", error)
+          console.error("[VectoBeat] Analytics socket connection failure:", error)
           if (!mounted) return
           setConnectionState("error")
           startPolling()
         })
 
         socket.on("stats:update", (payload: CombinedMetrics) => {
+          console.log("[VectoBeat] Received analytics update")
           if (mounted && payload?.analytics) {
             setData(payload.analytics)
             setLastUpdated(new Date(payload.analytics.updatedAt).toLocaleString())
           }
         })
 
-        socket.on("disconnect", () => {
+        socket.on("disconnect", (reason) => {
+          console.warn("[VectoBeat] Analytics socket disconnected:", reason)
           if (!mounted) return
           setConnectionState("error")
           startPolling()
         })
       } catch (error) {
-        console.error("[VectoBeat] Failed to establish socket connection:", error)
+        console.error("[VectoBeat] Failed to initialize analytics socket:", error)
         if (mounted) {
           setConnectionState("error")
           startPolling()

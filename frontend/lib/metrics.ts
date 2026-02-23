@@ -6,7 +6,6 @@ import {
   recordBotMetricSnapshot,
   getBotMetricHistory,
   type BotMetricHistoryEntry,
-  BOT_SNAPSHOT_INTERVAL_MS,
   recordAnalyticsSnapshot,
   getForumStats,
   listForumEvents,
@@ -114,11 +113,6 @@ const parseReferrerParts = (value?: string | null) => {
   }
 }
 
-const trimPath = (path: string) => {
-  if (!path || path === "/") return path || "/"
-  return path.length > 32 ? `${path.slice(0, 31)}…` : path
-}
-
 const shortNumber = (value: number) => {
   if (!Number.isFinite(value)) return "0"
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
@@ -128,29 +122,6 @@ const shortNumber = (value: number) => {
 
 const normalizeNumber = (value: unknown): number =>
   typeof value === "number" && Number.isFinite(value) ? value : 0
-
-const formatUptimeLabel = (value: number) => {
-  if (!Number.isFinite(value) || value <= 0) {
-    return "0%"
-  }
-  if (value <= 1) {
-    return `${(value * 100).toFixed(2)}%`
-  }
-  if (value <= 100) {
-    return `${value.toFixed(2)}%`
-  }
-  const seconds = Math.floor(value)
-  const days = Math.floor(seconds / 86_400)
-  const hours = Math.floor((seconds % 86_400) / 3_600)
-  const minutes = Math.floor((seconds % 3_600) / 60)
-  if (days > 0) {
-    return `${days}d ${hours}h`.trim()
-  }
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`.trim()
-  }
-  return `${Math.max(minutes, 1)}m`
-}
 
 const buildBaseMetrics = async (): Promise<BaseMetrics> => {
   const [postsResult, botStatusResult, trafficResult, forumStatsResult, forumEventsResult, usageTotalsResult] = await Promise.allSettled([
@@ -167,33 +138,33 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     trafficResult.status === "fulfilled"
       ? trafficResult.value
       : {
-          totalViews: 0,
-          uniquePaths: 0,
-          uniqueVisitors: 0,
-          last24hViews: 0,
-          last24hVisitors: 0,
-          topPages: [],
-          referrers: [],
-          referrerHosts: [],
-          referrerPaths: [],
-          geo: [],
-          dailySeries: [],
-          monthlySeries: [],
-        }
+        totalViews: 0,
+        uniquePaths: 0,
+        uniqueVisitors: 0,
+        last24hViews: 0,
+        last24hVisitors: 0,
+        topPages: [],
+        referrers: [],
+        referrerHosts: [],
+        referrerPaths: [],
+        geo: [],
+        dailySeries: [],
+        monthlySeries: [],
+      }
   const forumStats =
     forumStatsResult.status === "fulfilled"
       ? forumStatsResult.value
       : {
-          categories: 0,
-          threads: 0,
-          posts: 0,
-          events24h: 0,
-          posts24h: 0,
-          threads24h: 0,
-          activePosters24h: 0,
-          lastEventAt: null,
-          topCategories: [],
-        }
+        categories: 0,
+        threads: 0,
+        posts: 0,
+        events24h: 0,
+        posts24h: 0,
+        threads24h: 0,
+        activePosters24h: 0,
+        lastEventAt: null,
+        topCategories: [],
+      }
   const forumEvents = forumEventsResult.status === "fulfilled" ? forumEventsResult.value : []
   let fallbackSnapshot: BotMetricHistoryEntry | null = null
   if (!botStatus) {
@@ -220,8 +191,8 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     typeof botStatus?.guildCount === "number"
       ? botStatus.guildCount
       : resolveArrayCount((botStatus as { guilds?: unknown[]; servers?: unknown[] }) ?? {}) ??
-          fallbackSnapshot?.guildCount ??
-          0,
+      fallbackSnapshot?.guildCount ??
+      0,
   )
   const playersDetail =
     botStatus && Array.isArray((botStatus as { playersDetail?: Array<{ isPlaying?: boolean }> }).playersDetail)
@@ -229,40 +200,42 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       : []
   const listenerDetail =
     botStatus &&
-    Array.isArray(
-      (
-        botStatus as {
-          listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
-        }
-      ).listenerDetail,
-    )
-      ? (
+      Array.isArray(
+        (
           botStatus as {
             listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
           }
-        ).listenerDetail!.map((entry) => ({
-          guildId: typeof entry.guildId === "string" ? entry.guildId : "",
-          guildName: typeof entry.guildName === "string" ? entry.guildName : undefined,
-          channelId: typeof entry.channelId === "string" ? entry.channelId : "",
-          channelName: typeof entry.channelName === "string" ? entry.channelName : undefined,
-          listeners: normalizeNumber(entry.listeners),
-        }))
+        ).listenerDetail,
+      )
+      ? (
+        botStatus as {
+          listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
+        }
+      ).listenerDetail!.map((entry) => ({
+        guildId: typeof entry.guildId === "string" ? entry.guildId : "",
+        guildName: typeof entry.guildName === "string" ? entry.guildName : undefined,
+        channelId: typeof entry.channelId === "string" ? entry.channelId : "",
+        channelName: typeof entry.channelName === "string" ? entry.channelName : undefined,
+        listeners: normalizeNumber(entry.listeners),
+      }))
       : []
   const rawCurrentListeners = normalizeNumber(
     botStatus?.activePlayers ??
-      botStatus?.players ??
-      botStatus?.currentListeners ??
-      botStatus?.listeners ??
-      (playersDetail.length ? playersDetail.filter((player) => player?.isPlaying).length : undefined) ??
-      fallbackSnapshot?.activeListeners,
+    botStatus?.players ??
+    botStatus?.currentListeners ??
+    botStatus?.listeners ??
+    (playersDetail.length ? playersDetail.filter((player) => player?.isPlaying).length : undefined) ??
+    fallbackSnapshot?.activeListeners,
   )
-  const activeUsers = normalizeNumber(botStatus?.listenerPeak24h ?? botStatus?.listeners24h ?? rawCurrentListeners)
+  const activeUsers = normalizeNumber(
+    botStatus?.listenerPeak24h ?? botStatus?.listeners24h ?? botStatus?.activeUsers24h ?? rawCurrentListeners,
+  )
   const totalStreams =
     typeof usageTotals.totalStreams === "number"
       ? usageTotals.totalStreams
       : normalizeNumber(
-          botStatus?.totalStreams ?? botStatus?.streams ?? botStatus?.streamCount ?? fallbackSnapshot?.totalStreams,
-        )
+        botStatus?.totalStreams ?? botStatus?.streams ?? botStatus?.streamCount ?? fallbackSnapshot?.totalStreams,
+      )
   const commandsTotal = normalizeNumber(usageTotals.commandsTotal ?? 0)
   const incidentsTotal = normalizeNumber(usageTotals.incidentsTotal ?? 0)
   const uptimeSeconds = normalizeNumber(botStatus?.uptimeSeconds ?? botStatus?.uptime ?? fallbackSnapshot?.uptimePercent)
@@ -274,9 +247,9 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     (uptimeSeconds > 0 ? Math.min(100, Math.max((uptimeSeconds / 86_400) * 100, 0)) : 0)
   const responseTimeMs = normalizeNumber(
     botStatus?.latency ??
-      botStatus?.averageLatency ??
-      (botStatus as { latencyMs?: number })?.latencyMs ??
-      fallbackSnapshot?.avgResponseMs,
+    botStatus?.averageLatency ??
+    (botStatus as { latencyMs?: number })?.latencyMs ??
+    fallbackSnapshot?.avgResponseMs,
   )
 
   if (botStatus) {
@@ -288,23 +261,23 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       avgResponseMs: Math.round(responseTimeMs),
       voiceConnections: normalizeNumber(
         (botStatus as { voiceConnections?: number; activeVoice?: number; connectedVoiceChannels?: number }).voiceConnections ??
-          (botStatus as { activeVoice?: number }).activeVoice ??
-          (botStatus as { connectedVoiceChannels?: number }).connectedVoiceChannels ??
-          0,
+        (botStatus as { activeVoice?: number }).activeVoice ??
+        (botStatus as { connectedVoiceChannels?: number }).connectedVoiceChannels ??
+        0,
       ),
       incidents24h: normalizeNumber((botStatus as { incidents24h?: number; incidents?: number }).incidents24h ?? (botStatus as { incidents?: number }).incidents ?? 0),
       commands24h: normalizeNumber((botStatus as { commands24h?: number; commands?: number }).commands24h ?? (botStatus as { commands?: number }).commands ?? 0),
       shardsOnline: normalizeNumber(
         (botStatus as { shardsOnline?: number }).shardsOnline ??
-          (Array.isArray((botStatus as { shards?: Array<{ online?: boolean }> }).shards)
-            ? (botStatus as { shards?: Array<{ online?: boolean }> }).shards!.filter((shard) => shard && shard.online !== false).length
-            : 0),
+        (Array.isArray((botStatus as { shards?: Array<{ online?: boolean }> }).shards)
+          ? (botStatus as { shards?: Array<{ online?: boolean }> }).shards!.filter((shard) => shard && shard.online !== false).length
+          : 0),
       ),
       shardsTotal: normalizeNumber(
         (botStatus as { shardsTotal?: number }).shardsTotal ??
-          (Array.isArray((botStatus as { shards?: Array<unknown> }).shards)
-            ? (botStatus as { shards?: Array<unknown> }).shards!.length
-            : (botStatus as { shardCount?: number }).shardCount ?? 0),
+        (Array.isArray((botStatus as { shards?: Array<unknown> }).shards)
+          ? (botStatus as { shards?: Array<unknown> }).shards!.length
+          : (botStatus as { shardCount?: number }).shardCount ?? 0),
       ),
     }
     void recordBotMetricSnapshot(snapshotPayload)
@@ -408,8 +381,8 @@ const computeUptimeAvailability = (history: BotMetricHistoryEntry[]): number => 
 const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []): HomeMetrics => {
   const { totals, traffic } = base
   const uptimePercent = history.length ? computeUptimeAvailability(history) : totals.uptimePercent || (totals.uptimeSeconds > 0 ? 100 : 0)
-  const uptimeLabel = `${uptimePercent.toFixed(2)}%`
-  const avgResponseLabel = `${totals.responseTimeMs ? Math.round(totals.responseTimeMs) : 0}ms`
+  const uptimeLabel = uptimePercent > 0 ? `${uptimePercent.toFixed(2)}%` : "0%"
+  const avgResponseLabel = totals.responseTimeMs ? `${Math.round(totals.responseTimeMs)}ms` : "0ms"
   const blogBuckets = getMonthBuckets(base.posts)
   const latestBlogBucket = blogBuckets.at(-1)
 
@@ -535,17 +508,17 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
 
   const referrerHosts: Array<{ host: string; views: number }> = hasDbHosts
     ? (traffic as { referrerHosts: Array<{ host: string; views: number }> }).referrerHosts.map((entry) => ({
-        host: entry.host || "direct",
-        views: entry.views,
-      }))
+      host: entry.host || "direct",
+      views: entry.views,
+    }))
     : aggregated?.hosts ?? []
 
   const referrerPaths = hasDbPaths
     ? (traffic as { referrerPaths: Array<{ host: string; path: string; views: number }> }).referrerPaths.map((entry) => ({
-        host: entry.host || "direct",
-        path: entry.path || "/",
-        views: entry.views,
-      }))
+      host: entry.host || "direct",
+      path: entry.path || "/",
+      views: entry.views,
+    }))
     : aggregated?.paths ?? []
 
   const forumStats = base.forumStats

@@ -31,6 +31,7 @@ import {
 import { FaMicrosoft } from "react-icons/fa"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import { RoleBadge } from "@/components/role-badge"
+import { logError } from "@/lib/utils/error-handling"
 
 const PREFERENCE_DEFAULTS = {
   preferredLanguage: "en",
@@ -368,7 +369,7 @@ const [subscriptionPreview, setSubscriptionPreview] = useState<AccountSubscripti
         }
         window.location.href = data.url
       } catch (error) {
-        console.error("Failed to open billing portal:", error)
+        logError("Failed to open billing portal", error)
         setSubscriptionsError(error instanceof Error ? error.message : "Unable to open billing portal.")
       } finally {
         setRenewingSubscriptionId(null)
@@ -412,7 +413,7 @@ const profileShareUrl = profileShareSlug
         phone: data.phone || prev.phone,
       }))
     } catch (error) {
-      console.error("Failed to load contact info:", error)
+      logError("Failed to load contact info", error)
       setContactError("Unable to load contact information")
     } finally {
       setContactLoading(false)
@@ -439,7 +440,7 @@ const profileShareUrl = profileShareSlug
       }
       setContactMessage("Contact information updated")
     } catch (error) {
-      console.error("Failed to save contact info:", error)
+      logError("Failed to save contact info", error)
       setContactError(error instanceof Error ? error.message : "Failed to save contact information")
     } finally {
       setContactSaving(false)
@@ -472,7 +473,7 @@ const profileShareUrl = profileShareSlug
         avatarUrl: data.avatarUrl ?? prev.avatarUrl,
       }))
     } catch (error) {
-      console.error("Failed to load profile settings:", error)
+      logError("Failed to load profile settings", error)
       setProfileSettingsError("Unable to load profile settings")
     } finally {
       setProfileSettingsLoading(false)
@@ -513,7 +514,7 @@ const profileShareUrl = profileShareSlug
       }))
       setProfileMessage("Profile updated successfully.")
     } catch (error) {
-      console.error("Failed to update profile settings:", error)
+      logError("Failed to update profile settings", error)
       setProfileSettingsError(error instanceof Error ? error.message : "Unable to update profile settings.")
     } finally {
       setProfileSettingsSaving(false)
@@ -533,7 +534,7 @@ const profileShareUrl = profileShareSlug
       const data = await response.json()
       setLinkedAccounts(Array.isArray(data.accounts) ? data.accounts : [])
     } catch (error) {
-      console.error("Failed to load linked accounts:", error)
+      logError("Failed to load linked accounts", error)
       setLinkedAccountsError("Unable to load linked accounts")
     } finally {
       setLinkedAccountsLoading(false)
@@ -577,7 +578,7 @@ const profileShareUrl = profileShareSlug
         setLinkedAccounts(Array.isArray(data.accounts) ? data.accounts : [])
         setLinkedAccountForm((prev) => ({ ...prev, handle: "" }))
       } catch (error) {
-        console.error("Failed to add linked account:", error)
+        logError("Failed to add linked account", error)
         setLinkedAccountsError(error instanceof Error ? error.message : "Unable to add linked account")
       } finally {
         setLinkedAccountSaving(false)
@@ -604,7 +605,7 @@ const profileShareUrl = profileShareSlug
         const data = await response.json()
         setLinkedAccounts(Array.isArray(data.accounts) ? data.accounts : [])
       } catch (error) {
-        console.error("Failed to remove linked account:", error)
+        logError("Failed to remove linked account", error)
         setLinkedAccountsError(error instanceof Error ? error.message : "Unable to remove linked account")
       } finally {
         setLinkedAccountSaving(false)
@@ -651,7 +652,7 @@ const profileShareUrl = profileShareSlug
         })),
       )
     } catch (error) {
-      console.error("Failed to load subscriptions:", error)
+      logError("Failed to load subscriptions", error)
       setSubscriptions([])
       setSubscriptionsError("Unable to load subscriptions right now.")
     } finally {
@@ -681,11 +682,11 @@ const profileShareUrl = profileShareSlug
         try {
           window.localStorage.setItem("preferred_language", data.preferredLanguage)
         } catch (error) {
-          console.error("Failed to persist language preference locally:", error)
+          logError("Failed to persist language preference locally", error)
         }
       }
     } catch (error) {
-      console.error("Failed to load preferences:", error)
+      logError("Failed to load preferences", error)
     }
   }, [])
 
@@ -712,11 +713,11 @@ const profileShareUrl = profileShareSlug
           try {
             window.localStorage.setItem("preferred_language", value)
           } catch (error) {
-            console.error("Failed to persist language preference locally:", error)
+            logError("Failed to persist language preference locally", error)
           }
         }
       } catch (error) {
-        console.error("Failed to update language preference:", error)
+        logError("Failed to update language preference", error)
         setLanguageError("Failed to update language")
       } finally {
         setLanguageSaving(false)
@@ -752,7 +753,7 @@ const profileShareUrl = profileShareSlug
       }
       setBillingMessage("Billing details saved.")
     } catch (error) {
-      console.error("Failed to save billing details:", error)
+      logError("Failed to save billing details", error)
       setBillingError("Could not save billing details.")
     } finally {
       setBillingSaving(false)
@@ -773,7 +774,7 @@ const profileShareUrl = profileShareSlug
         ...data,
       })
     } catch (error) {
-      console.error("Failed to load notifications:", error)
+      logError("Failed to load notifications", error)
       setNotificationsError("Unable to load notifications")
     } finally {
       setNotificationsLoading(false)
@@ -800,7 +801,7 @@ const profileShareUrl = profileShareSlug
           throw new Error(payload.error || "Failed to update notifications")
         }
       } catch (error) {
-        console.error("Failed to update notifications:", error)
+        logError("Failed to update notifications", error)
         setNotificationsError("Failed to save notification settings")
       } finally {
         setNotificationsSaving(false)
@@ -823,7 +824,7 @@ const profileShareUrl = profileShareSlug
         ...data,
       })
     } catch (error) {
-      console.error("Failed to load privacy settings:", error)
+      logError("Failed to load privacy settings", error)
       setPrivacyError("Unable to load privacy settings")
     } finally {
       setPrivacyLoading(false)
@@ -850,7 +851,7 @@ const profileShareUrl = profileShareSlug
           throw new Error(payload.error || "Failed to update privacy settings")
         }
       } catch (error) {
-        console.error("Failed to update privacy settings:", error)
+        logError("Failed to update privacy settings", error)
         setPrivacyError("Failed to save privacy settings")
       } finally {
         setPrivacySaving(false)
@@ -873,7 +874,7 @@ const profileShareUrl = profileShareSlug
         ...data,
       })
     } catch (error) {
-      console.error("Failed to load security settings:", error)
+      logError("Failed to load security settings", error)
       setSecurityError("Unable to load security settings")
     } finally {
       setSecurityLoading(false)
@@ -908,7 +909,7 @@ const profileShareUrl = profileShareSlug
         return fetched[0]?.id ?? prev
       })
     } catch (error) {
-      console.error("Failed to load sessions:", error)
+      logError("Failed to load sessions", error)
       setSessionsError("Unable to load active sessions")
     } finally {
       setSessionsLoading(false)
@@ -934,7 +935,7 @@ const profileShareUrl = profileShareSlug
         setBackupCodes(Array.isArray(data.codes) ? data.codes : [])
         setBackupCodesFetched(true)
       } catch (error) {
-        console.error("Failed to load backup codes:", error)
+        logError("Failed to load backup codes", error)
         setBackupCodesError("Unable to fetch backup codes")
       } finally {
         setBackupCodesLoading(false)
@@ -980,7 +981,7 @@ const profileShareUrl = profileShareSlug
           throw new Error(payload.error || "Failed to update security settings")
         }
       } catch (error) {
-        console.error("Failed to update security settings:", error)
+        logError("Failed to update security settings", error)
         setSecurityError("Failed to save security settings")
       } finally {
         setSecuritySaving(false)
@@ -1016,7 +1017,7 @@ const profileShareUrl = profileShareSlug
       anchor.click()
       window.URL.revokeObjectURL(url)
     } catch (error) {
-      console.error("Failed to download export:", error)
+      logError("Failed to download export", error)
       setPrivacyError("Unable to download your data export")
     } finally {
       setDownloadingData(false)
@@ -1070,7 +1071,7 @@ const profileShareUrl = profileShareSlug
       setBackupCodesVisible(true)
       fetchSecurity(formData.discordId)
     } catch (error) {
-      console.error("Failed to regenerate backup codes:", error)
+      logError("Failed to regenerate backup codes", error)
       setBackupCodesError(error instanceof Error ? error.message : "Failed to regenerate backup codes")
     } finally {
       setBackupCodesLoading(false)
@@ -1174,7 +1175,7 @@ const profileShareUrl = profileShareSlug
         void fetchSubscriptions(resolvedUserId)
         void fetchProfileSettings(resolvedUserId)
       } catch (error) {
-        console.error("Auth check failed:", error)
+        logError("Auth check failed", error)
         localStorage.removeItem("discord_token")
         localStorage.removeItem("discord_user_id")
         if (!cancelled) {
@@ -1248,7 +1249,7 @@ const profileShareUrl = profileShareSlug
         }
         fetchSessions(formData.discordId, authToken)
       } catch (error) {
-        console.error("Failed to revoke session:", error)
+        logError("Failed to revoke session", error)
         setSessionsError(error instanceof Error ? error.message : "Unable to revoke session")
       }
     },

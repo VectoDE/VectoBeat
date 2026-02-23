@@ -2,6 +2,7 @@ import type { MembershipTier } from "./memberships"
 import type { ServerFeatureSettings } from "./server-settings"
 import { getApiKeySecret } from "./api-keys"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 const getInternalBaseUrl = () =>
   process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
@@ -28,7 +29,7 @@ const postWithAuth = async (path: string, body: Record<string, unknown>): Promis
     })
     return true
   } catch (error) {
-    console.error("[VectoBeat] Broadcast request failed:", error)
+    logError("Broadcast request failed", error)
     return false
   }
 }

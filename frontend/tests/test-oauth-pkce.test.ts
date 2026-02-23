@@ -20,7 +20,7 @@ const generateCodeChallenge = (verifier: string): string =>
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
-const runEncodingCheck = (name: string, checkFn: (encoded: string) => void) => {
+const runEncodingCheck = (name: string, checkFn: (_val: string) => void) => {
     test(`base64UrlEncode – ${name}`, () => {
         for (let i = 0; i < 200; i++) {
             checkFn(base64UrlEncode(crypto.randomBytes(64)))
@@ -33,7 +33,7 @@ runEncodingCheck("no raw / characters", (encoded) => assert.ok(!encoded.includes
 runEncodingCheck("no padding = characters", (encoded) => assert.ok(!encoded.includes("="), `Encoded string contains '=': ${encoded}`))
 runEncodingCheck("only valid base64url charset", (encoded) => assert.match(encoded, /^[A-Za-z0-9\-_]+$/, `Invalid chars in: ${encoded}`))
 
-const runVerifierCheck = (name: string, checkFn: (verifier: string) => void) => {
+const runVerifierCheck = (name: string, checkFn: (_val: string) => void) => {
     test(`generateCodeVerifier – ${name}`, () => {
         for (let i = 0; i < 20; i++) {
             checkFn(generateCodeVerifier())

@@ -128,8 +128,8 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
     status: copy?.status ?? "Status",
     live: copy?.live ?? "Live",
     connecting: copy?.connecting ?? "Connecting...",
-    offline: copy?.offline ?? "Offline",
-    updated: copy?.updated ?? "Updated",
+    offline: copy?.offline ?? "Telemetry Offline",
+    updated: copy?.updated ?? "Last Sync",
   }
 
   useEffect(() => {
@@ -163,26 +163,31 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
 
     const setup = async () => {
       try {
+        console.log("[VectoBeat] Initializing metrics socket...")
         await apiClient("/api/socket")
         socket = io({ path: "/api/socket" })
 
         socket.on("connect", () => {
+          console.log("[VectoBeat] Metrics socket connected")
           if (!mounted) return
           setState("connected")
           stopPolling()
         })
-        socket.on("connect_error", () => {
+        socket.on("connect_error", (error) => {
+          console.error("[VectoBeat] Metrics socket connect_error:", error)
           if (!mounted) return
           setState("error")
           startPolling()
         })
-        socket.on("disconnect", () => {
+        socket.on("disconnect", (reason) => {
+          console.warn("[VectoBeat] Metrics socket disconnected:", reason)
           if (!mounted) return
           setState("error")
           startPolling()
         })
 
         socket.on("stats:update", (payload: CombinedMetrics) => {
+          console.log("[VectoBeat] Received metrics update")
           if (!mounted) return
           if (payload?.home) {
             setMetrics(payload.home)
@@ -190,7 +195,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
           }
         })
       } catch (error) {
-        console.error("[VectoBeat] Failed to connect home metrics socket:", error)
+        console.error("[VectoBeat] Failed to initialize home metrics socket:", error)
         if (mounted) {
           setState("error")
           startPolling()
@@ -227,7 +232,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
           <h2 className="text-2xl font-semibold">{labels.title}</h2>
           <p className="text-xs text-foreground/60" suppressHydrationWarning>
             {labels.status}:{" "}
-            <span className={state === "connected" ? "text-primary" : "text-red-400"}>
+            <span className={state === "connected" ? "text-primary" : state === "connecting" ? "text-yellow-400" : "text-red-400"}>
               {state === "connected" ? labels.live : state === "connecting" ? labels.connecting : labels.offline}
             </span>{" "}
             - {labels.updated} {updatedLabel}

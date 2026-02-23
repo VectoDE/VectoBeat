@@ -19,6 +19,7 @@ interface BlogPost {
   slug: string
   title: string
   excerpt: string
+  content: string
   author: string
   category: string
   readTime?: string | null
@@ -223,6 +224,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
 ]
 
 const initialForm = {
+  id: "",
   title: "",
   slug: "",
   excerpt: "",
@@ -462,7 +464,7 @@ export default function AdminControlPanelPage() {
   const [infractions, setInfractions] = useState<any[]>([])
   const [banAppeals, setBanAppeals] = useState<any[]>([])
   const [appealsLoading, setAppealsLoading] = useState(false)
-  const [appealsError, setAppealsError] = useState<string | null>(null)
+  const [_appealsError, setAppealsError] = useState<string | null>(null)
   const [selectedAppeal, setSelectedAppeal] = useState<any>(null)
   const [packageSearch, setPackageSearch] = useState("")
   const [runtimeInfo, setRuntimeInfo] = useState<{
@@ -536,6 +538,7 @@ export default function AdminControlPanelPage() {
       }))
       setLoading(false)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to verify role:", error)
       setAccessDenied(true)
       setLoading(false)
@@ -549,6 +552,7 @@ export default function AdminControlPanelPage() {
       const data = await apiClient<any>("/api/blog", { cache: "no-store" })
       setPosts(Array.isArray(data.posts) ? data.posts : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load blog posts:", error)
       setPostsError("Unable to load blog posts")
     } finally {
@@ -573,6 +577,7 @@ export default function AdminControlPanelPage() {
         setNewsletterSubscribers(data.subscribers)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load campaigns:", error)
     } finally {
       setCampaignLoading(false)
@@ -594,6 +599,7 @@ export default function AdminControlPanelPage() {
       })
       setSupportTickets(Array.isArray(data.tickets) ? data.tickets : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load support tickets:", error)
       setSupportTicketsError("Unable to load support tickets.")
     } finally {
@@ -629,6 +635,7 @@ export default function AdminControlPanelPage() {
           setForumSelectedThread(payload.threads[0].id)
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to load forum data:", error)
       } finally {
         setForumLoading(false)
@@ -712,6 +719,7 @@ export default function AdminControlPanelPage() {
       })
       setContactMessages(Array.isArray(payload.messages) ? payload.messages : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load contact messages:", error)
       setContactError(error instanceof Error ? error.message : "Unable to load contact messages")
     } finally {
@@ -771,6 +779,7 @@ export default function AdminControlPanelPage() {
         : []
       setUsers(normalizedUsers)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load admin users:", error)
       setUsersError(error instanceof Error ? error.message : "Unable to load users")
     } finally {
@@ -793,6 +802,7 @@ export default function AdminControlPanelPage() {
       })
       setSubscriptionsData(Array.isArray(data.subscriptions) ? data.subscriptions : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load admin subscriptions:", error)
       setSubscriptionsError(error instanceof Error ? error.message : "Unable to load subscriptions")
     } finally {
@@ -818,6 +828,7 @@ export default function AdminControlPanelPage() {
       setSystemEndpoints(payload.endpoints || {})
       setSystemKeyMessage(payload.generatedAt ? `Last checked ${new Date(payload.generatedAt).toLocaleString()}` : null)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load system keys:", error)
       setSystemKeyError(error instanceof Error ? error.message : "Unable to load system keys")
     } finally {
@@ -850,6 +861,7 @@ export default function AdminControlPanelPage() {
       if (Array.isArray(botData.entries)) entries.push(...botData.entries)
       setEnvEntries(entries)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load env entries:", error)
       setEnvError(error instanceof Error ? error.message : "Unable to load env entries")
     } finally {
@@ -863,6 +875,7 @@ export default function AdminControlPanelPage() {
       const payload = await apiClient<any>("/api/bot/metrics", { cache: "no-store" })
       setSystemHealth(payload)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load system health:", error)
       setSystemHealthError(error instanceof Error ? error.message : "Unable to load health metrics")
     }
@@ -879,6 +892,7 @@ export default function AdminControlPanelPage() {
       })
       setHealthMetrics(Array.isArray(payload) ? payload : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load health metrics array:", error)
     } finally {
       setHealthMetricsLoading(false)
@@ -898,6 +912,7 @@ export default function AdminControlPanelPage() {
       })
       setLogEvents(Array.isArray(payload.events) ? payload.events : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load logs:", error)
       setLogsError(error instanceof Error ? error.message : "Unable to load logs")
     } finally {
@@ -923,6 +938,7 @@ export default function AdminControlPanelPage() {
         region: payload.region ?? null,
       })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load runtime info:", error)
     }
   }, [authToken, discordId])
@@ -952,6 +968,7 @@ export default function AdminControlPanelPage() {
         setConnectivity(payload.services)
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load connectivity:", error)
     }
   }, [authToken, discordId])
@@ -988,6 +1005,7 @@ export default function AdminControlPanelPage() {
         })
         setTicketThread(data)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to load ticket thread:", error)
         setTicketThreadError(error instanceof Error ? error.message : "Unable to load ticket thread")
       } finally {
@@ -1030,6 +1048,7 @@ export default function AdminControlPanelPage() {
       setInfractions(Array.isArray(infractionsData.infractions) ? infractionsData.infractions : [])
       setBanAppeals(Array.isArray(appealsData.appeals) ? appealsData.appeals : [])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to load appeals data:", error)
       setAppealsError("Unable to load bans and appeals data.")
     } finally {
@@ -1547,6 +1566,12 @@ export default function AdminControlPanelPage() {
                           View
                         </Link>
                         <button
+                          onClick={() => handleEditPost(post)}
+                          className="px-4 py-2 border border-border/50 rounded-lg hover:bg-card/50 transition-colors text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
                           onClick={() => handleDeletePost(post.id)}
                           className="px-4 py-2 border border-destructive/40 text-destructive rounded-lg hover:bg-destructive/10 transition-colors text-sm"
                         >
@@ -1910,6 +1935,7 @@ export default function AdminControlPanelPage() {
                                   loadSupportTickets()
                                 }
                               } catch (error) {
+                                // eslint-disable-next-line no-console
                                 console.error("Developer key generation failed:", error)
                                 setDeveloperToken(null)
                                 setDeveloperTokenMessage(
@@ -4008,7 +4034,7 @@ export default function AdminControlPanelPage() {
                             {appeal.status}
                           </span>
                         </div>
-                        <p className="text-sm text-foreground/80 line-clamp-2 italic">"{appeal.message}"</p>
+                        <p className="text-sm text-foreground/80 line-clamp-2 italic">&quot;{appeal.message}&quot;</p>
                         <div className="flex gap-2 justify-end">
                           <button 
                             className="px-3 py-1 text-xs border border-border/60 rounded-lg hover:bg-card/50"
@@ -4055,6 +4081,7 @@ export default function AdminControlPanelPage() {
                                 setConfirmModal(null)
                                 loadAppealsData()
                               } catch (error) {
+                                // eslint-disable-next-line no-console
                                 console.error("Failed to revoke infraction:", error)
                               }
                             }
@@ -4331,7 +4358,22 @@ export default function AdminControlPanelPage() {
   const userPreviewProfileHref =
     userPreview && userPreview.profilePublic ? buildProfileHref(userPreview.handle) : null
 
-  const handleCreatePost = async (event: React.FormEvent) => {
+  const handleEditPost = (post: BlogPost) => {
+    setForm({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt || "",
+      content: post.content,
+      author: post.author,
+      category: post.category || "Announcement",
+      image: post.image || "",
+      publishedAt: post.publishedAt || "",
+    })
+    setIsBlogModalOpen(true)
+  }
+
+  const handleBlogPostSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!discordId) {
       setActionMessage("Missing authentication context.")
@@ -4345,24 +4387,33 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      await apiClient<any>("/api/blog", {
-        method: "POST",
+      
+      const isUpdate = Boolean(form.id)
+      const method = isUpdate ? "PATCH" : "POST"
+      const endpoint = isUpdate ? `/api/blog/${form.id}` : "/api/blog"
+
+      await apiClient<any>(endpoint, {
+        method,
         headers,
         credentials: "include",
         body: JSON.stringify({
           discordId,
           ...form,
-          publishedAt: form.publishedAt || new Date().toISOString(),
+          publishedAt: form.publishedAt || (isUpdate ? undefined : new Date().toISOString()),
           image: form.image?.trim() ? form.image.trim() : null,
           author: form.author || "VectoBeat Team",
         }),
       })
       setForm(initialForm)
-      setActionMessage("Post published successfully.")
+      setActionMessage(isUpdate ? "Post updated." : "Post published successfully.")
+      if (isUpdate) {
+        setIsBlogModalOpen(false)
+      }
       loadPosts()
     } catch (error) {
-      console.error("Failed to publish post:", error)
-      setActionMessage(error instanceof Error ? error.message : "Failed to publish post")
+      // eslint-disable-next-line no-console
+      console.error("Failed to save post:", error)
+      setActionMessage(error instanceof Error ? error.message : "Failed to save post")
     } finally {
       setSavingPost(false)
     }
@@ -4386,6 +4437,7 @@ export default function AdminControlPanelPage() {
       setForm((prev) => ({ ...prev, image: payload.url }))
       setActionMessage("Image uploaded successfully!")
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to upload image:", error)
       setActionMessage(error instanceof Error ? error.message : "Failed to upload image")
     } finally {
@@ -4417,6 +4469,7 @@ export default function AdminControlPanelPage() {
       setCampaignMessage("Newsletter sent!")
       loadCampaigns()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Newsletter campaign failed:", error)
       setCampaignMessage(error instanceof Error ? error.message : "Unable to send newsletter.")
     } finally {
@@ -4461,6 +4514,7 @@ export default function AdminControlPanelPage() {
         loadSupportTickets()
         closeTicketModal()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to create ticket:", error)
         setTicketModalMessage(error instanceof Error ? error.message : "Unable to create ticket.")
       } finally {
@@ -4506,6 +4560,7 @@ export default function AdminControlPanelPage() {
         await fetchTicketThread(selectedTicketId)
         loadSupportTickets()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to reply to ticket:", error)
         setSupportTicketsError(error instanceof Error ? error.message : "Unable to send reply.")
       } finally {
@@ -4542,6 +4597,7 @@ export default function AdminControlPanelPage() {
         })
         await loadAdminUsers()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to change user role:", error)
         setUsersError(error instanceof Error ? error.message : "Unable to update user role")
       } finally {
@@ -4565,6 +4621,7 @@ export default function AdminControlPanelPage() {
       setSelectedAppeal(null)
       loadAppealsData()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to update appeal status:", error)
     }
   }, [authToken, discordId, loadAppealsData])
@@ -4586,6 +4643,7 @@ export default function AdminControlPanelPage() {
         })
         await loadAdminSubscriptions()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to update subscription:", error)
         setSubscriptionsError(error instanceof Error ? error.message : "Unable to update subscription")
       } finally {
@@ -4670,6 +4728,7 @@ export default function AdminControlPanelPage() {
         }
         await loadContactMessages()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to update contact message:", error)
         setContactError(error instanceof Error ? error.message : "Unable to update contact message")
       }
@@ -4723,6 +4782,7 @@ export default function AdminControlPanelPage() {
         setEnvMessage("Environment updated. Restart services to apply changes.")
         await loadEnvEntries()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to save env entries:", error)
         setEnvError(error instanceof Error ? error.message : "Unable to save env entries")
       } finally {
@@ -4767,6 +4827,7 @@ export default function AdminControlPanelPage() {
           await persistEnvEntries(nextEntries)
         }
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to generate system key:", error)
         setSystemKeyError(error instanceof Error ? error.message : "Unable to generate system key")
       } finally {
@@ -4836,32 +4897,15 @@ export default function AdminControlPanelPage() {
     [apiKeyForm, envEntries, persistEnvEntries],
   )
 
+  // triggerBotAction removed as it was redundant dead code replaced by inline logic in botControl tab
+  /*
   const triggerBotAction = useCallback(
     async (action: string, label: string) => {
-      if (!discordId) return
-      setBotActionLoading(action)
-      setBotActionMessage(null)
-      try {
-        const headers: HeadersInit = { "Content-Type": "application/json" }
-        if (authToken) {
-          headers.Authorization = `Bearer ${authToken}`
-        }
-        await apiClient<any>("/api/admin/bot-control", {
-          method: "POST",
-          headers,
-          credentials: "include",
-          body: JSON.stringify({ discordId, action }),
-        })
-        setBotActionMessage(`${label} triggered.`)
-      } catch (error) {
-        console.error("Bot control failed:", error)
-        setBotActionMessage(error instanceof Error ? error.message : "Bot control failed")
-      } finally {
-        setBotActionLoading(null)
-      }
+      ...
     },
     [authToken, discordId],
   )
+  */
 
   const handleCreateContact = useCallback(
     async (event: React.FormEvent) => {
@@ -4896,6 +4940,7 @@ export default function AdminControlPanelPage() {
         setIsContactModalOpen(false)
         await loadContactMessages()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to create contact:", error)
         setContactError(error instanceof Error ? error.message : "Unable to create contact")
       }
@@ -4947,6 +4992,7 @@ export default function AdminControlPanelPage() {
         })
         await loadAdminSubscriptions()
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error("Failed to create subscription:", error)
         setSubscriptionsError(error instanceof Error ? error.message : "Unable to create subscription")
       }
@@ -4975,6 +5021,7 @@ export default function AdminControlPanelPage() {
           setConfirmModal(null)
           setActionMessage("Post deleted successfully.")
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error("Failed to delete blog post:", error)
           setActionMessage("Unable to delete post.")
         }
@@ -5744,8 +5791,8 @@ export default function AdminControlPanelPage() {
       )}
 
       {isBlogModalOpen && (
-        <Modal title="Publish New Update" onClose={closeBlogModal}>
-          <form className="space-y-4" onSubmit={handleCreatePost}>
+        <Modal title={form.id ? "Edit Update" : "Publish New Update"} onClose={closeBlogModal}>
+          <form className="space-y-4" onSubmit={handleBlogPostSubmit}>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-semibold mb-2 block">Title</label>
@@ -5865,7 +5912,7 @@ export default function AdminControlPanelPage() {
                 disabled={savingPost}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
               >
-                {savingPost ? "Publishing..." : "Publish Update"}
+                {savingPost ? "Saving..." : form.id ? "Update Post" : "Publish Update"}
               </button>
             </div>
           </form>
@@ -6072,7 +6119,7 @@ export default function AdminControlPanelPage() {
             <div>
               <p className="text-xs uppercase tracking-wider text-foreground/50 mb-1">Appeal Message</p>
               <div className="bg-background/80 rounded-lg p-4 border border-border/40 italic">
-                "{selectedAppeal.message}"
+                &quot;{selectedAppeal.message}&quot;
               </div>
             </div>
             

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserContact, getUserNotifications, updateUserNotifications } from "@/lib/db"
 import { sendNotificationEmail } from "@/lib/mailer"
+import { logError } from "@/lib/utils/error-handling"
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
@@ -74,8 +75,7 @@ export const createNotificationHandlers = (deps: RouteDeps = {}) => {
             ([key, value]) => `
             <tr>
               <td style="padding:8px 12px;border-bottom:1px solid #1f2937;background:#0f172a;color:#9ca3af;text-transform:capitalize;">${key.replace(/([A-Z])/g, " $1")}</td>
-              <td style="padding:8px 12px;border-bottom:1px solid #1f2937;background:#0f172a;color:#f8fafc;text-align:right;">${
-                value ? "Enabled" : "Disabled"
+              <td style="padding:8px 12px;border-bottom:1px solid #1f2937;background:#0f172a;color:#f8fafc;text-align:right;">${value ? "Enabled" : "Disabled"
               }</td>
             </tr>`,
           )
@@ -116,7 +116,7 @@ export const createNotificationHandlers = (deps: RouteDeps = {}) => {
 
       return NextResponse.json(notifications)
     } catch (error) {
-      console.error("[VectoBeat] Failed to update notifications:", error)
+      logError("Failed to update notifications", error)
       return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 })
     }
   }

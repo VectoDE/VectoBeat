@@ -1,5 +1,6 @@
 import { getApiKeySecrets } from "./api-keys"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 const STATUS_API_URL =
   process.env.BOT_STATUS_API_URL || process.env.STATUS_API_URL || process.env.STATUS_API_EVENT_URL || ""
@@ -20,7 +21,7 @@ const buildAuthHeaders = (tokens: string[]): HeadersInit | undefined => {
 
 export const emitBotControl = async (path: string, body: Record<string, unknown>): Promise<boolean> => {
   if (!STATUS_API_URL) {
-    console.warn("[VectoBeat] STATUS_API_URL is not configured; bot control skipped.")
+    logError("STATUS_API_URL is not configured; bot control skipped", null)
     return false
   }
   const base = STATUS_API_URL.replace(/\/status$/, "")
@@ -40,7 +41,7 @@ export const emitBotControl = async (path: string, body: Record<string, unknown>
     })
     return true
   } catch (error) {
-    console.error("[VectoBeat] Bot control emit failed:", error)
+    logError("Bot control emit failed", error)
     return false
   }
 }

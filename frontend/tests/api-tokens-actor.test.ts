@@ -2,7 +2,6 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { NextRequest } from "next/server"
 import { createApiTokenHandlers } from "@/app/api/control-panel/api-tokens/route"
-import { type GuildAccessResult } from "@/lib/control-panel-auth"
 
 let events: any[] = []
 let settingsStore: Record<string, any> = {}

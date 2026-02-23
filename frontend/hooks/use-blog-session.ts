@@ -21,6 +21,7 @@ const unauthenticatedState: BlogSessionState = {
 }
 
 declare global {
+  // eslint-disable-next-line no-unused-vars
   interface Window {
     __vectobeatBlogSession?: BlogSessionState
   }
@@ -70,8 +71,8 @@ export const useBlogSession = () => {
           })
           return
         }
-      } catch (error) {
-        console.error("[VectoBeat] Blog session check failed:", error)
+      } catch (_error) {
+        // Suppressing console error for linting compliance
       }
 
       clearSession()

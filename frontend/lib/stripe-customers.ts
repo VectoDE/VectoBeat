@@ -1,6 +1,7 @@
 import type Stripe from "stripe"
 import { stripe } from "./stripe"
 import { getUserContact, upsertUserContact } from "./db"
+import { logError } from "./utils/error-handling"
 
 type EnsureStripeCustomerParams = {
   discordId: string
@@ -54,7 +55,7 @@ export const ensureStripeCustomerForUser = async (params: EnsureStripeCustomerPa
 
     return customer.id
   } catch (error) {
-    console.error("[VectoBeat] Failed to ensure Stripe customer:", error)
+    logError("Failed to ensure Stripe customer", error)
     return params.contact?.stripeCustomerId ?? null
   }
 }

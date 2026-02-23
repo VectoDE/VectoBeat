@@ -34,6 +34,24 @@ export async function POST(req: Request) {
       },
     })
 
+    // Sync to BotInstance for Admin Panel
+    await prisma.botInstance.upsert({
+      where: { instanceId },
+      update: {
+        region: region || "unknown",
+        status: status || "online",
+        lastHeartbeat: new Date(),
+        meta: meta || {},
+      },
+      create: {
+        instanceId,
+        region: region || "unknown",
+        status: status || "online",
+        lastHeartbeat: new Date(),
+        meta: meta || {},
+      },
+    })
+
     // Return list of active peers (seen in last 5 minutes)
     const activePeers = await prisma.federationPeer.findMany({
       where: {

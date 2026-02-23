@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage, PDFImage } from "pdf-lib"
 import fs from "fs/promises"
-import path from "path"
+import { logError } from "./utils/error-handling"
 
 // --- Constants & Config ---
 
@@ -17,7 +17,6 @@ const COLOR_SECONDARY = rgb(0.2, 0.2, 0.2)
 const COLOR_TEXT = rgb(0.1, 0.1, 0.1)
 const COLOR_TEXT_LIGHT = rgb(0.4, 0.4, 0.4)
 const COLOR_BORDER = rgb(0.85, 0.85, 0.85)
-const COLOR_HEADER_BG = rgb(0.97, 0.97, 0.97)
 const COLOR_TABLE_STRIPE = rgb(0.98, 0.98, 1.0)
 
 const PDF_CHAR_REPLACEMENTS: Record<string, string> = {
@@ -99,18 +98,18 @@ export class PdfGenerator {
   async init() {
     this.font = await this.doc.embedFont(StandardFonts.Helvetica)
     this.boldFont = await this.doc.embedFont(StandardFonts.HelveticaBold)
-    
+
     if (this.logoPath) {
       try {
         const logoBytes = await fs.readFile(this.logoPath)
         // Determine type based on extension or try both
         if (this.logoPath.endsWith('.png')) {
-             this.logoImage = await this.doc.embedPng(logoBytes)
+          this.logoImage = await this.doc.embedPng(logoBytes)
         } else if (this.logoPath.endsWith('.jpg') || this.logoPath.endsWith('.jpeg')) {
-            this.logoImage = await this.doc.embedJpg(logoBytes)
+          this.logoImage = await this.doc.embedJpg(logoBytes)
         }
       } catch (e) {
-        console.warn("Failed to load logo image", e)
+        logError("Failed to load logo image", e)
       }
     }
 
@@ -136,48 +135,48 @@ export class PdfGenerator {
     // Draw Logo if available
     let textX = MARGIN
     if (this.logoImage) {
-        const logoSize = 32
-        this.page.drawImage(this.logoImage, {
-            x: MARGIN,
-            y: headerY - 7, // Visual alignment correction
-            width: logoSize,
-            height: logoSize,
-        })
-        textX += logoSize + 8
+      const logoSize = 32
+      this.page.drawImage(this.logoImage, {
+        x: MARGIN,
+        y: headerY - 7, // Visual alignment correction
+        width: logoSize,
+        height: logoSize,
+      })
+      textX += logoSize + 8
     }
 
     // Branding Text
     this.page.drawText("VectoBeat", {
-        x: textX,
-        y: headerY,
-        size: 18,
-        font: this.boldFont,
-        color: COLOR_PRIMARY,
+      x: textX,
+      y: headerY,
+      size: 18,
+      font: this.boldFont,
+      color: COLOR_PRIMARY,
     })
 
     // Right side header info
     this.page.drawText("DATA EXPORT", {
-        x: PAGE_WIDTH - MARGIN - 120,
-        y: headerY,
-        size: 18,
-        font: this.boldFont,
-        color: COLOR_SECONDARY,
+      x: PAGE_WIDTH - MARGIN - 120,
+      y: headerY,
+      size: 18,
+      font: this.boldFont,
+      color: COLOR_SECONDARY,
     })
 
     this.page.drawText(`Generated: ${formatDate(new Date())}`, {
-        x: PAGE_WIDTH - MARGIN - 120,
-        y: headerY - 15,
-        size: 8,
-        font: this.font,
-        color: COLOR_TEXT_LIGHT,
+      x: PAGE_WIDTH - MARGIN - 120,
+      y: headerY - 15,
+      size: 8,
+      font: this.font,
+      color: COLOR_TEXT_LIGHT,
     })
 
     // Divider
     this.page.drawLine({
-        start: { x: MARGIN, y: headerY - 30 },
-        end: { x: PAGE_WIDTH - MARGIN, y: headerY - 30 },
-        thickness: 2,
-        color: COLOR_PRIMARY,
+      start: { x: MARGIN, y: headerY - 30 },
+      end: { x: PAGE_WIDTH - MARGIN, y: headerY - 30 },
+      thickness: 2,
+      color: COLOR_PRIMARY,
     })
   }
 
@@ -186,30 +185,30 @@ export class PdfGenerator {
 
     // Divider
     this.page.drawLine({
-        start: { x: MARGIN, y: footerY + 20 },
-        end: { x: PAGE_WIDTH - MARGIN, y: footerY + 20 },
-        thickness: 0.5,
-        color: COLOR_BORDER,
+      start: { x: MARGIN, y: footerY + 20 },
+      end: { x: PAGE_WIDTH - MARGIN, y: footerY + 20 },
+      thickness: 0.5,
+      color: COLOR_BORDER,
     })
 
     // Left: Branding
     this.page.drawText("Powered by UplyTech | VectoBeat", {
-        x: MARGIN,
-        y: footerY,
-        size: 8,
-        font: this.boldFont,
-        color: COLOR_SECONDARY,
+      x: MARGIN,
+      y: footerY,
+      size: 8,
+      font: this.boldFont,
+      color: COLOR_SECONDARY,
     })
 
     // Center: Legal Disclaimer
     const legalText = "Confidential. For personal use only. Contains sensitive data."
     const legalWidth = this.font.widthOfTextAtSize(legalText, 7)
     this.page.drawText(legalText, {
-        x: (PAGE_WIDTH - legalWidth) / 2,
-        y: footerY,
-        size: 7,
-        font: this.font,
-        color: COLOR_TEXT_LIGHT,
+      x: (PAGE_WIDTH - legalWidth) / 2,
+      y: footerY,
+      size: 7,
+      font: this.font,
+      color: COLOR_TEXT_LIGHT,
     })
 
     // Right: Page Number (Placeholder, updated at end usually, but simplistic here)
@@ -218,25 +217,25 @@ export class PdfGenerator {
     // We will revisit pages at the end to fill numbers if we want "Page X of Y".
     // For now, just "Page X"
     this.page.drawText(`Page ${pageCount}`, {
-        x: PAGE_WIDTH - MARGIN - 30,
-        y: footerY,
-        size: 8,
-        font: this.font,
-        color: COLOR_TEXT_LIGHT,
+      x: PAGE_WIDTH - MARGIN - 30,
+      y: footerY,
+      size: 8,
+      font: this.font,
+      color: COLOR_TEXT_LIGHT,
     })
   }
 
   drawSectionTitle(title: string) {
     this.checkPageBreak(50)
     this.cursorY -= 15
-    
+
     // Colored Box for Section
     this.page.drawRectangle({
-        x: MARGIN - 5,
-        y: this.cursorY - 5,
-        width: CONTENT_WIDTH + 10,
-        height: 25,
-        color: COLOR_SECONDARY,
+      x: MARGIN - 5,
+      y: this.cursorY - 5,
+      width: CONTENT_WIDTH + 10,
+      height: 25,
+      color: COLOR_SECONDARY,
     })
 
     this.page.drawText(title.toUpperCase(), {
@@ -246,7 +245,7 @@ export class PdfGenerator {
       font: this.boldFont,
       color: rgb(1, 1, 1), // White text
     })
-    
+
     this.cursorY -= 25
   }
 
@@ -277,12 +276,12 @@ export class PdfGenerator {
   drawTable(headers: string[], rows: string[][], colWidths: number[]) {
     const rowHeight = 24
     const fontSize = 9
-    
+
     this.checkPageBreak(rowHeight * 2)
 
     // Draw Header
     let currentX = MARGIN
-    
+
     // Header Background
     this.page.drawRectangle({
       x: MARGIN,
@@ -302,24 +301,24 @@ export class PdfGenerator {
       })
       currentX += colWidths[i]
     })
-    
+
     this.cursorY -= rowHeight
 
     // Draw Rows
     rows.forEach((row, rowIndex) => {
       this.checkPageBreak(rowHeight)
-      
+
       currentX = MARGIN
-      
+
       // Zebra Striping
       if (rowIndex % 2 === 0) {
-          this.page.drawRectangle({
-              x: MARGIN,
-              y: this.cursorY - 8,
-              width: CONTENT_WIDTH,
-              height: rowHeight,
-              color: COLOR_TABLE_STRIPE,
-          })
+        this.page.drawRectangle({
+          x: MARGIN,
+          y: this.cursorY - 8,
+          width: CONTENT_WIDTH,
+          height: rowHeight,
+          color: COLOR_TABLE_STRIPE,
+        })
       }
 
       row.forEach((cell, i) => {
@@ -351,39 +350,39 @@ export class PdfGenerator {
 
   // Helper to add legal text page
   addLegalPage() {
-      this.addPage()
-      this.drawSectionTitle("Legal Information & Data Privacy")
-      
-      const lines = [
-          "This document contains a complete export of your personal data stored by VectoBeat, operated by UplyTech.",
-          "",
-          "Data Controller:",
-          "UplyTech",
-          "privacy@uplytech.de",
-          "",
-          "Purpose of Processing:",
-          "Your data is processed to provide the VectoBeat service, including music streaming, bot management,",
-          "and community features. This export is provided in compliance with GDPR Article 15 (Right of Access).",
-          "",
-          "Data Retention:",
-          "We retain your data only as long as necessary to provide our services or as required by law.",
-          "You have the right to request rectification or deletion of this data.",
-          "",
-          "Security:",
-          "This document contains sensitive personal information (PII). Please store it securely.",
-      ]
+    this.addPage()
+    this.drawSectionTitle("Legal Information & Data Privacy")
 
-      let y = this.cursorY
-      for (const line of lines) {
-          this.page.drawText(line, {
-              x: MARGIN,
-              y: y,
-              size: 10,
-              font: line.includes(":") ? this.boldFont : this.font,
-              color: COLOR_TEXT,
-          })
-          y -= 15
-      }
-      this.cursorY = y
+    const lines = [
+      "This document contains a complete export of your personal data stored by VectoBeat, operated by UplyTech.",
+      "",
+      "Data Controller:",
+      "UplyTech",
+      "privacy@uplytech.de",
+      "",
+      "Purpose of Processing:",
+      "Your data is processed to provide the VectoBeat service, including music streaming, bot management,",
+      "and community features. This export is provided in compliance with GDPR Article 15 (Right of Access).",
+      "",
+      "Data Retention:",
+      "We retain your data only as long as necessary to provide our services or as required by law.",
+      "You have the right to request rectification or deletion of this data.",
+      "",
+      "Security:",
+      "This document contains sensitive personal information (PII). Please store it securely.",
+    ]
+
+    let y = this.cursorY
+    for (const line of lines) {
+      this.page.drawText(line, {
+        x: MARGIN,
+        y: y,
+        size: 10,
+        font: line.includes(":") ? this.boldFont : this.font,
+        color: COLOR_TEXT,
+      })
+      y -= 15
+    }
+    this.cursorY = y
   }
 }

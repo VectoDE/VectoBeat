@@ -76,10 +76,21 @@ export function AdminFederationManager() {
         <div className="grid gap-4 mt-6">
           {instances.map(instance => (
             <div key={instance.id} className="border border-border/40 rounded-lg p-5 bg-background/50 flex flex-col md:flex-row md:items-center gap-6 justify-between transition-colors hover:border-border/60">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 flex-1 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6 flex-1 text-sm">
                 <div>
                   <p className="text-xs text-foreground/50 mb-1">Instance ID</p>
-                  <p className="font-mono font-medium">{instance.instanceId}</p>
+                  <p className="font-mono font-medium truncate" title={instance.instanceId}>{instance.instanceId.slice(0, 8)}...</p>
+                </div>
+                <div>
+                  <p className="text-xs text-foreground/50 mb-1">Type</p>
+                  <p className="font-medium">
+                    {instance.meta?.shardId !== undefined || instance.meta?.shards !== undefined 
+                      ? `Shard ${instance.meta?.shardId ?? 'N/A'}`
+                      : "Standalone"}
+                  </p>
+                  {instance.meta?.clusterId !== undefined && (
+                    <p className="text-[10px] text-foreground/40">Cluster {instance.meta.clusterId}</p>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-foreground/50 mb-1">Region</p>

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react"
 interface UseClickOutsideReturn {
   ref: React.RefObject<HTMLDivElement | null>
   isOpen: boolean
-  setIsOpen: (value: boolean) => void
+  setIsOpen: (_value: boolean) => void
 }
 
 export function useClickOutside(initialState = false): UseClickOutsideReturn {
@@ -16,7 +16,7 @@ export function useClickOutside(initialState = false): UseClickOutsideReturn {
         setIsOpen(false)
       }
     }
-    
+
     if (isOpen) {
       document.addEventListener("mousedown", handler)
       return () => document.removeEventListener("mousedown", handler)

@@ -28,14 +28,14 @@ export const sanitizeHandle = (input: string) => {
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-  
+
   let result = ''
   let prevWasDash = false
-  
+
   for (let i = 0; i < normalized.length; i++) {
     const char = normalized[i]
     const code = char.charCodeAt(0)
-    
+
     if ((code >= 97 && code <= 122) || (code >= 48 && code <= 57)) {
       result += char
       prevWasDash = false
@@ -44,17 +44,17 @@ export const sanitizeHandle = (input: string) => {
       prevWasDash = true
     }
   }
-  
+
   let start = 0
   while (start < result.length && result[start] === '-') {
     start++
   }
-  
+
   let end = result.length - 1
   while (end >= start && result[end] === '-') {
     end--
   }
-  
+
   return result.substring(start, end + 1).slice(0, 32)
 }
 
@@ -83,16 +83,16 @@ export const normalizeSlug = (slug: string) => slug.trim().toLowerCase()
 
 export const normalizePath = (path: string, maxLength = 191) => path.slice(0, maxLength)
 
-export const normalizeReferrer = (referrer?: string | null, maxLength = 190) => 
+export const normalizeReferrer = (referrer?: string | null, maxLength = 190) =>
   referrer ? referrer.slice(0, maxLength) : null
 
-export const normalizeStringWithLength = (value: string, maxLength: number) => 
+export const normalizeStringWithLength = (value: string, maxLength: number) =>
   value.slice(0, maxLength)
 
-export const normalizeOptionalString = (value?: string | null, maxLength?: number) => 
+export const normalizeOptionalString = (value?: string | null, maxLength?: number) =>
   value ? (maxLength ? value.slice(0, maxLength) : value) : null
 
-export const normalizeStringArray = (items: string[] | null | undefined, normalizer: (item: string) => string) => {
+export const normalizeStringArray = (items: string[] | null | undefined, normalizer: (_: string) => string) => {
   if (!items || !Array.isArray(items)) return []
   return Array.from(new Set(items.map(normalizer).filter(Boolean)))
 }

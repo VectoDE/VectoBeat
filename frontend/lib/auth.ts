@@ -3,12 +3,6 @@ import { validateSessionHash, getStoredUserProfile, verifyUserApiKey, type Store
 import { hashSessionToken } from "./session"
 
 export const authBypassEnabled = () => {
-  console.log("Auth bypass check:", {
-    NODE_ENV: process.env.NODE_ENV,
-    DISABLE: process.env.DISABLE_API_AUTH,
-    ALLOW: process.env.ALLOW_UNAUTHENTICATED,
-    SKIP: process.env.SKIP_API_AUTH
-  })
   return (
     process.env.DISABLE_API_AUTH === "1" ||
     process.env.ALLOW_UNAUTHENTICATED === "1" ||
@@ -32,7 +26,7 @@ export const extractBearerToken = (request: NextRequest) => {
 
 type VerifyDeps = {
   validate?: typeof validateSessionHash
-  loadProfile?: (discordId: string) => Promise<StoredUserProfile | null>
+  loadProfile?: (_discordId: string) => Promise<StoredUserProfile | null>
 }
 
 export const verifyRequestForUser = async (

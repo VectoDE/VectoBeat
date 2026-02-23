@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 const THEMES = { light: "", dark: ".dark" } as const
 
 export type ChartConfig = {
-  [k in string]: {
+  [_k in string]: {
     label?: React.ReactNode
     icon?: React.ComponentType
   } & ({ color?: string; theme?: never } | { color?: never; theme: Record<keyof typeof THEMES, string> })
@@ -95,14 +95,14 @@ interface ChartTooltipContentProps extends React.HTMLAttributes<HTMLDivElement> 
   active?: boolean
   payload?: TooltipItem[]
   label?: string | number
-  labelFormatter?: (label?: string | number, payload?: TooltipItem[]) => React.ReactNode
+  labelFormatter?: (_label?: string | number, _payload?: TooltipItem[]) => React.ReactNode
   labelClassName?: string
   formatter?: (
-    value?: number,
-    name?: string | number,
-    item?: TooltipItem,
-    index?: number,
-    payload?: Record<string, any>,
+    _value?: number,
+    _name?: string | number,
+    _item?: TooltipItem,
+    _index?: number,
+    _payload?: Record<string, any>,
   ) => React.ReactNode
   hideLabel?: boolean
   hideIndicator?: boolean

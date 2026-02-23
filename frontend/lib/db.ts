@@ -6,7 +6,7 @@ import { logError as logDbError, logError, logSecurityError } from "./utils/erro
 
 import { defaultServerFeatureSettings, type ServerFeatureSettings } from "./server-settings"
 import { getPlanCapabilities } from "./plan-capabilities"
-import { getPrismaClient, handlePrismaError } from "./prisma"
+import { getPrismaClient, handlePrismaError, isInstanceOf } from "./prisma"
 import { getBotGuildPresence } from "./bot-status"
 import { normalizeTierId, type MembershipTier } from "./memberships"
 import type { AnalyticsOverview, HomeMetrics } from "./metrics"
@@ -1174,7 +1174,7 @@ export const updateSubscriptionById = async (id: string, updates: UpdateSubscrip
       currentPeriodEnd: record.currentPeriodEnd,
     })
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    if (isInstanceOf(error, Prisma.PrismaClientKnownRequestError) && (error as any).code === "P2025") {
       return null
     }
 
@@ -1193,7 +1193,7 @@ export const deleteSubscriptionById = async (id: string) => {
     })
     return true
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    if (isInstanceOf(error, Prisma.PrismaClientKnownRequestError) && (error as any).code === "P2025") {
       return false
     }
     logDbError("[VectoBeat] Failed to delete subscription:", error)
@@ -2643,7 +2643,7 @@ export const recordBotActivityEvent = async (event: BotActivityEventInput) => {
     })
   } catch (error) {
     if (error && typeof error === "object" && (error as { code?: string }).code === "P2024") {
-      console.warn("[VectoBeat] Skipping bot activity event due to pool exhaustion")
+      logError("Skipping bot activity event due to pool exhaustion", null)
       return
     }
     logDbError("[VectoBeat] Failed to record bot activity event:", error)
@@ -4521,19 +4521,6 @@ interface BlogPostRow {
   image: string | null
 }
 
-interface BlogReactionRow {
-  postIdentifier: string
-  reaction: BlogReactionType
-  count: number
-}
-
-interface BlogReactionVoteRow {
-  postIdentifier: string
-  authorId: string
-  reaction: BlogReactionType
-  createdAt: Date
-}
-
 const emptyReactions: BlogReactionSummary = { up: 0, down: 0 }
 
 interface BlogCommentRow {
@@ -4735,7 +4722,7 @@ export const saveBlogPost = async (input: BlogPostInput): Promise<BlogPost | nul
           image: updated.image,
         }
       } catch (error) {
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025")) {
+        if (!(isInstanceOf(error, Prisma.PrismaClientKnownRequestError) && (error as any).code === "P2025")) {
           throw error
         }
       }
@@ -4801,6 +4788,54 @@ export const deleteBlogPost = async (identifier: string) => {
   } catch (error) {
     logDbError("[VectoBeat] Failed to delete blog post:", error)
     return false
+  }
+}
+export const updateBlogPost = async (identifier: string, updates: Partial<BlogPostInput>): Promise<BlogPost | null> => {
+  try {
+    const db = getPool()
+    if (!db) return null
+
+    const existing = await db.blogPost.findFirst({
+      where: { OR: [{ id: identifier }, { slug: identifier }] },
+      select: { id: true },
+    })
+
+    if (!existing) return null
+
+    const data: any = { ...updates }
+    if (updates.content) {
+      data.readTime = calculateReadTime(updates.content)
+    }
+    if (updates.excerpt) {
+      data.excerpt = normalizeExcerpt(updates.excerpt)
+    }
+    if (updates.publishedAt) {
+      data.publishedAt = typeof updates.publishedAt === "string" ? new Date(updates.publishedAt) : updates.publishedAt
+    }
+
+    const updated = await db.blogPost.update({
+      where: { id: existing.id },
+      data,
+    })
+
+    return mapBlogPost({
+      id: updated.id,
+      slug: updated.slug,
+      title: updated.title,
+      excerpt: updated.excerpt,
+      content: updated.content,
+      author: updated.author,
+      category: updated.category,
+      readTime: updated.readTime,
+      views: updated.views,
+      featured: updated.featured,
+      publishedAt: updated.publishedAt,
+      updatedAt: updated.updatedAt,
+      image: updated.image,
+    })
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to update blog post:", error)
+    return null
   }
 }
 

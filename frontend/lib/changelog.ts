@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { apiClient } from "./api-client"
+import { logError } from "./utils/error-handling"
 
 const GITHUB_REPO = process.env.GITHUB_CHANGELOG_REPO || "VectoDE/VectoBeat"
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN
@@ -142,7 +143,7 @@ export const fetchChangelog = async (): Promise<ChangelogEntry[]> => {
       return parsed
     }
   } catch (error) {
-    console.error("[VectoBeat] Failed to fetch GitHub changelog, falling back to local file:", error)
+    logError("Failed to fetch GitHub changelog, falling back to local file", error)
   }
 
   return readLocalChangelog()
@@ -166,7 +167,7 @@ const readLocalChangelog = (): ChangelogEntry[] => {
   try {
     const filePath = path.join(process.cwd(), "CHANGELOG.md")
     if (!fs.existsSync(filePath)) {
-      console.warn("[VectoBeat] Local CHANGELOG.md not found.")
+      logError("Local CHANGELOG.md not found", null)
       return []
     }
     const content = fs.readFileSync(filePath, "utf8")
@@ -205,7 +206,7 @@ const readLocalChangelog = (): ChangelogEntry[] => {
 
     return entries
   } catch (error) {
-    console.error("[VectoBeat] Failed to read local changelog:", error)
+    logError("Failed to read local changelog", error)
     return []
   }
 }

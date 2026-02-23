@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next"
 import { ensureSocketServer } from "@/lib/socket-server"
+import { logError } from "@/lib/utils/error-handling"
 
 export const config = {
   api: {
@@ -12,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await ensureSocketServer(res, { withMetrics: true })
     res.end()
   } catch (error) {
-    console.error("[VectoBeat] Socket initialisation failed:", error)
+    logError("Socket initialisation failed", error)
     res.status(500).end()
   }
 }

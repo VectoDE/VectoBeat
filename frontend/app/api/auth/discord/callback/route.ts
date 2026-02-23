@@ -208,18 +208,18 @@ export async function GET(request: NextRequest) {
     // Persist user profile and guilds
     const mappedGuilds = Array.isArray(guilds)
       ? guilds.map((g: any) => {
-          const perms = typeof g.permissions === "string" ? Number(g.permissions) : 0
-          const isAdmin = Boolean(g.owner) || (Number.isFinite(perms) && ((perms & 0x20) !== 0 || (perms & 0x8) !== 0))
-          return {
-            id: g.id,
-            name: g.name,
-            icon: g.icon,
-            owner: g.owner,
-            permissions: g.permissions,
-            isAdmin,
-            hasBot: false, // Assume false initially; actual presence checked via bot status/subscriptions
-          }
-        })
+        const perms = typeof g.permissions === "string" ? Number(g.permissions) : 0
+        const isAdmin = Boolean(g.owner) || (Number.isFinite(perms) && ((perms & 0x20) !== 0 || (perms & 0x8) !== 0))
+        return {
+          id: g.id,
+          name: g.name,
+          icon: g.icon,
+          owner: g.owner,
+          permissions: g.permissions,
+          isAdmin,
+          hasBot: false, // Assume false initially; actual presence checked via bot status/subscriptions
+        }
+      })
       : []
 
     await persistUserProfile({
@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       phone: userData.phone || null,
       avatar: userData.avatar,
       avatarUrl: userData.avatar
-        ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+        ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.${userData.avatar.startsWith("a_") ? "gif" : "png"}`
         : null,
       guilds: mappedGuilds,
     })
