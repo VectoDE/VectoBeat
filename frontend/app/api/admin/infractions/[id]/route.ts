@@ -7,10 +7,10 @@ const isPrivileged = (role: string) => role === "admin" || role === "operator"
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await context.params
     try {
-        const { id } = params
         const { discordId } = await request.json()
 
         if (!discordId) {
@@ -38,7 +38,7 @@ export async function DELETE(
 
         return NextResponse.json({ success: true })
     } catch (error) {
-        console.error(`[VectoBeat] Failed to revoke infraction ${params.id}:`, error)
+        console.error(`[VectoBeat] Failed to revoke infraction ${id}:`, error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }

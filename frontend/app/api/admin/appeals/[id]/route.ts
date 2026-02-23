@@ -7,10 +7,10 @@ const isPrivileged = (role: string) => role === "admin" || role === "operator"
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await context.params
     try {
-        const { id } = params
         const { discordId, status } = await request.json()
 
         if (!discordId || !status) {
@@ -55,7 +55,7 @@ export async function PATCH(
 
         return NextResponse.json({ success: true })
     } catch (error) {
-        console.error(`[VectoBeat] Failed to update appeal ${params.id}:`, error)
+        console.error(`[VectoBeat] Failed to update appeal ${id}:`, error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
     }
 }
