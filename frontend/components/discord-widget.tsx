@@ -25,7 +25,7 @@ export default function DiscordWidget() {
   const [widget, setWidget] = useState<DiscordWidgetState | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const DISCORD_SERVER_ID = process.env.NEXT_PUBLIC_DISCORD_SERVER_ID || "794691385588318211"
+  const DISCORD_SERVER_ID = process.env.NEXT_PUBLIC_DISCORD_SERVER_ID || "879435075710746684"
 
   useEffect(() => {
     let isMounted = true
@@ -41,7 +41,7 @@ export default function DiscordWidget() {
 
         let onlineMembers = baseOnline
         let totalMembers = Math.max(baseOnline, normalizedMembers.length)
-        const inviteUrl = data.instant_invite || "https://discord.com/invite/vectobeat"
+        const inviteUrl = data.instant_invite || "https://discord.gg/DtHPAEHxZk"
 
         const inviteCode = inviteUrl.split("/").filter(Boolean).pop()?.split("?")[0]
         if (inviteCode) {
