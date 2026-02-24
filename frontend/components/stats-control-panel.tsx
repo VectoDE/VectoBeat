@@ -171,15 +171,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
     views: entry.views,
   }))
   const activeVoiceConnections = Array.isArray(data.activeVoiceConnections) ? data.activeVoiceConnections : []
-  const summaryCards = [
-    ...data.summaryCards,
-    {
-      label: "Voice Connections",
-      value: formatNumber(activeVoiceConnections.length),
-      change: activeVoiceConnections.length ? "Live listeners by channel" : "No active voice channels",
-      detail: undefined,
-    },
-  ]
+  const summaryCards = data.summaryCards
   return (
     <>
       <section className="relative w-full pt-32 pb-20 px-4 border-b border-border overflow-hidden" data-animate-on-scroll="off">

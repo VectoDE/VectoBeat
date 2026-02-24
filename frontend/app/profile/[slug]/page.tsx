@@ -221,7 +221,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <div className="flex flex-col items-center text-center space-y-4">
               <div className="w-24 h-24 rounded-full border border-border/40 bg-primary/10 overflow-hidden flex items-center justify-center text-3xl font-semibold text-primary">
                 {profile.avatarUrl ? (
-                  <Image src={profile.avatarUrl} alt={profile.displayName} width={96} height={96} className="w-full h-full object-cover" />
+                  <Image
+                    src={profile.avatarUrl}
+                    alt={profile.displayName}
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
                 ) : (
                   (profile.displayName || "VB").slice(0, 2).toUpperCase()
                 )}

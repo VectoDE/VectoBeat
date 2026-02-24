@@ -85,32 +85,44 @@ export async function POST(request: NextRequest) {
       return date && !Number.isNaN(date.getTime()) ? date : null
     }
 
-    const stripeSubscription = await stripe.subscriptions.create({
-      customer: stripeCustomerId,
-      description: `Admin-created ${normalizedTier} subscription for guild ${guildId}`,
-      payment_behavior: "default_incomplete",
-      collection_method: "charge_automatically",
-      metadata: {
-        discordId: targetDiscordId,
-        guildId,
-        guildName: updates.name || updates.guildName || "",
-        tier: normalizedTier,
-        createdBy: discordId,
-        source: "admin_portal",
-      },
-      items: [
-        {
-          price_data: {
-            currency: defaultCurrency,
-            unit_amount: Math.round(monthlyPrice * 100),
-            recurring: { interval: "month" },
-            product_data: {
-              name: `${normalizedTier.toUpperCase()} — ${updates.name || updates.guildName || guildId}`,
-            },
-          } as unknown as Stripe.SubscriptionCreateParams.Item["price_data"],
+    let stripeSubscription: Stripe.Subscription
+    try {
+      stripeSubscription = await stripe.subscriptions.create({
+        customer: stripeCustomerId,
+        description: `Admin-created ${normalizedTier} subscription for guild ${guildId}`,
+        payment_behavior: "default_incomplete",
+        collection_method: "charge_automatically",
+        metadata: {
+          discordId: targetDiscordId,
+          guildId,
+          guildName: updates.name || updates.guildName || "",
+          tier: normalizedTier,
+          createdBy: discordId,
+          source: "admin_portal",
         },
-      ],
-    })
+        items: [
+          {
+            price_data: {
+              currency: defaultCurrency,
+              unit_amount: Math.round(monthlyPrice * 100),
+              recurring: { interval: "month" },
+              product_data: {
+                name: `${normalizedTier.toUpperCase()} — ${updates.name || updates.guildName || guildId}`,
+              },
+            } as any,
+          },
+        ],
+      })
+    } catch (stripeError: any) {
+      console.error("[VectoBeat] Stripe subscription creation failed:", stripeError)
+      return NextResponse.json(
+        {
+          error: "Stripe creation failed",
+          details: stripeError.message || "Unknown Stripe error",
+        },
+        { status: 400 },
+      )
+    }
 
     const currentPeriodStart =
       typeof (stripeSubscription as any).current_period_start === "number"
@@ -121,27 +133,44 @@ export async function POST(request: NextRequest) {
         ? new Date((stripeSubscription as any).current_period_end * 1000)
         : parseDate(updates.currentPeriodEnd) ?? new Date()
 
-    const subscription = await upsertSubscription({
-      id: stripeSubscription.id || updates.subscriptionId || updates.id || `manual_${randomUUID()}`,
-      discordId: targetDiscordId,
-      guildId,
-      guildName: updates.name ?? updates.guildName ?? null,
-      stripeCustomerId,
-      tier: normalizedTier,
-      status: stripeSubscription.status || updates.status || "active",
-      monthlyPrice,
-      currentPeriodStart,
-      currentPeriodEnd,
-    })
+    try {
+      const subscription = await upsertSubscription({
+        id: stripeSubscription.id || updates.subscriptionId || updates.id || `manual_${randomUUID()}`,
+        discordId: targetDiscordId,
+        guildId,
+        guildName: updates.name ?? updates.guildName ?? null,
+        stripeCustomerId,
+        tier: normalizedTier,
+        status: stripeSubscription.status || updates.status || "active",
+        monthlyPrice,
+        currentPeriodStart,
+        currentPeriodEnd,
+      })
 
-    if (!subscription) {
-      return NextResponse.json({ error: "Failed to create subscription" }, { status: 500 })
+      if (!subscription) {
+        throw new Error("Database upsert returned null")
+      }
+
+      return NextResponse.json({ subscription })
+    } catch (dbError: any) {
+      console.error("[VectoBeat] Database subscription sync failed:", dbError)
+      return NextResponse.json(
+        {
+          error: "Database sync failed",
+          details: dbError.message || "Unknown database error",
+        },
+        { status: 500 },
+      )
     }
-
-    return NextResponse.json({ subscription })
-  } catch (error) {
-    console.error("[VectoBeat] Failed to create subscription:", error)
-    return NextResponse.json({ error: "Unable to create subscription" }, { status: 500 })
+  } catch (error: any) {
+    console.error("[VectoBeat] Unexpected failure in subscription creation:", error)
+    return NextResponse.json(
+      {
+        error: "Unable to create subscription",
+        details: error.message || "Internal server error",
+      },
+      { status: 500 },
+    )
   }
 }
 

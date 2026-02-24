@@ -12,6 +12,7 @@ type MetricsStatsCopy = {
   siteViews: { label: string; last24h: string }
   activeServers: { label: string }
   activeUsers: { label: string }
+  activeChannels: { label: string }
   uptime: { label: string; latency: string }
   telemetry: { available: string; unavailable: string }
 }
@@ -37,6 +38,7 @@ const DEFAULT_STATS_COPY: MetricsStatsCopy = {
   siteViews: { label: "Site views (30d)", last24h: "{{value}} last 24h" },
   activeServers: { label: "Active servers" },
   activeUsers: { label: "Active listeners" },
+  activeChannels: { label: "Active channels" },
   uptime: { label: "Uptime", latency: "Latency {{latency}}" },
   telemetry: { available: "Bot telemetry", unavailable: "No telemetry" },
 }
@@ -85,11 +87,19 @@ const localizeStats = (stats: SummaryStat[], totals: HomeMetrics["totals"], copy
           change: hasTelemetry ? copy.telemetry.available : copy.telemetry.unavailable,
         }
       }
-      case "Active Users": {
+      case "Active Listeners": {
         const hasTelemetry = !includesPhrase(stat.change, "no telemetry")
         return {
           ...stat,
           label: copy.activeUsers.label,
+          change: hasTelemetry ? copy.telemetry.available : copy.telemetry.unavailable,
+        }
+      }
+      case "Active Channels": {
+        const hasTelemetry = !includesPhrase(stat.change, "no telemetry")
+        return {
+          ...stat,
+          label: copy.activeChannels.label,
           change: hasTelemetry ? copy.telemetry.available : copy.telemetry.unavailable,
         }
       }
@@ -219,6 +229,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
     (statsCopy ?? DEFAULT_STATS_COPY).siteViews.label,
     (statsCopy ?? DEFAULT_STATS_COPY).activeServers.label,
     (statsCopy ?? DEFAULT_STATS_COPY).activeUsers.label,
+    (statsCopy ?? DEFAULT_STATS_COPY).activeChannels.label,
     (statsCopy ?? DEFAULT_STATS_COPY).uptime.label,
   ]
   const stats = targetLabels

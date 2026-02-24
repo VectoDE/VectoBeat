@@ -28,6 +28,7 @@ type BaseTotals = {
   uptimeSeconds: number
   uptimePercent: number
   responseTimeMs: number
+  voiceConnections: number
 }
 
 type BaseMetrics = {
@@ -60,6 +61,7 @@ export type HomeMetrics = {
     uptimeValue: number
     uptimeLabel: string
     responseTimeMs: number
+    voiceConnections: number
   }
   updatedAt: string
   activeVoiceConnections?: Array<{ guildId: string; guildName?: string; channelId: string; channelName?: string; listeners: number }>
@@ -227,9 +229,7 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     (playersDetail.length ? playersDetail.filter((player) => player?.isPlaying).length : undefined) ??
     fallbackSnapshot?.activeListeners,
   )
-  const activeUsers = normalizeNumber(
-    botStatus?.listenerPeak24h ?? botStatus?.listeners24h ?? botStatus?.activeUsers24h ?? rawCurrentListeners,
-  )
+  const activeUsers = normalizeNumber(rawCurrentListeners)
   const totalStreams =
     typeof usageTotals.totalStreams === "number"
       ? usageTotals.totalStreams
@@ -251,6 +251,13 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     (botStatus as { latencyMs?: number })?.latencyMs ??
     fallbackSnapshot?.avgResponseMs,
   )
+  const voiceConnections = normalizeNumber(
+    (botStatus as { voiceConnections?: number; activeVoice?: number; connectedVoiceChannels?: number })?.voiceConnections ??
+    (botStatus as { activeVoice?: number })?.activeVoice ??
+    (botStatus as { connectedVoiceChannels?: number })?.connectedVoiceChannels ??
+    fallbackSnapshot?.voiceConnections ??
+    0,
+  )
 
   if (botStatus) {
     const snapshotPayload = {
@@ -259,12 +266,7 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       totalStreams,
       uptimePercent: uptimePercentBase,
       avgResponseMs: Math.round(responseTimeMs),
-      voiceConnections: normalizeNumber(
-        (botStatus as { voiceConnections?: number; activeVoice?: number; connectedVoiceChannels?: number }).voiceConnections ??
-        (botStatus as { activeVoice?: number }).activeVoice ??
-        (botStatus as { connectedVoiceChannels?: number }).connectedVoiceChannels ??
-        0,
-      ),
+      voiceConnections,
       incidents24h: normalizeNumber((botStatus as { incidents24h?: number; incidents?: number }).incidents24h ?? (botStatus as { incidents?: number }).incidents ?? 0),
       commands24h: normalizeNumber((botStatus as { commands24h?: number; commands?: number }).commands24h ?? (botStatus as { commands?: number }).commands ?? 0),
       shardsOnline: normalizeNumber(
@@ -298,6 +300,7 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
       uptimeSeconds,
       uptimePercent: uptimePercentBase,
       responseTimeMs,
+      voiceConnections,
     },
     traffic,
     activeVoiceConnections: listenerDetail,
@@ -410,7 +413,7 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       change: totals.serverCount ? "Bot telemetry" : "No telemetry",
     },
     {
-      label: "Active Users",
+      label: "Active Listeners",
       value: shortNumber(totals.activeUsers),
       change: totals.activeUsers ? "Bot telemetry" : "No telemetry",
     },
@@ -429,6 +432,11 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       value: uptimeLabel,
       change: totals.responseTimeMs ? `Latency ${avgResponseLabel}` : "No telemetry",
     },
+    {
+      label: "Active Channels",
+      value: shortNumber(totals.voiceConnections),
+      change: totals.voiceConnections ? "Active voice sessions" : "No telemetry",
+    },
   ]
 
   return {
@@ -445,6 +453,7 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       uptimeValue: uptimePercent,
       uptimeLabel,
       responseTimeMs: totals.responseTimeMs,
+      voiceConnections: totals.voiceConnections,
     },
     updatedAt: new Date().toISOString(),
   }
@@ -572,6 +581,12 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       value: shortNumber(forumStats.threads),
       change: `${shortNumber(forumStats.posts24h)} posts last 24h`,
       detail: `${forumStats.categories} categories · ${forumStats.events24h} events`,
+    },
+    {
+      label: "Voice Connections",
+      value: shortNumber(totals.voiceConnections),
+      change: totals.voiceConnections ? "Live listeners by channel" : "No active voice channels",
+      detail: "Active bot sessions",
     },
   ]
 

@@ -76,10 +76,14 @@ export async function GET() {
     const headers: Record<string, string> = {}
     if (statusToken) {
       headers.Authorization = `Bearer ${statusToken}`
+      headers["x-api-key"] = statusToken
+      headers["x-bot-status-api-key"] = statusToken
+      headers["x-status-api-key"] = statusToken
     }
     liveSnapshot = await apiClient(defaultStatusUrl, {
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(5000),
     })
   } catch (error) {
     console.error("[VectoBeat] Failed to fetch live bot status for metrics:", error)

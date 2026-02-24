@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "type_required" }, { status: 400 })
   }
 
+  const metadata = typeof payload?.metadata === "object" && payload.metadata ? payload.metadata : null
+
   await recordBotActivityEvent({
     type: eventType,
     name: typeof payload?.name === "string" ? payload.name : null,
@@ -37,9 +39,21 @@ export async function POST(request: NextRequest) {
         : typeof payload?.success === "number"
           ? Boolean(payload.success)
           : null,
-    metadata: typeof payload?.metadata === "object" && payload.metadata ? payload.metadata : null,
+    metadata,
     createdAt: payload?.ts ? new Date(Number(payload.ts) * 1000) : undefined,
   })
+
+  // Hook into Auto Queue learning if it's a track_start event
+  if (eventType === "track_start" && metadata) {
+    const { recordTrackPlayback } = await import("@/lib/auto-queue")
+    // metadata should have title, artist, genre, etc.
+    // previous track might be in payload.metadata.previous
+    void recordTrackPlayback(
+      metadata,
+      metadata.previous,
+      typeof payload?.guildId === "string" ? payload.guildId : null
+    )
+  }
 
   return NextResponse.json({ ok: true })
 }
