@@ -85,7 +85,7 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
       try {
         console.log("[VectoBeat] Initializing analytics socket...")
         await apiClient<any>("/api/socket")
-        socket = io({ path: "/api/socket" })
+        socket = io({ path: "/api/socket", transports: ["websocket"] })
 
         socket.on("connect", () => {
           console.log("[VectoBeat] Analytics socket connected")

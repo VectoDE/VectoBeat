@@ -14,6 +14,11 @@ import {
   LogOut,
   Link2 as LinkIcon,
   SlidersHorizontal,
+  Monitor,
+  Smartphone,
+  Globe,
+  MapPin,
+  Clock,
 } from "lucide-react"
 import {
   SiDiscord,
@@ -2019,31 +2024,96 @@ const profileShareUrl = profileShareSlug
                             <p className="text-sm text-foreground/60">Loading sessions...</p>
                           ) : sessions.length ? (
                             <div className="space-y-3">
-                              {sessions.map((session) => (
-                                <div
-                                  key={session.id}
-                                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-border/40 rounded-lg p-3"
-                                >
-                                  <div>
-                                    <p className="font-semibold">
-                                      {session.location || "Unknown location"}
-                                      {session.id === currentSessionId && (
-                                        <span className="ml-2 text-xs text-primary font-semibold">This device</span>
-                                      )}
-                                    </p>
-                                    <p className="text-xs text-foreground/60">
-                                      {session.ipAddress || "No IP"} - Last active{" "}
-                                      {new Date(session.lastActive).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <button
-                                    onClick={() => handleSessionRevoke(session.id)}
-                                    className="px-4 py-2 border border-border/50 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-sm"
+                              {sessions.map((session) => {
+                                const parseUA = (ua: string | null) => {
+                                  if (!ua) return { device: "Unknown Device", browser: "Unknown Browser" }
+                                  const browser = ua.includes("Firefox")
+                                    ? "Firefox"
+                                    : ua.includes("Chrome")
+                                      ? "Chrome"
+                                      : ua.includes("Safari")
+                                        ? "Safari"
+                                        : ua.includes("Edge")
+                                          ? "Edge"
+                                          : "Browser"
+                                  const device = ua.includes("Mobi") ? "Mobile" : "Desktop"
+                                  const os = ua.includes("Windows")
+                                    ? "Windows"
+                                    : ua.includes("Mac")
+                                      ? "macOS"
+                                      : ua.includes("Linux")
+                                        ? "Linux"
+                                        : ua.includes("Android")
+                                          ? "Android"
+                                          : ua.includes("iPhone")
+                                            ? "iOS"
+                                            : ""
+                                  return { device: os ? `${device} (${os})` : device, browser }
+                                }
+                                const { device, browser } = parseUA(session.userAgent)
+                                const isCurrent = session.id === currentSessionId
+
+                                return (
+                                  <div
+                                    key={session.id}
+                                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border rounded-xl p-4 transition-all ${
+                                      isCurrent
+                                        ? "border-primary/50 bg-primary/5 shadow-sm"
+                                        : "border-border/40 bg-background/50"
+                                    }`}
                                   >
-                                    Log Out
-                                  </button>
-                                </div>
-                              ))}
+                                    <div className="flex items-start gap-4">
+                                      <div
+                                        className={`mt-1 p-2 rounded-lg ${
+                                          isCurrent ? "bg-primary/20 text-primary" : "bg-card/50 text-foreground/60"
+                                        }`}
+                                      >
+                                        {device.includes("Mobile") || device.includes("iOS") || device.includes("Android") ? (
+                                          <Smartphone size={24} />
+                                        ) : (
+                                          <Monitor size={24} />
+                                        )}
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                          <p className="font-bold text-foreground">
+                                            {browser} on {device}
+                                          </p>
+                                          {isCurrent && (
+                                            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-wider">
+                                              Current
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center gap-1.5 text-xs text-foreground/60">
+                                            <MapPin size={12} className="shrink-0" />
+                                            <span>
+                                              {session.location || "Unknown Location"} • {session.ipAddress || "No IP logged"}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 text-xs text-foreground/50">
+                                            <Clock size={12} className="shrink-0" />
+                                            <span>
+                                              Accessed: {new Date(session.lastActive).toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => handleSessionRevoke(session.id)}
+                                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                                        isCurrent
+                                          ? "text-destructive hover:bg-destructive/10 border border-destructive/20"
+                                          : "text-foreground/70 hover:text-foreground border border-border/50 hover:bg-card/50"
+                                      }`}
+                                    >
+                                      {isCurrent ? "Log Out" : "Revoke Session"}
+                                    </button>
+                                  </div>
+                                )
+                              })}
                             </div>
                           ) : (
                             <p className="text-sm text-foreground/60">No other devices are currently signed in.</p>

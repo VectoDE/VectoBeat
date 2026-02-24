@@ -1483,20 +1483,59 @@ export const revokeSessionByHash = async (discordId: string, sessionHash: string
   }
 }
 
-export const validateSessionHash = async (discordId: string, sessionHash: string) => {
+export const updateSessionActivity = async (discordId: string, sessionHash: string, details: { ipAddress?: string | null; userAgent?: string | null; location?: string | null }) => {
   try {
     const db = getPool()
-    if (!db) return true
+    if (!db) return
 
-    const count = await db.userSession.count({
+    await db.userSession.updateMany({
       where: {
         discordId,
         sessionHash,
         revokedAt: null,
       },
+      data: {
+        ipAddress: details.ipAddress || undefined,
+        userAgent: details.userAgent || undefined,
+        location: details.location || undefined,
+        lastActive: new Date(),
+      },
+    })
+  } catch (error) {
+    logDbError("[VectoBeat] Failed to update session activity:", error)
+  }
+}
+
+export const validateSessionHash = async (discordId: string, sessionHash: string, metadata?: { ipAddress?: string | null; userAgent?: string | null; location?: string | null }) => {
+  try {
+    const db = getPool()
+    if (!db) return true
+
+    const session = await db.userSession.findFirst({
+      where: {
+        discordId,
+        sessionHash,
+        revokedAt: null,
+      },
+      select: { id: true, lastActive: true, ipAddress: true, userAgent: true },
     })
 
-    return count > 0
+    if (!session) return false
+
+    // Update metadata if it has changed or if it's been more than 5 minutes since last update to avoid excessive writes
+    const now = Date.now()
+    const fiveMinutesAgo = now - 5 * 60 * 1000
+    const shouldUpdate =
+      !session.lastActive ||
+      session.lastActive.getTime() < fiveMinutesAgo ||
+      (metadata?.ipAddress && metadata.ipAddress !== session.ipAddress) ||
+      (metadata?.userAgent && metadata.userAgent !== session.userAgent)
+
+    if (shouldUpdate && metadata) {
+      void updateSessionActivity(discordId, sessionHash, metadata)
+    }
+
+    return true
   } catch (error) {
     logDbError("[VectoBeat] Failed to validate session hash:", error)
     return false

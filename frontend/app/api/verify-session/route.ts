@@ -6,6 +6,7 @@ import { hashSessionToken } from "@/lib/session"
 import { getUserSubscriptions, getUserRole, getUserSecurity, getSessionByHash, type SubscriptionSummary } from "@/lib/db"
 import { normalizeTierId } from "@/lib/memberships"
 import { apiClient } from "@/lib/api-client"
+import { getBotGuildPresence } from "@/lib/bot-status"
 
 const resolveDiscordId = async (request: NextRequest) => {
   const cookieStore = await cookies()
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
 }
 
 // --------------------------------------------------------------------------- helpers
-const mapDiscordGuilds = (raw: any[]): Array<{ id: string; name: string; hasBot: boolean; isAdmin: boolean }> => {
+const mapDiscordGuilds = (raw: any[], botGuilds: Set<string>): Array<{ id: string; name: string; hasBot: boolean; isAdmin: boolean }> => {
   return raw
     .map((g) => {
       if (!g || typeof g.id !== "string" || typeof g.name !== "string") return null
@@ -77,7 +78,7 @@ const mapDiscordGuilds = (raw: any[]): Array<{ id: string; name: string; hasBot:
       return {
         id: g.id,
         name: g.name,
-        hasBot: false,
+        hasBot: botGuilds.has(g.id),
         isAdmin,
       }
     })
@@ -91,25 +92,30 @@ const resolveGuilds = async (verification: any): Promise<ResolvedGuild[]> => {
     ? (verification.user.guilds as ResolvedGuild[])
     : []
   const token = verification.token
-  const existingById = new Map(existing.map((g: any) => [g.id, g]))
-  if (!token) return existing
+
+  // Get real-time bot presence
+  const botGuilds = await getBotGuildPresence()
+
+  if (!token) {
+    // If no token, we can still update hasBot on existing guilds based on real-time presence
+    return existing.map(g => ({
+      ...g,
+      hasBot: botGuilds.has(g.id)
+    }))
+  }
+
   try {
     const data = await apiClient<any>("https://discord.com/api/users/@me/guilds", {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     })
     if (!Array.isArray(data)) return existing
-    const fresh = mapDiscordGuilds(data).map((guild) => {
-      const prior = existingById.get(guild.id)
-      return {
-        ...guild,
-        // We do not preserve prior.hasBot because it might be stale or incorrect (e.g. defaulted to true).
-        // The frontend will determine actual bot presence via the bot status API and subscription data.
-        hasBot: false,
-      }
-    })
+    const fresh = mapDiscordGuilds(data, botGuilds)
     return fresh
   } catch {
-    return existing
+    return existing.map(g => ({
+      ...g,
+      hasBot: botGuilds.has(g.id)
+    }))
   }
 }

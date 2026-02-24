@@ -153,7 +153,7 @@ export const getBotStatus = async () => {
     return cachedBotStatus.data
   }
 
-  const authTokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  const authTokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: true })
   const candidates = buildStatusCandidates()
   if (candidates.length === 0) {
     cachedBotStatus.expires = now + 10 * 1000
@@ -244,7 +244,7 @@ const buildControlCandidates = () => {
 
 const postToBotControl = async (path: string, body: Record<string, any>): Promise<boolean> => {
   const nowMs = Date.now()
-  const tokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: false })
+  const tokens = await getApiKeySecrets(AUTH_TOKEN_TYPES, { includeEnv: true })
   const candidates = buildControlCandidates()
   let lastError: unknown = null
   for (const endpoint of candidates) {

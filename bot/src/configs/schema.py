@@ -209,6 +209,12 @@ class QueueSyncConfig(BaseModel):
     api_key: Optional[str] = None
 
 
+class BotListConfig(BaseModel):
+    """Configuration for external bot list synchronisation."""
+
+    discord_bot_list_token: Optional[str] = None
+
+
 class CacheConfig(BaseModel):
     """Caching behaviour for expensive operations."""
 
@@ -259,4 +265,5 @@ class AppConfig(BaseModel):
     search_limits: SearchLimitsConfig = SearchLimitsConfig()
     control_panel_api: ControlPanelAPIConfig = ControlPanelAPIConfig()
     queue_sync: QueueSyncConfig = QueueSyncConfig()
+    bot_list: BotListConfig = BotListConfig()
     security: SensitiveCommandConfig = SensitiveCommandConfig()

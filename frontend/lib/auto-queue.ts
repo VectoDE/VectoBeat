@@ -118,7 +118,7 @@ export async function getRecommendedTracks(trackId: string, limit = 5) {
     if (!prisma) return []
 
     try {
-        // 1. Try to find tracks that often follow this one
+        // 1. Try to find tracks that often follow this one (Learned Relationships)
         const recommendations = await prisma.musicRecommendation.findMany({
             where: { fromTrackId: trackId },
             orderBy: { weight: "desc" },
@@ -128,35 +128,60 @@ export async function getRecommendedTracks(trackId: string, limit = 5) {
             },
         })
 
-        if (recommendations.length > 0) {
-            return recommendations.map((r) => r.toTrack)
-        }
+        let results = recommendations.map((r) => r.toTrack)
 
         // 2. Fallback: Find tracks of the same genre
-        const seedTrack = await prisma.musicTrack.findUnique({ where: { id: trackId } })
-        if (seedTrack?.genre) {
-            return prisma.musicTrack.findMany({
-                where: {
-                    genre: seedTrack.genre,
-                    id: { not: trackId },
-                },
-                orderBy: { createdAt: "desc" },
-                take: limit,
-            })
+        if (results.length < limit) {
+            const seedTrack = await prisma.musicTrack.findUnique({ where: { id: trackId } })
+            if (seedTrack?.genre) {
+                const genreTracks = await prisma.musicTrack.findMany({
+                    where: {
+                        genre: seedTrack.genre,
+                        id: { notIn: [trackId, ...results.map(r => r.id)] },
+                    },
+                    orderBy: { createdAt: "desc" }, // Favor newer additions for variety
+                    take: limit - results.length,
+                })
+                results = [...results, ...genreTracks]
+            }
         }
 
         // 3. Deep fallback: Same artist
-        if (seedTrack?.artist) {
-            return prisma.musicTrack.findMany({
-                where: {
-                    artist: seedTrack.artist,
-                    id: { not: trackId }
-                },
-                take: limit
-            })
+        if (results.length < limit) {
+            const seedTrack = results.length === 0 ? await prisma.musicTrack.findUnique({ where: { id: trackId } }) : null
+            const artist = results.length > 0 ? results[0].artist : seedTrack?.artist
+
+            if (artist) {
+                const artistTracks = await prisma.musicTrack.findMany({
+                    where: {
+                        artist: artist,
+                        id: { notIn: [trackId, ...results.map(r => r.id)] }
+                    },
+                    take: limit - results.length
+                })
+                results = [...results, ...artistTracks]
+            }
         }
 
-        return []
+        // 4. Final fallback: Global Popularity (Most played tracks)
+        if (results.length < limit) {
+            // We can approximate popularity by counting recommendations "to" these tracks
+            // or just pick random tracks from the library if no playback counts exist yet.
+            const popularTracks = await prisma.musicTrack.findMany({
+                where: {
+                    id: { notIn: [trackId, ...results.map(r => r.id)] }
+                },
+                orderBy: {
+                    recommendationsTo: {
+                        _count: "desc"
+                    }
+                },
+                take: limit - results.length
+            })
+            results = [...results, ...popularTracks]
+        }
+
+        return results
     } catch (error) {
         console.error("[AutoQueue] Failed to get recommendations:", error)
         handlePrismaError(error)

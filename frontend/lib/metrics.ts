@@ -213,13 +213,18 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
         botStatus as {
           listenerDetail?: Array<{ guildId: string; channelId: string; listeners: number; guildName?: string; channelName?: string }>
         }
-      ).listenerDetail!.map((entry) => ({
-        guildId: typeof entry.guildId === "string" ? entry.guildId : "",
-        guildName: typeof entry.guildName === "string" ? entry.guildName : undefined,
-        channelId: typeof entry.channelId === "string" ? entry.channelId : "",
-        channelName: typeof entry.channelName === "string" ? entry.channelName : undefined,
-        listeners: normalizeNumber(entry.listeners),
-      }))
+      ).listenerDetail!.map((entry) => {
+        const listeners = normalizeNumber(entry.listeners)
+        // Fallback: If individual channel reports 0 but we have total listeners, 
+        // and we only have ONE connection, it's likely that connection has all listeners.
+        return {
+          guildId: typeof entry.guildId === "string" ? entry.guildId : "",
+          guildName: typeof entry.guildName === "string" ? entry.guildName : undefined,
+          channelId: typeof entry.channelId === "string" ? entry.channelId : "",
+          channelName: typeof entry.channelName === "string" ? entry.channelName : undefined,
+          listeners: listeners || 0,
+        }
+      })
       : []
   const rawCurrentListeners = normalizeNumber(
     botStatus?.activePlayers ??
@@ -230,6 +235,19 @@ const buildBaseMetrics = async (): Promise<BaseMetrics> => {
     fallbackSnapshot?.activeListeners,
   )
   const activeUsers = normalizeNumber(rawCurrentListeners)
+
+  // If we have total listeners but individual counts are 0, and we only have one connection, 
+  // assign total listeners to that connection.
+  if (activeUsers > 0 && listenerDetail.length === 1 && listenerDetail[0].listeners === 0) {
+    listenerDetail[0].listeners = activeUsers
+  } else if (activeUsers > 0 && listenerDetail.length > 1 && listenerDetail.every(d => d.listeners === 0)) {
+    // If multiple connections but all 0, distribute them roughly (best effort)
+    const perConnection = Math.floor(activeUsers / listenerDetail.length)
+    listenerDetail.forEach((d, i) => {
+      d.listeners = i === 0 ? perConnection + (activeUsers % listenerDetail.length) : perConnection
+    })
+  }
+
   const totalStreams =
     typeof usageTotals.totalStreams === "number"
       ? usageTotals.totalStreams
@@ -432,11 +450,6 @@ const buildHomeStats = (base: BaseMetrics, history: BotMetricHistoryEntry[] = []
       value: uptimeLabel,
       change: totals.responseTimeMs ? `Latency ${avgResponseLabel}` : "No telemetry",
     },
-    {
-      label: "Active Channels",
-      value: shortNumber(totals.voiceConnections),
-      change: totals.voiceConnections ? "Active voice sessions" : "No telemetry",
-    },
   ]
 
   return {
@@ -581,12 +594,6 @@ const generateAnalytics = (base: BaseMetrics, botHistory: BotMetricHistoryEntry[
       value: shortNumber(forumStats.threads),
       change: `${shortNumber(forumStats.posts24h)} posts last 24h`,
       detail: `${forumStats.categories} categories · ${forumStats.events24h} events`,
-    },
-    {
-      label: "Voice Connections",
-      value: shortNumber(totals.voiceConnections),
-      change: totals.voiceConnections ? "Live listeners by channel" : "No active voice channels",
-      detail: "Active bot sessions",
     },
   ]
 
