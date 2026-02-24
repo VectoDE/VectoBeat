@@ -27,7 +27,7 @@ const DEFAULT_FALLBACKS = [
 ]
 
 const ENDPOINT_COOLDOWN_MS = 30_000
-const FETCH_TIMEOUT_MS = 8_000
+const FETCH_TIMEOUT_MS = 4_000
 const ALLOW_LOCAL_FALLBACKS =
   process.env.ALLOW_LOCAL_STATUS_FALLBACKS === "1" || process.env.NODE_ENV !== "production"
 const AUTH_TOKEN_TYPES = ["status_api", "status_events", "control_panel", "server_settings"]

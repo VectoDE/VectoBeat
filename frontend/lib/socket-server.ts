@@ -83,7 +83,7 @@ export const ensureSocketServer = async (
       }
     }
 
-    await broadcastMetrics()
+    void broadcastMetrics()
     meta.metricsInterval = setInterval(broadcastMetrics, 30_000)
   }
 

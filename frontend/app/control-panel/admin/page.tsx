@@ -11,6 +11,7 @@ import { AdminPluginManager } from "@/components/admin-plugin-manager"
 import { AdminComplianceManager } from "@/components/admin-compliance-manager"
 import { AdminEnterpriseManager } from "@/components/admin-enterprise-manager"
 import { AdminFederationManager } from "@/components/admin-federation-manager"
+import { AdminAutoQueuePanel } from "@/components/admin-auto-queue-panel"
 import { apiClient } from "@/lib/api-client"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
@@ -47,6 +48,7 @@ type AdminTabKey =
   | "enterprise"
   | "federation"
   | "appeals"
+  | "autoQueue"
 
 type NewsletterSubscriber = {
   email: string
@@ -221,6 +223,7 @@ const ADMIN_TABS: Array<{ key: AdminTabKey; label: string; description: string }
   { key: "enterprise", label: "Enterprise", description: "Manage SSO, White-label & Custom Domains" },
   { key: "federation", label: "Federation", description: "Monitor Bot instances and shards across regions" },
   { key: "appeals", label: "Appeals", description: "Manage ban appeals and user infractions" },
+  { key: "autoQueue", label: "Auto Queue", description: "Monitor intelligent learning and music patterns" },
 ]
 
 const initialForm = {
@@ -820,7 +823,7 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const payload = await apiClient<any>(`/api/admin/system-keys?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/admin/system-credentials?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
@@ -4099,6 +4102,8 @@ export default function AdminControlPanelPage() {
             </div>
           </>
         )
+      case "autoQueue":
+        return <AdminAutoQueuePanel />
       case "overview":
       default: {
         const overviewHighlights: MetricStat[] = [
@@ -4805,7 +4810,7 @@ export default function AdminControlPanelPage() {
         if (authToken) {
           headers.Authorization = `Bearer ${authToken}`
         }
-        const payload = await apiClient<any>("/api/admin/system-keys", {
+        const payload = await apiClient<any>("/api/admin/system-credentials", {
           method: "POST",
           headers,
           credentials: "include",
@@ -4991,10 +4996,27 @@ export default function AdminControlPanelPage() {
           stripeCustomerId: "",
         })
         await loadAdminSubscriptions()
-      } catch (error) {
+      } catch (error: any) {
         // eslint-disable-next-line no-console
         console.error("Failed to create subscription:", error)
-        setSubscriptionsError(error instanceof Error ? error.message : "Unable to create subscription")
+        
+        // Attempt to parse detailed error from API
+        let errorMessage = "Unable to create subscription"
+        if (error instanceof Error) {
+          try {
+            const apiError = JSON.parse(error.message)
+            if (apiError.details) {
+              errorMessage = `${apiError.error}: ${apiError.details}`
+            } else if (apiError.error) {
+              errorMessage = apiError.error
+            } else {
+              errorMessage = error.message
+            }
+          } catch {
+            errorMessage = error.message
+          }
+        }
+        setSubscriptionsError(errorMessage)
       }
     },
     [authToken, discordId, loadAdminSubscriptions, newSubscription],

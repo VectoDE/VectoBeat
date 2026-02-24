@@ -10,6 +10,7 @@ import Footer from "@/components/footer"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeRaw from "rehype-raw"
+import remarkBreaks from "remark-breaks"
 import { BlogViewTracker } from "@/components/blog-view-tracker"
 
 type BlogPageParams = { params: Promise<{ slug: string }> | { slug: string } }
@@ -93,7 +94,7 @@ export default async function BlogPostPage({ params }: BlogPageParams) {
           )}
 
           <div className="prose prose-lg dark:prose-invert mx-auto">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeRaw]}>
               {post.content}
             </ReactMarkdown>
           </div>

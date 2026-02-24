@@ -813,3 +813,48 @@ model BanAppeal {
   @@index([infractionId], name: "ban_appeals_infraction_idx")
   @@map("ban_appeals")
 }
+
+model MusicTrack {
+  id        String   @id @default(uuid())
+  title     String
+  artist    String
+  genre     String?
+  source    String?  @map("source_id_type") // e.g. "spotify", "youtube"
+  sourceId  String?  @map("source_id")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  recommendationsFrom MusicRecommendation[] @relation("FromTrack")
+  recommendationsTo   MusicRecommendation[] @relation("ToTrack")
+
+  @@unique([source, sourceId])
+  @@index([genre])
+  @@map("music_tracks")
+}
+
+model MusicRecommendation {
+  id           String   @id @default(uuid())
+  fromTrackId  String   @map("from_track_id")
+  toTrackId    String   @map("to_track_id")
+  weight       Float    @default(1.0)
+  lastPlayedAt DateTime @default(now()) @map("last_played_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  fromTrack    MusicTrack @relation("FromTrack", fields: [fromTrackId], references: [id], onDelete: Cascade)
+  toTrack      MusicTrack @relation("ToTrack", fields: [toTrackId], references: [id], onDelete: Cascade)
+
+  @@unique([fromTrackId, toTrackId])
+  @@index([fromTrackId])
+  @@map("music_recommendations")
+}
+
+model MusicLearningLog {
+  id        String   @id @default(uuid())
+  guildId   String?  @map("guild_id")
+  event     String   // e.g. "learned_relation", "identified_genre"
+  details   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("music_learning_logs")
+}
