@@ -823,7 +823,7 @@ export default function AdminControlPanelPage() {
       if (authToken) {
         headers.Authorization = `Bearer ${authToken}`
       }
-      const payload = await apiClient<any>(`/api/admin/system-credentials?discordId=${discordId}`, {
+      const payload = await apiClient<any>(`/api/admin/system-tokens?discordId=${discordId}`, {
         headers,
         credentials: "include",
       })
@@ -2562,16 +2562,20 @@ export default function AdminControlPanelPage() {
           { label: "Queue sync secret", key: "QUEUE_SYNC_API_KEY", searchKey: "queue_sync" },
           { label: "Log ingest token", key: "LOG_INGEST_TOKEN", searchKey: "telemetry" },
         ].map((item) => {
-          // Check systemKeys state first if it applies to an API token
+          // 1. Check systemKeys state first if it applies to an API token
           const systemKeyRecord = item.searchKey ? systemKeys.find((k) => k.id === item.searchKey) : null
-          if (systemKeyRecord) {
-            return {
-              ...item,
-              configured: systemKeyRecord.configured,
-            }
+          if (systemKeyRecord && systemKeyRecord.configured) {
+            return { ...item, configured: true }
           }
-          // Otherwise fall back to local environment and proxy alt overrides
-          const value = envMap[item.key] || process.env[item.key]
+          
+          // 2. Check connectivity data (which comes from backend)
+          const connRecord = connectivity.find(c => c.key === item.key)
+          if (connRecord && connRecord.status !== "missing") {
+            return { ...item, configured: true }
+          }
+
+          // 3. Fallback to local environment entries (loaded from /api/admin/env)
+          const value = envMap[item.key] || (typeof process !== "undefined" ? process.env[item.key] : null)
           return {
             ...item,
             configured: Boolean(value),

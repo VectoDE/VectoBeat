@@ -87,10 +87,24 @@ export async function POST(request: NextRequest) {
 
     let stripeSubscription: Stripe.Subscription
     try {
+      let stripeProductId = updates.stripeProductId
+      if (!stripeProductId) {
+        const product = await stripe.products.create({
+          name: `${normalizedTier.toUpperCase()} — ${updates.name || updates.guildName || guildId}`,
+          metadata: {
+            tier: normalizedTier,
+            guildId,
+            source: "admin_portal_manual",
+          },
+        })
+        stripeProductId = product.id
+      }
+
       stripeSubscription = await stripe.subscriptions.create({
         customer: stripeCustomerId,
         description: `Admin-created ${normalizedTier} subscription for guild ${guildId}`,
         payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
         collection_method: "charge_automatically",
         metadata: {
           discordId: targetDiscordId,
@@ -106,10 +120,8 @@ export async function POST(request: NextRequest) {
               currency: defaultCurrency,
               unit_amount: Math.round(monthlyPrice * 100),
               recurring: { interval: "month" },
-              product_data: {
-                name: `${normalizedTier.toUpperCase()} — ${updates.name || updates.guildName || guildId}`,
-              },
-            } as any,
+              product: stripeProductId,
+            },
           },
         ],
       })

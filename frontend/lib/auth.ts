@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { validateSessionHash, getStoredUserProfile, verifyUserApiKey, type StoredUserProfile } from "./db"
 import { hashSessionToken } from "./session"
+import { resolveClientIp, resolveClientLocation } from "./request-metadata"
 
 export const authBypassEnabled = () => {
   return (
@@ -51,7 +52,13 @@ export const verifyRequestForUser = async (
   }
 
   const sessionHash = hashSessionToken(token)
-  const isValid = await validate(discordId, sessionHash)
+
+  // Resolve session metadata
+  const ipAddress = resolveClientIp(request)
+  const userAgent = request.headers.get("user-agent")
+  const location = resolveClientLocation(request)
+
+  const isValid = await validate(discordId, sessionHash, { ipAddress, userAgent, location })
   if (!isValid) {
     return { valid: false, token: null, sessionHash: null, user: null }
   }

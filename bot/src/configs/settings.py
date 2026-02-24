@@ -490,6 +490,10 @@ if queue_sync_enabled or queue_sync_endpoint or queue_sync_key:
         api_key=queue_sync_key or CONFIG.queue_sync.api_key,
     )
 
+bot_list_token = os.getenv("DISCORD_BOT_LIST_TOKEN")
+if bot_list_token:
+    CONFIG.bot_list.discord_bot_list_token = bot_list_token
+
 
 def _ids_from_env(var_name: str) -> List[int]:
     raw = os.getenv(var_name)

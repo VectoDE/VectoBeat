@@ -52,6 +52,7 @@ from src.services.regional_routing_service import RegionalRoutingService
 from src.services.federation_service import FederationService
 from src.services.predictive_health_service import PredictiveHealthService
 from src.services.plugin_service import PluginService
+from src.services.bot_list_service import BotListService
 from src.utils.logger import setup_logging
 from src.utils.embeds import set_branding_resolver
 from src.utils.plan_capabilities import load_plan_capabilities_async
@@ -124,6 +125,7 @@ class VectoBeat(commands.AutoShardedBot):
         self.latency_monitor = LatencyMonitor(bot_cast, sample_interval=2.0, max_samples=60)
         self.status_api = StatusAPIService(bot_cast, CONFIG.status_api)
         self.queue_sync = QueueSyncService(CONFIG.queue_sync, self.server_settings)
+        self.bot_list = BotListService(self, CONFIG.bot_list)
         self._entrypoint_payloads: List[dict] = []
         self._panel_parity_task: Optional[asyncio.Task] = None
         self._prefix_cache: dict[int, tuple[str, float]] = {}
@@ -228,6 +230,8 @@ class VectoBeat(commands.AutoShardedBot):
             await self.federation_service.close()
         if hasattr(self, "predictive_health"):
             await self.predictive_health.close()
+        if hasattr(self, "bot_list"):
+            await self.bot_list.close()
 
         if hasattr(self, "status_api"):
             await self.status_api.close()
@@ -286,6 +290,7 @@ class VectoBeat(commands.AutoShardedBot):
         await self.queue_telemetry.start()
         await self.queue_sync.start()
         await self.status_api.start()
+        await self.bot_list.start()
         await self.dj_permissions.start()
         # search_cache is synchronous; no start required
         await self.latency_monitor.start()
@@ -320,6 +325,7 @@ class VectoBeat(commands.AutoShardedBot):
         try:
             await self.tree.sync()
             self.logger.info("Slash commands synced.")
+            await self.bot_list.sync_commands()
             return
         except discord.HTTPException as exc:
             if exc.status == 400 and exc.code == 50240:
@@ -378,6 +384,7 @@ class VectoBeat(commands.AutoShardedBot):
                 "Slash commands synced (%s preserved entry commands).",
                 len(preserved_payloads),
             )
+        await self.bot_list.sync_commands()
 
     async def _validate_panel_parity_on_startup(self) -> None:
         """Fetch control-panel settings for every guild and ensure we enforce them."""

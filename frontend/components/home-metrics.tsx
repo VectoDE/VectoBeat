@@ -175,7 +175,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
       try {
         console.log("[VectoBeat] Initializing metrics socket...")
         await apiClient("/api/socket")
-        socket = io({ path: "/api/socket" })
+        socket = io({ path: "/api/socket", transports: ["websocket"] })
 
         socket.on("connect", () => {
           console.log("[VectoBeat] Metrics socket connected")
@@ -229,7 +229,6 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
     (statsCopy ?? DEFAULT_STATS_COPY).siteViews.label,
     (statsCopy ?? DEFAULT_STATS_COPY).activeServers.label,
     (statsCopy ?? DEFAULT_STATS_COPY).activeUsers.label,
-    (statsCopy ?? DEFAULT_STATS_COPY).activeChannels.label,
     (statsCopy ?? DEFAULT_STATS_COPY).uptime.label,
   ]
   const stats = targetLabels

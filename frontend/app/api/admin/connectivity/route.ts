@@ -118,24 +118,16 @@ export async function GET(request: NextRequest) {
   const services: Service[] = await Promise.all(
     SERVICE_KEYS.map(async (service) => {
       const fromBot = BOT_ENV_KEYS.has(service.envKey)
-      let envVal = null
-      let origin = "missing"
+      let envVal = process.env[service.envKey] || null
+      let origin = "process.env"
 
-      if (fromBot) {
-        if (botEnv[service.envKey]) {
+      if (!envVal) {
+        if (fromBot && botEnv[service.envKey]) {
           envVal = botEnv[service.envKey]
           origin = "bot .env"
-        } else if (process.env[service.envKey]) {
-          envVal = process.env[service.envKey]
-          origin = "process.env"
-        }
-      } else {
-        if (frontendEnv[service.envKey]) {
+        } else if (frontendEnv[service.envKey]) {
           envVal = frontendEnv[service.envKey]
           origin = "frontend .env"
-        } else if (process.env[service.envKey]) {
-          envVal = process.env[service.envKey]
-          origin = "process.env"
         }
       }
 
