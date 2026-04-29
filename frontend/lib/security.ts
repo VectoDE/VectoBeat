@@ -75,17 +75,19 @@ export const getSecurityHeaders = () => {
   }
 }
 
-// Password Hashing (for future auth)
+// Password Hashing (OWASP-recommended PBKDF2 parameters)
 export const hashPassword = async (password: string): Promise<string> => {
-  const salt = crypto.randomBytes(16).toString("hex")
-  const hash = crypto.pbkdf2Sync(password, salt, 10000, 64, "sha256").toString("hex")
+  const salt = crypto.randomBytes(32).toString("hex")
+  const hash = crypto.pbkdf2Sync(password, salt, 310000, 64, "sha512").toString("hex")
   return `${salt}:${hash}`
 }
 
-export const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
-  const [salt, originalHash] = hash.split(":")
-  const newHash = crypto.pbkdf2Sync(password, salt, 10000, 64, "sha256").toString("hex")
-  return newHash === originalHash
+export const verifyPassword = async (password: string, storedHash: string): Promise<boolean> => {
+  const [salt, originalHash] = storedHash.split(":")
+  if (!salt || !originalHash) return false
+  const newHash = crypto.pbkdf2Sync(password, salt, 310000, 64, "sha512").toString("hex")
+  if (newHash.length !== originalHash.length) return false
+  return crypto.timingSafeEqual(Buffer.from(newHash, "hex"), Buffer.from(originalHash, "hex"))
 }
 
 // Session Management

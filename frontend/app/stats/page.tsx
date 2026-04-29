@@ -7,7 +7,7 @@ import { type AnalyticsOverview } from "@/lib/metrics"
 import { apiClient } from "@/lib/api-client"
 
 const getInternalBaseUrl = () =>
-  process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+  process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
 
 const fetchAnalyticsData = async (): Promise<AnalyticsOverview | null> => {
   try {

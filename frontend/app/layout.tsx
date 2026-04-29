@@ -84,7 +84,7 @@ export default async function RootLayout({
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://discord.com https://api.stripe.com;"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://m.stripe.network; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://discord.com https://api.stripe.com https://checkout.stripe.com https://m.stripe.network; frame-src 'self' https://js.stripe.com https://checkout.stripe.com; worker-src 'self' blob:;"
         />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
       </head>

@@ -390,7 +390,7 @@ const [subscriptionPreview, setSubscriptionPreview] = useState<AccountSubscripti
   const profileShareBase =
     typeof window !== "undefined"
       ? window.location.origin
-      : process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+      : process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
 const profileShareUrl = profileShareSlug
     ? `${profileShareBase.replace(/\/$/, "")}/profile/${profileShareSlug}`
     : ""

@@ -45,14 +45,23 @@ export async function GET(request: NextRequest) {
   }
 
   const fileEnv = await readEnvFile(target)
-  const merged: Record<string, string> = { ...fileEnv }
-  for (const [key, value] of Object.entries(process.env)) {
-    if (typeof value === "string") {
-      merged[key] = value
-    }
+
+  const SENSITIVE_PATTERNS = [
+    /SECRET/i, /TOKEN/i, /PASSWORD/i, /KEY/i, /CREDENTIAL/i,
+    /DATABASE_URL/i, /REDIS_URL/i, /SMTP_PASS/i, /PRIVATE/i,
+  ]
+  const isSensitive = (key: string) => SENSITIVE_PATTERNS.some((p) => p.test(key))
+  const redact = (key: string, value: string) => {
+    if (!isSensitive(key)) return value
+    if (!value) return ""
+    return value.length > 4 ? `${"*".repeat(value.length - 4)}${value.slice(-4)}` : "****"
   }
 
-  const entries = Object.entries(merged).map(([key, value]) => ({ key, value }))
+  const entries = Object.entries(fileEnv).map(([key, value]) => ({
+    key,
+    value: redact(key, value),
+    configured: Boolean(value),
+  }))
   return NextResponse.json({ entries, source: { file: getEnvPath(target), target } })
 }
 

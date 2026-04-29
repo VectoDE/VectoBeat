@@ -243,14 +243,7 @@ export async function GET(request: NextRequest) {
       ? resolveStateRedirect(request, stateOverride, decodedState ? false : true)
       : null
     const redirectUrl = stateRedirect ?? new URL(redirectPath, resolvePreferredOrigin(request))
-    redirectUrl.searchParams.set("token", tokenData.access_token)
     redirectUrl.searchParams.set("user_id", userData.id)
-    redirectUrl.searchParams.set("username", userData.username)
-    redirectUrl.searchParams.set("avatar", userData.avatar || "")
-    redirectUrl.searchParams.set("email", userData.email || "")
-    if (userData.phone) {
-      redirectUrl.searchParams.set("phone", userData.phone)
-    }
 
     const response = NextResponse.redirect(redirectUrl)
 
