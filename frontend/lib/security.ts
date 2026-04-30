@@ -6,6 +6,8 @@
  */
 
 import crypto from "crypto"
+import { SECURITY_HEADERS } from "./constants"
+export { SECURITY_HEADERS }
 
 // CSRF Token Management
 export const generateCSRFToken = (): string => {
@@ -41,13 +43,18 @@ export const checkRateLimit = (identifier: string, maxRequests = 100, windowMs =
   return true
 }
 
-// Input Validation
+// Input Validation & Sanitization
 export const sanitizeInput = (input: string): string => {
   return input
-    .replace(/[<>]/g, "") // Remove angle brackets
-    .replace(/script/gi, "") // Remove script tags
+    .replace(/[<>]/g, "")
+    .replace(/script/gi, "")
     .trim()
-    .substring(0, 1000) // Limit length
+    .substring(0, 1000)
+}
+
+export const sanitizeField = (value: unknown, maxLen = 1000): string => {
+  if (typeof value !== "string") return ""
+  return value.trim().slice(0, maxLen)
 }
 
 export const validateEmail = (email: string): boolean => {
@@ -63,17 +70,11 @@ export const validateDiscordId = (id: string): boolean => {
 }
 
 // Security Headers
-export const getSecurityHeaders = () => {
-  return {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block",
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-    "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
-  }
-}
+export const getSecurityHeaders = () => ({
+  ...SECURITY_HEADERS,
+  "Content-Security-Policy":
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+})
 
 // Password Hashing (OWASP-recommended PBKDF2 parameters)
 export const hashPassword = async (password: string): Promise<string> => {

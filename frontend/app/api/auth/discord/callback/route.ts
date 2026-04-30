@@ -1,77 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
+import { DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
 import { getUserSecurity, persistUserProfile, recordLoginSession } from "@/lib/db"
 import { resolveClientLocation } from "@/lib/request-metadata"
 import { hashSessionToken } from "@/lib/session"
 import { apiClient } from "@/lib/api-client"
-
-const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
-const REDIRECT_COOKIE = "discord_pkce_redirect"
-
-type EncodedStatePayload = {
-  v?: string
-  r?: string
-  u?: string
-}
-
-const clearPkceCookie = (response: NextResponse) => {
-  response.cookies.set(CODE_VERIFIER_COOKIE, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  })
-  response.cookies.set(REDIRECT_COOKIE, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  })
-}
-
-const base64UrlDecode = (value: string) => {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
-  const padding = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4))
-  return Buffer.from(normalized + padding, "base64").toString("utf-8")
-}
-
-const decodeStatePayload = (value: string | null): EncodedStatePayload | null => {
-  if (!value) {
-    return null
-  }
-  try {
-    const json = base64UrlDecode(value)
-    const parsed = JSON.parse(json)
-    if (parsed && typeof parsed === "object") {
-      return parsed as EncodedStatePayload
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-const resolvePreferredOrigin = (request: NextRequest) => {
-  const envOrigin =
-    process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
-  const candidates = [
-    envOrigin,
-    request.nextUrl.origin,
-    DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, ""),
-  ]
-  for (const candidate of candidates) {
-    if (!candidate) continue
-    try {
-      const normalized = new URL(candidate.replace(/\/$/, ""))
-      return normalized.origin
-    } catch {
-      continue
-    }
-  }
-  return request.nextUrl.origin
-}
+import {
+  CODE_VERIFIER_COOKIE,
+  REDIRECT_COOKIE,
+  clearPkceCookies,
+  decodeStatePayload,
+  resolvePreferredOrigin,
+  sanitizeRedirectUri,
+} from "@/lib/discord-auth"
 
 const resolveStateRedirect = (
   request: NextRequest,
@@ -140,17 +80,7 @@ const resolveStateRedirect = (
   return null
 }
 
-const sanitizeRedirect = (value: string | null | undefined, fallback: string) => {
-  if (!value) {
-    return fallback
-  }
-  try {
-    const parsed = new URL(value)
-    return parsed.toString().replace(/\/$/, "")
-  } catch {
-    return fallback
-  }
-}
+
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -160,7 +90,7 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     const response = NextResponse.redirect(new URL("/?error=no_code", request.url))
-    clearPkceCookie(response)
+    clearPkceCookies(response)
     return response
   }
 
@@ -168,7 +98,7 @@ export async function GET(request: NextRequest) {
     const fallbackOrigin = resolvePreferredOrigin(request)
     const fallbackRedirect = `${fallbackOrigin.replace(/\/$/, "")}/api/auth/discord/callback`
     const redirectCookie = request.cookies.get(REDIRECT_COOKIE)?.value
-    const redirectTarget = sanitizeRedirect(decodedState?.r || redirectCookie, fallbackRedirect)
+    const redirectTarget = sanitizeRedirectUri(decodedState?.r || redirectCookie || null, fallbackRedirect)
     const pkceVerifier =
       decodedState?.v ?? request.cookies.get(CODE_VERIFIER_COOKIE)?.value ?? null
 
@@ -286,7 +216,7 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
     })
 
-    clearPkceCookie(response)
+    clearPkceCookies(response)
     return response
   } catch (error) {
     console.error("Discord OAuth error:", error)

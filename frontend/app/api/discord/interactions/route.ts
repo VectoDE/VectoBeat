@@ -1,6 +1,6 @@
 import { createPublicKey, verify as verifySignature } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
-import { buildDiscordLoginUrl } from "@/lib/config"
+import { buildDiscordLoginUrl, getInternalBaseUrl } from "@/lib/config"
 
 export const runtime = "nodejs"
 
@@ -11,9 +11,7 @@ const PUBLIC_KEY_HEX =
     process.env.NEXT_PUBLIC_DISCORD_PUBLIC_KEY ||
     "").trim()
 const PUBLIC_KEY_VALID = /^[a-fA-F0-9]{64}$/.test(PUBLIC_KEY_HEX)
-const SITE_ORIGIN =
-  (process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")) ||
-  "https://vectobeat.uplytech.de"
+const SITE_ORIGIN = getInternalBaseUrl() || "https://vectobeat.uplytech.de"
 
 let cachedDiscordKey: ReturnType<typeof createPublicKey> | null = null
 

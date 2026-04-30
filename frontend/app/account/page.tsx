@@ -34,7 +34,7 @@ import {
   SiYoutube,
 } from "react-icons/si"
 import { FaMicrosoft } from "react-icons/fa"
-import { buildDiscordLoginUrl } from "@/lib/config"
+import { buildDiscordLoginUrl, getInternalBaseUrl } from "@/lib/config"
 import { RoleBadge } from "@/components/role-badge"
 import { logError } from "@/lib/utils/error-handling"
 
@@ -390,7 +390,7 @@ const [subscriptionPreview, setSubscriptionPreview] = useState<AccountSubscripti
   const profileShareBase =
     typeof window !== "undefined"
       ? window.location.origin
-      : process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
+      : getInternalBaseUrl()
 const profileShareUrl = profileShareSlug
     ? `${profileShareBase.replace(/\/$/, "")}/profile/${profileShareSlug}`
     : ""

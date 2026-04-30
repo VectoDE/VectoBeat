@@ -138,7 +138,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
     status: copy?.status ?? "Status",
     live: copy?.live ?? "Live",
     connecting: copy?.connecting ?? "Connecting...",
-    offline: copy?.offline ?? "Telemetry Offline",
+    offline: copy?.offline ?? "Cached",
     updated: copy?.updated ?? "Last Sync",
   }
 
@@ -242,7 +242,7 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
           <h2 className="text-2xl font-semibold">{labels.title}</h2>
           <p className="text-xs text-foreground/60" suppressHydrationWarning>
             {labels.status}:{" "}
-            <span className={state === "connected" ? "text-primary" : state === "connecting" ? "text-yellow-400" : "text-red-400"}>
+            <span className={state === "connected" ? "text-primary" : state === "connecting" ? "text-yellow-400" : "text-foreground/60"}>
               {state === "connected" ? labels.live : state === "connecting" ? labels.connecting : labels.offline}
             </span>{" "}
             - {labels.updated} {updatedLabel}

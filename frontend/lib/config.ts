@@ -5,9 +5,10 @@ const DISCORD_LOGIN_SCOPES = "identify%20guilds%20email"
 export const DISCORD_LOGIN_SCOPE_STRING = "identify guilds email"
 const DISCORD_BOT_SCOPE = `${DISCORD_LOGIN_SCOPES}%20bot%20applications.commands`
 
-const appUrl =
-  process.env.NEXT_PUBLIC_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
+export const getInternalBaseUrl = () =>
+  process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
+
+const appUrl = getInternalBaseUrl()
 const normalizedAppUrl = appUrl.replace(/\/$/, "")
 const redirectUri = `${normalizedAppUrl}/api/auth/discord/callback`
 export const DEFAULT_DISCORD_REDIRECT_URI = redirectUri

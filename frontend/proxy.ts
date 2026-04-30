@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-
-// --- Security Headers ---
-const SECURITY_HEADERS: Record<string, string> = {
-  "X-Content-Type-Options": "nosniff",
-  "X-Frame-Options": "SAMEORIGIN",
-  "X-XSS-Protection": "1; mode=block",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
-}
-
-// --- Rate Limiter Logic ---
-const RATE_LIMIT_WINDOW = 60_000
-const RATE_LIMIT_MAX_GLOBAL = 100
-const RATE_LIMIT_MAX_SENSITIVE = 60
+import {
+  SECURITY_HEADERS,
+  RATE_LIMIT_WINDOW,
+  RATE_LIMIT_MAX_GLOBAL,
+  RATE_LIMIT_MAX_SENSITIVE,
+  SENSITIVE_PREFIXES,
+} from "@/lib/constants"
 
 const ipRequests = new Map<string, { count: number; expiresAt: number }>()
 const sensitiveRateLimitStore = new Map<string, { count: number; resetAt: number }>()
@@ -30,16 +23,6 @@ const purgeStaleSensitiveEntries = () => {
   }
 }
 
-const SENSITIVE_PREFIXES = [
-  "/api/contact",
-  "/api/newsletter",
-  "/api/donate",
-  "/api/checkout",
-  "/api/auth",
-  "/api/upload",
-  "/api/support-tickets",
-]
-
 const checkSensitiveRateLimit = (key: string): boolean => {
   purgeStaleSensitiveEntries()
   const now = Date.now()
@@ -55,7 +38,6 @@ const checkSensitiveRateLimit = (key: string): boolean => {
   return true
 }
 
-// --- Cookie Logic Constants ---
 const ONE_YEAR = 60 * 60 * 24 * 365
 
 export async function proxy(request: NextRequest) {
@@ -65,7 +47,6 @@ export async function proxy(request: NextRequest) {
     request.headers.get("x-real-ip") ||
     "127.0.0.1"
 
-  // 1. Global rate limiter (applies to /api routes)
   if (pathname.startsWith("/api")) {
     const now = Date.now()
 
@@ -89,7 +70,6 @@ export async function proxy(request: NextRequest) {
     })
   }
 
-  // 2. Stricter rate limiting on sensitive endpoints
   const isSensitive = SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   if (isSensitive) {
     const key = `sensitive:${ip}:${pathname.split("/").slice(0, 4).join("/")}`
@@ -101,14 +81,12 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 3. Build response with security headers
   const response = NextResponse.next()
 
   for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(header, value)
   }
 
-  // 4. Cookie logic (applies to non-api routes)
   if (!pathname.startsWith("/api")) {
     const existing = request.cookies.get("lang")?.value
 

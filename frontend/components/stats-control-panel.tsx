@@ -190,12 +190,12 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           </p>
           <p className="text-sm text-foreground/50 mt-6 animate-fade-in-up animation-delay-400">
             Last updated {lastUpdated} · Status{" "}
-            <span className={connectionState === "connected" ? "text-primary" : "text-red-400"}>
+            <span className={connectionState === "connected" ? "text-primary" : connectionState === "connecting" ? "text-yellow-400" : "text-foreground/60"}>
               {connectionState === "connected"
                 ? "Streaming live metrics"
                 : connectionState === "connecting"
-                  ? "Connecting..."
-                  : "Offline"}
+                  ? "Connecting\u2026"
+                  : "Cached"}
             </span>
           </p>
         </div>

@@ -1,49 +1,14 @@
-import crypto from "crypto"
 import { type NextRequest, NextResponse } from "next/server"
-import { DEFAULT_DISCORD_REDIRECT_URI, DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
-
-const CODE_VERIFIER_COOKIE = "discord_pkce_verifier"
-const REDIRECT_COOKIE = "discord_pkce_redirect"
-
-const base64UrlEncode = (input: Buffer) => {
-  return input.toString("base64url")
-}
-
-const generateCodeVerifier = () => base64UrlEncode(crypto.randomBytes(64))
-const generateCodeChallenge = (verifier: string) => base64UrlEncode(crypto.createHash("sha256").update(verifier).digest())
-
-const sanitizeRedirectUri = (value: string | null, fallback: string) => {
-  if (!value) {
-    return fallback
-  }
-  try {
-    // Validate URL structure; Discord requires absolute URIs.
-    const parsed = new URL(value)
-    return parsed.toString().replace(/\/$/, "")
-  } catch {
-    return fallback
-  }
-}
-
-const encodeState = (payload: Record<string, string>) => {
-  const json = JSON.stringify(payload)
-  return base64UrlEncode(Buffer.from(json, "utf-8"))
-}
-
-const resolvePreferredOrigin = (request: NextRequest) => {
-  const envOrigin = process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
-  const candidates = [envOrigin, request.nextUrl.origin, DEFAULT_DISCORD_REDIRECT_URI.replace(/\/api\/auth\/discord\/callback$/, "")]
-  for (const candidate of candidates) {
-    if (!candidate) continue
-    try {
-      const normalized = new URL(candidate.replace(/\/$/, ""))
-      return normalized.origin
-    } catch {
-      continue
-    }
-  }
-  return request.nextUrl.origin
-}
+import { DISCORD_CLIENT_ID, DISCORD_LOGIN_SCOPE_STRING } from "@/lib/config"
+import {
+  CODE_VERIFIER_COOKIE,
+  REDIRECT_COOKIE,
+  generateCodeVerifier,
+  generateCodeChallenge,
+  encodeState,
+  resolvePreferredOrigin,
+  sanitizeRedirectUri,
+} from "@/lib/discord-auth"
 
 export async function GET(request: NextRequest) {
   if (!DISCORD_CLIENT_ID) {
