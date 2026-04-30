@@ -1,57 +1,115 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// --- Rate Limiter Logic ---
-// Simple in-memory rate limiter (per instance)
-// For distributed production, use Redis via @upstash/redis or similar HTTP-based client
-const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
-const RATE_LIMIT_MAX = 100 // 100 requests per minute
-const ipRequests = new Map<string, { count: number; expiresAt: number }>()
+// --- Security Headers ---
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "SAMEORIGIN",
+  "X-XSS-Protection": "1; mode=block",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+}
 
-// Clean up expired entries periodically
-setInterval(() => {
+// --- Rate Limiter Logic ---
+const RATE_LIMIT_WINDOW = 60_000
+const RATE_LIMIT_MAX_GLOBAL = 100
+const RATE_LIMIT_MAX_SENSITIVE = 60
+
+const ipRequests = new Map<string, { count: number; expiresAt: number }>()
+const sensitiveRateLimitStore = new Map<string, { count: number; resetAt: number }>()
+
+let lastPurge = Date.now()
+
+const purgeStaleSensitiveEntries = () => {
   const now = Date.now()
-  for (const [ip, data] of ipRequests.entries()) {
-    if (now > data.expiresAt) {
-      ipRequests.delete(ip)
+  if (now - lastPurge > RATE_LIMIT_WINDOW * 2) {
+    for (const [k, v] of sensitiveRateLimitStore) {
+      if (now > v.resetAt) sensitiveRateLimitStore.delete(k)
     }
+    lastPurge = now
   }
-}, 60 * 1000)
+}
+
+const SENSITIVE_PREFIXES = [
+  "/api/contact",
+  "/api/newsletter",
+  "/api/donate",
+  "/api/checkout",
+  "/api/auth",
+  "/api/upload",
+  "/api/support-tickets",
+]
+
+const checkSensitiveRateLimit = (key: string): boolean => {
+  purgeStaleSensitiveEntries()
+  const now = Date.now()
+  const entry = sensitiveRateLimitStore.get(key)
+  if (!entry || now > entry.resetAt) {
+    sensitiveRateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT_MAX_SENSITIVE) {
+    return false
+  }
+  entry.count++
+  return true
+}
 
 // --- Cookie Logic Constants ---
 const ONE_YEAR = 60 * 60 * 24 * 365
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "127.0.0.1"
 
-  // 1. Rate Limiter (applies to /api routes)
-  if (pathname.startsWith('/api')) {
-    const ip = request.headers.get("x-forwarded-for") || "127.0.0.1"
+  // 1. Global rate limiter (applies to /api routes)
+  if (pathname.startsWith("/api")) {
     const now = Date.now()
 
-    // Clean expired for this IP immediately
     const record = ipRequests.get(ip)
     if (record && now > record.expiresAt) {
       ipRequests.delete(ip)
     }
 
     const current = ipRequests.get(ip) || { count: 0, expiresAt: now + RATE_LIMIT_WINDOW }
-    
-    if (current.count >= RATE_LIMIT_MAX) {
-      return new NextResponse("Too Many Requests", { status: 429 })
+
+    if (current.count >= RATE_LIMIT_MAX_GLOBAL) {
+      return new NextResponse(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...SECURITY_HEADERS } },
+      )
     }
 
     ipRequests.set(ip, {
       count: current.count + 1,
-      expiresAt: current.expiresAt
+      expiresAt: current.expiresAt,
     })
   }
 
-  // 2. Cookie Logic (applies to non-api routes)
-  // Preserving original behavior: proxy.ts excluded 'api'
+  // 2. Stricter rate limiting on sensitive endpoints
+  const isSensitive = SENSITIVE_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  if (isSensitive) {
+    const key = `sensitive:${ip}:${pathname.split("/").slice(0, 4).join("/")}`
+    if (!checkSensitiveRateLimit(key)) {
+      return new NextResponse(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { "Content-Type": "application/json", ...SECURITY_HEADERS } },
+      )
+    }
+  }
+
+  // 3. Build response with security headers
   const response = NextResponse.next()
 
-  if (!pathname.startsWith('/api')) {
+  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(header, value)
+  }
+
+  // 4. Cookie logic (applies to non-api routes)
+  if (!pathname.startsWith("/api")) {
     const existing = request.cookies.get("lang")?.value
 
     if (!existing) {
@@ -68,7 +126,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Match everything except _next, static files, and favicon
-  // This covers both API routes (for rate limiting) and pages (for cookies)
   matcher: ["/((?!_next|static|favicon.ico).*)"],
 }

@@ -43,7 +43,7 @@ export default async function AboutPage() {
       icon: Shield,
       title: "Reliability & Security",
       description:
-        "End-to-end encrypted connections, no data logging, and full compliance with Discord&rsquo;s terms of service.",
+        "End-to-end encrypted connections, no data logging, and full compliance with Discord\u2019s terms of service.",
     },
     {
       icon: Code2,
