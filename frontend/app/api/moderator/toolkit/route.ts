@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
-import { normalizeTierId } from "@/lib/memberships"
+import { normalizeTierId, hasProPlus, highestTier } from "@/lib/memberships"
 
 const macros = [
   {
@@ -27,16 +27,7 @@ const badges = [
   { id: "moderator_lead", label: "Moderator Lead", description: "Active moderator with Pro+ guild access" },
 ]
 
-const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
-const highestTier = (tiers: string[]) => {
-  const order = ["free", "starter", "pro", "growth", "scale", "enterprise"]
-  let best = "free"
-  tiers.forEach((tier) => {
-    const idx = order.indexOf(tier)
-    if (idx > order.indexOf(best)) best = tier
-  })
-  return best
-}
+
 
 export async function GET(request: NextRequest) {
   const discordId = request.nextUrl.searchParams.get("discordId")

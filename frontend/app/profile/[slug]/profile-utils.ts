@@ -41,7 +41,7 @@ export type ProfileFetchResult = PublicProfile | { restricted: true } | null
 const resolveBaseUrl = () =>
   (
     process.env.NEXT_PUBLIC_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
   ).replace(/\/$/, "")
 
 export const fetchPublicProfile = async (slug: string): Promise<ProfileFetchResult> => {

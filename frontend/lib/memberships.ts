@@ -194,3 +194,17 @@ export const normalizeTierId = (value?: string | null): MembershipTier => {
   const normalized = value.trim().toLowerCase()
   return isMembershipTier(normalized) ? (normalized as MembershipTier) : "free"
 }
+
+export const TIER_ORDER: MembershipTier[] = ["free", "starter", "pro", "growth", "scale", "enterprise"]
+
+export const hasProPlus = (tiers: string[]): boolean =>
+  tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+
+export const highestTier = (tiers: string[]): MembershipTier => {
+  let best: MembershipTier = "free"
+  for (const tier of tiers) {
+    const idx = TIER_ORDER.indexOf(tier as MembershipTier)
+    if (idx > TIER_ORDER.indexOf(best)) best = TIER_ORDER[idx]
+  }
+  return best
+}

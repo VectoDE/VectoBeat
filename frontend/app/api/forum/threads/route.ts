@@ -10,9 +10,7 @@ import {
   updateForumThreadStatus,
   type SubscriptionSummary,
 } from "@/lib/db"
-import { normalizeTierId } from "@/lib/memberships"
-
-const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+import { normalizeTierId, hasProPlus } from "@/lib/memberships"
 const MODERATOR_THREAD_STATUSES = ["open", "pinned", "archived", "locked", "resolved"]
 
 const parseBody = async (request: NextRequest) => {

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyRequestForUser } from "@/lib/auth"
 import { getUserSubscriptions, listSupportKnowledgeBase, getUserRole, type SubscriptionSummary } from "@/lib/db"
-import { normalizeTierId } from "@/lib/memberships"
-
-const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+import { normalizeTierId, hasProPlus } from "@/lib/memberships"
 
 export async function GET(request: NextRequest) {
   const discordId = request.nextUrl.searchParams.get("discordId")

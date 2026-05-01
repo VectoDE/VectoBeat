@@ -188,14 +188,16 @@ export function StatsControlPanel({ initialData }: StatsControlPanelProps) {
           <p className="text-xl text-foreground/70 max-w-3xl mx-auto animate-fade-in-up animation-delay-200">
             Live data that captures VectoBeat&apos;s reach, reliability, and user engagement across every touchpoint.
           </p>
-          <p className="text-sm text-foreground/50 mt-6 animate-fade-in-up animation-delay-400">
-            Last updated {lastUpdated} · Status{" "}
-            <span className={connectionState === "connected" ? "text-primary" : "text-red-400"}>
+          <p className="text-sm text-foreground/50 mt-6 animate-fade-in-up animation-delay-400 inline-flex items-center justify-center gap-1.5 w-full" suppressHydrationWarning>
+            <span>Last updated {lastUpdated}</span>
+            <span className="text-foreground/30">·</span>
+            <span>Status</span>
+            <span className={`font-medium ${connectionState === "connected" ? "text-primary" : connectionState === "connecting" ? "text-yellow-400" : "text-foreground/60"}`}>
               {connectionState === "connected"
                 ? "Streaming live metrics"
                 : connectionState === "connecting"
-                  ? "Connecting..."
-                  : "Offline"}
+                  ? "Connecting\u2026"
+                  : "Cached"}
             </span>
           </p>
         </div>

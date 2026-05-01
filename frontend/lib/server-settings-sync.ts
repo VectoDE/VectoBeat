@@ -3,9 +3,7 @@ import type { ServerFeatureSettings } from "./server-settings"
 import { getApiKeySecret } from "./api-keys"
 import { apiClient } from "./api-client"
 import { logError } from "./utils/error-handling"
-
-const getInternalBaseUrl = () =>
-  process.env.NEXT_PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+import { getInternalBaseUrl } from "./config"
 
 const resolveBroadcastToken = async () => {
   const serverSettingsKey = await getApiKeySecret("server_settings", { includeEnv: false })

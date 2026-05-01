@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getUserPreferences, updateUserPreferences } from "@/lib/db"
+import { requireAuth, verifyRequestForUser } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
-  const discordId = request.nextUrl.searchParams.get("discordId")
-  if (!discordId) {
-    return NextResponse.json({ error: "discordId query param required" }, { status: 400 })
-  }
+  const result = await requireAuth(request)
+  if (!result.ok) return result.response
 
-  const prefs = await getUserPreferences(discordId)
+  const prefs = await getUserPreferences(result.discordId)
   return NextResponse.json(prefs)
 }
 
@@ -17,6 +16,11 @@ export async function PUT(request: NextRequest) {
     const { discordId, ...updates } = body
     if (!discordId) {
       return NextResponse.json({ error: "discordId is required" }, { status: 400 })
+    }
+
+    const auth = await verifyRequestForUser(request, discordId)
+    if (!auth.valid) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 
     const allowedKeys = [

@@ -1,24 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { cookies } from "next/headers"
-import { verifyRequestForUser } from "@/lib/auth"
-import { getPrismaClient, getUserRole } from "@/lib/db"
-
-const checkAdmin = async (req: NextRequest) => {
-    const cookieStore = await cookies()
-    const discordId =
-        cookieStore.get("discord_user_id")?.value ||
-        cookieStore.get("discord_id")?.value ||
-        cookieStore.get("discordId")?.value ||
-        req.nextUrl.searchParams.get("discordId")
-
-    if (!discordId) return false
-
-    const verification = await verifyRequestForUser(req, discordId)
-    if (!verification.valid) return false
-
-    const role = await getUserRole(discordId)
-    return role === "admin" || role === "operator"
-}
+import { checkAdmin } from "@/lib/auth"
+import { getPrismaClient } from "@/lib/db"
 
 export async function GET(req: NextRequest) {
     if (!await checkAdmin(req)) {

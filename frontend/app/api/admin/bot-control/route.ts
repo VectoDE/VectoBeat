@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 })
     }
 
-    const mapped = ACTIONS[action] || action
+    const mapped = ACTIONS[action]
+    if (!mapped) {
+      return NextResponse.json({ error: "invalid_action" }, { status: 400 })
+    }
     const ok = await sendBotControlAction(mapped)
     if (!ok) {
       return NextResponse.json({ error: "control_failed" }, { status: 500 })

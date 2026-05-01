@@ -40,7 +40,7 @@ const getBaseUrl = (runtimeOrigin?: string | null) => {
     process.env.NEXT_PUBLIC_URL,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     runtimeOrigin,
-    "http://localhost:3000",
+    "http://localhost:3050",
   ].filter(Boolean) as string[]
 
   for (const candidate of candidates) {

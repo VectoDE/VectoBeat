@@ -13,7 +13,7 @@ import {
 } from "@/lib/db"
 import { verifyRequestForUser } from "@/lib/auth"
 import { sendTicketEventEmail } from "@/lib/email-notifications"
-import { normalizeTierId } from "@/lib/memberships"
+import { normalizeTierId, TIER_ORDER } from "@/lib/memberships"
 
 export async function GET(
   request: NextRequest,
@@ -45,7 +45,7 @@ export async function GET(
     try {
       const subs = await getUserSubscriptions(requesterId)
       const activeStatuses = new Set(["active", "trialing", "pending"])
-      const tierOrder = ["free", "starter", "pro", "growth", "scale", "enterprise"]
+      const tierOrder = TIER_ORDER
       let best = "free"
       let bestServer: string | null = null
       for (const sub of subs as SubscriptionSummary[]) {

@@ -2,6 +2,7 @@ import crypto from "crypto"
 import { TextDecoder } from "util"
 import { NextRequest, NextResponse } from "next/server"
 import { fileTypeFromBuffer } from "file-type"
+import { verifyRequestForUser } from "@/lib/auth"
 
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024 // 15MB cap
 const BLOCKED_MIME = new Set([
@@ -65,6 +66,14 @@ const extractTextPreview = (buffer: Buffer) => {
 }
 
 export async function POST(request: NextRequest) {
+  const discordId = request.nextUrl.searchParams.get("discordId")
+  if (discordId) {
+    const auth = await verifyRequestForUser(request, discordId)
+    if (!auth.valid) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
+    }
+  }
+
   const form = await request.formData()
   const file = form.get("file")
   const fileName = form.get("name")?.toString() ?? "upload.bin"

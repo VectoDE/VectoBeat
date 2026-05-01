@@ -1,7 +1,31 @@
-import { NextRequest } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { validateSessionHash, getStoredUserProfile, verifyUserApiKey, type StoredUserProfile } from "./db"
 import { hashSessionToken } from "./session"
 import { resolveClientIp, resolveClientLocation } from "./request-metadata"
+
+export const resolveDiscordId = async (request: NextRequest): Promise<string | null> => {
+  const cookieStore = await cookies()
+  return (
+    cookieStore.get("discord_user_id")?.value ||
+    cookieStore.get("discord_id")?.value ||
+    cookieStore.get("discordId")?.value ||
+    request.nextUrl.searchParams.get("discordId") ||
+    null
+  )
+}
+
+export const checkAdmin = async (request: NextRequest): Promise<boolean> => {
+  const discordId = await resolveDiscordId(request)
+  if (!discordId) return false
+
+  const { getUserRole } = await import("./db")
+  const verification = await verifyRequestForUser(request, discordId)
+  if (!verification.valid) return false
+
+  const role = await getUserRole(discordId)
+  return role === "admin" || role === "operator"
+}
 
 export const authBypassEnabled = () => {
   return (
@@ -70,4 +94,25 @@ export const verifyRequestForUser = async (
     sessionHash,
     user: profile,
   }
+}
+
+type AuthSuccess = {
+  discordId: string
+  auth: Awaited<ReturnType<typeof verifyRequestForUser>>
+}
+
+type AuthResult =
+  | { ok: true; discordId: string; auth: AuthSuccess["auth"] }
+  | { ok: false; response: NextResponse }
+
+export const requireAuth = async (request: NextRequest): Promise<AuthResult> => {
+  const discordId = await resolveDiscordId(request)
+  if (!discordId) {
+    return { ok: false, response: NextResponse.json({ error: "discordId required" }, { status: 400 }) }
+  }
+  const auth = await verifyRequestForUser(request, discordId)
+  if (!auth.valid) {
+    return { ok: false, response: NextResponse.json({ error: "unauthorized" }, { status: 401 }) }
+  }
+  return { ok: true, discordId, auth }
 }

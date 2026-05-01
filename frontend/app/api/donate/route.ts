@@ -5,7 +5,7 @@ import { getUserPreferences } from "@/lib/db"
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
 const normalizedAppUrl = appUrl.replace(/\/$/, "")
 
 const currency = (process.env.STRIPE_DEFAULT_CURRENCY || "eur").toLowerCase()

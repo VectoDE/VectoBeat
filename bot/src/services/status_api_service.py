@@ -41,6 +41,7 @@ class StatusAPIService:
         self._app: Optional[web.Application] = None
         self._cache: Dict[str, Any] = {"payload": None, "expires": 0.0}
         self._streams_total = 0
+        self._last_tracks: Dict[int, Dict[str, Any]] = {}
         self._lock = asyncio.Lock()
         self._command_events: deque[float] = deque()
         self._incident_events: deque[float] = deque()
@@ -158,7 +159,19 @@ class StatusAPIService:
         if guild_id is None:
             return
         track_payload = self._track_payload(getattr(event, "track", None))
+        previous_payload = self._last_tracks.get(guild_id)
         self.record_stream_event(guild_id=guild_id, track=track_payload)
+        if track_payload:
+            metadata = {**track_payload, "artist": track_payload.get("author", "")}
+            if previous_payload:
+                metadata["previous"] = {**previous_payload, "artist": previous_payload.get("author", "")}
+            self._queue_event({
+                "type": "track_start",
+                "guildId": str(guild_id),
+                "metadata": metadata,
+                "ts": int(time.time()),
+            })
+            self._last_tracks[guild_id] = track_payload
 
     # ------------------------------------------------------------------ request handlers
     async def _handle_status(self, request: web.Request) -> web.Response:

@@ -22,7 +22,7 @@ interface EmailTemplateOptions {
 
 const appUrl =
   process.env.NEXT_PUBLIC_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3050")
 const normalizedAppUrl = appUrl.replace(/\/$/, "")
 
 export const renderMarkdownEmail = ({ title, intro, markdown, footer }: EmailTemplateOptions) => {

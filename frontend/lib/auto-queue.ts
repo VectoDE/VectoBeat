@@ -1,5 +1,4 @@
 import { getPrismaClient, handlePrismaError } from "./prisma"
-import type { Prisma } from "@prisma/client"
 
 export type TrackMetadata = {
     title: string
@@ -240,5 +239,185 @@ export async function getAutoQueueStats() {
         console.error("[AutoQueue] Failed to get stats:", error)
         handlePrismaError(error)
         return null
+    }
+}
+
+export type TrendEntry = { period: string; count: number }
+export type ArtistTrend = { artist: string; count: number; genres: string[] }
+export type Suggestion = { type: string; priority: "high" | "medium" | "low"; message: string; data?: Record<string, unknown> }
+
+/**
+ * Analyzes learning trends: genre shifts, top artists, and activity patterns.
+ */
+export async function analyzeTrends(guildId?: string | null, days = 30) {
+    const prisma = getPrismaClient()
+    if (!prisma) return null
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    try {
+        const recentLogs = await prisma.musicLearningLog.findMany({
+            where: {
+                createdAt: { gte: since },
+                ...(guildId ? { guildId } : {}),
+            },
+            orderBy: { createdAt: "desc" },
+            take: 500,
+        })
+
+        const dailyCounts = new Map<string, number>()
+        for (const log of recentLogs) {
+            const day = log.createdAt.toISOString().slice(0, 10)
+            dailyCounts.set(day, (dailyCounts.get(day) || 0) + 1)
+        }
+        const activityTrend: TrendEntry[] = Array.from(dailyCounts.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([period, count]) => ({ period, count }))
+
+        const topArtists = await prisma.musicTrack.groupBy({
+            by: ["artist"],
+            where: { createdAt: { gte: since } },
+            _count: { artist: true },
+            orderBy: { _count: { artist: "desc" } },
+            take: 10,
+        })
+
+        const artistTrends: ArtistTrend[] = []
+        for (const entry of topArtists) {
+            const genres = await prisma.musicTrack.findMany({
+                where: { artist: entry.artist, genre: { not: null } },
+                select: { genre: true },
+                distinct: ["genre"],
+                take: 5,
+            })
+            artistTrends.push({
+                artist: entry.artist,
+                count: entry._count.artist,
+                genres: genres.map(g => g.genre).filter(Boolean) as string[],
+            })
+        }
+
+        const genreTrend = await prisma.musicTrack.groupBy({
+            by: ["genre"],
+            where: { genre: { not: null }, createdAt: { gte: since } },
+            _count: { genre: true },
+            orderBy: { _count: { genre: "desc" } },
+            take: 10,
+        })
+
+        return {
+            period: { days, since: since.toISOString() },
+            activityTrend,
+            topArtists: artistTrends,
+            genreDistribution: genreTrend.map(g => ({ genre: g.genre, count: g._count.genre })),
+            totalLearningEvents: recentLogs.length,
+        }
+    } catch (error) {
+        console.error("[AutoQueue] Failed to analyze trends:", error)
+        handlePrismaError(error)
+        return null
+    }
+}
+
+/**
+ * Generates improvement suggestions based on learned data.
+ */
+export async function getImprovementSuggestions(): Promise<Suggestion[]> {
+    const prisma = getPrismaClient()
+    if (!prisma) return []
+
+    const suggestions: Suggestion[] = []
+
+    try {
+        const stats = await getAutoQueueStats()
+        if (!stats) return suggestions
+
+        if (stats.trackCount === 0) {
+            suggestions.push({
+                type: "bootstrap",
+                priority: "high",
+                message: "No tracks learned yet. Play music to start building the recommendation engine.",
+            })
+            return suggestions
+        }
+
+        if (stats.relationCount < stats.trackCount * 0.3) {
+            suggestions.push({
+                type: "coverage",
+                priority: "medium",
+                message: `Only ${stats.relationCount} relationships learned across ${stats.trackCount} tracks. More sequential plays will improve recommendations.`,
+                data: { ratio: stats.relationCount / Math.max(stats.trackCount, 1) },
+            })
+        }
+
+        const ungenred = await prisma.musicTrack.count({ where: { genre: null } })
+        if (ungenred > stats.trackCount * 0.5) {
+            suggestions.push({
+                type: "genre_gaps",
+                priority: "medium",
+                message: `${ungenred} of ${stats.trackCount} tracks have no genre tag. Genre tagging improves fallback recommendations.`,
+                data: { ungenred, total: stats.trackCount },
+            })
+        }
+
+        const weakLinks = await prisma.musicRecommendation.count({ where: { weight: { lte: 1 } } })
+        if (weakLinks > stats.relationCount * 0.8) {
+            suggestions.push({
+                type: "weak_links",
+                priority: "low",
+                message: "Most track relationships have low confidence. Repeated sequential plays strengthen recommendations.",
+                data: { weakLinks, total: stats.relationCount },
+            })
+        }
+
+        const orphanedTracks = await prisma.musicTrack.count({
+            where: {
+                recommendationsFrom: { none: {} },
+                recommendationsTo: { none: {} },
+            },
+        })
+        if (orphanedTracks > stats.trackCount * 0.3) {
+            suggestions.push({
+                type: "orphaned_tracks",
+                priority: "medium",
+                message: `${orphanedTracks} tracks are isolated (no learned relationships). These won't appear in recommendations.`,
+                data: { orphanedTracks, total: stats.trackCount },
+            })
+        }
+
+        if (stats.topGenres.length >= 3) {
+            suggestions.push({
+                type: "diversity",
+                priority: "low",
+                message: `Good genre diversity detected across ${stats.topGenres.length} genres. The recommendation engine can cross-pollinate.`,
+                data: { genres: stats.topGenres },
+            })
+        }
+
+        return suggestions
+    } catch (error) {
+        console.error("[AutoQueue] Failed to generate suggestions:", error)
+        handlePrismaError(error)
+        return suggestions
+    }
+}
+
+/**
+ * Returns a comprehensive learning summary for the AI dashboard.
+ */
+export async function getLearningSummary(guildId?: string | null) {
+    const [stats, trends, suggestions, recentLogs] = await Promise.all([
+        getAutoQueueStats(),
+        analyzeTrends(guildId, 30),
+        getImprovementSuggestions(),
+        listLearningLogs(10),
+    ])
+
+    return {
+        stats,
+        trends,
+        suggestions,
+        recentActivity: recentLogs,
+        status: stats && stats.trackCount > 0 ? "active" : "awaiting_data",
     }
 }

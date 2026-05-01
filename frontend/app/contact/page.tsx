@@ -55,7 +55,7 @@ export default function ContactPage() {
     {
       icon: Github,
       title: "GitHub Issues",
-      description: "Report bugs, suggest features, and contribute to VectoBeat&rsquo;s development",
+      description: "Report bugs, suggest features, and contribute to VectoBeat\u2019s development",
       link: "https://github.com/VectoDE/VectoBeat/issues",
       linkText: "Visit GitHub",
     },
@@ -402,7 +402,7 @@ export default function ContactPage() {
               {
                 title: "Search Before Asking",
                 content:
-                  "Before posting a question, check if it&rsquo;s already been answered in our documentation or FAQ sections.",
+                  "Before posting a question, check if it\u2019s already been answered in our documentation or FAQ sections.",
               },
               {
                 title: "Provide Context",
@@ -412,7 +412,7 @@ export default function ContactPage() {
               {
                 title: "Respect Privacy",
                 content:
-                  "Don&rsquo;t share personal information or server details publicly. Use private channels for sensitive discussions.",
+                  "Don\u2019t share personal information or server details publicly. Use private channels for sensitive discussions.",
               },
             ].map((guideline, i) => (
               <div key={i} className="p-6 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">

@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getUserSecurity, updateUserSecurity } from "@/lib/db"
+import { requireAuth, verifyRequestForUser } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
-  const discordId = request.nextUrl.searchParams.get("discordId")
-  if (!discordId) {
-    return NextResponse.json({ error: "discordId is required" }, { status: 400 })
-  }
+  const result = await requireAuth(request)
+  if (!result.ok) return result.response
 
-  const security = await getUserSecurity(discordId)
+  const security = await getUserSecurity(result.discordId)
   return NextResponse.json(security)
 }
 
@@ -16,6 +15,11 @@ export async function PUT(request: NextRequest) {
     const { discordId, ...updates } = await request.json()
     if (!discordId) {
       return NextResponse.json({ error: "discordId is required" }, { status: 400 })
+    }
+
+    const auth = await verifyRequestForUser(request, discordId)
+    if (!auth.valid) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 })
     }
 
     const allowedKeys = ["twoFactorEnabled", "loginAlerts", "twoFactorSecret", "lastPasswordChange"]
