@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyRequestForUser } from "@/lib/auth"
+import { requireAuth, verifyRequestForUser } from "@/lib/auth"
 import { getUserRole } from "@/lib/db"
 import fs from "fs/promises"
 import path from "path"
@@ -27,17 +27,11 @@ const writeEnvFile = async (target: "frontend" | "bot", entries: Record<string, 
 }
 
 export async function GET(request: NextRequest) {
-  const discordId = request.nextUrl.searchParams.get("discordId")
+  const result = await requireAuth(request)
+  if (!result.ok) return result.response
+  const { discordId } = result
   const targetParam = request.nextUrl.searchParams.get("target")
   const target = targetParam === "bot" ? "bot" : "frontend"
-  if (!discordId) {
-    return NextResponse.json({ error: "discordId is required" }, { status: 400 })
-  }
-
-  const auth = await verifyRequestForUser(request, discordId)
-  if (!auth.valid) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 })
-  }
 
   const role = await getUserRole(discordId)
   if (!["admin", "operator"].includes(role)) {

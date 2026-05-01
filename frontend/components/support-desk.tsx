@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { buildDiscordLoginUrl } from "@/lib/config"
 import type { TicketDetail, TicketMessage } from "@/lib/types/support"
 import { apiClient } from "@/lib/api-client"
+import { highestTier } from "@/lib/memberships"
 
 type Ticket = {
   id: string
@@ -79,17 +80,7 @@ const formatFileSize = (size?: number) => {
 }
 
 const getAuthToken = () => (typeof window === "undefined" ? "" : localStorage.getItem("discord_token") ?? "")
-const TIER_ORDER = ["free", "starter", "pro", "growth", "scale", "enterprise"]
-const highestTier = (tiers: string[]) => {
-  let best = "free"
-  tiers.forEach((tier) => {
-    const idx = TIER_ORDER.indexOf(tier.toLowerCase())
-    if (idx > TIER_ORDER.indexOf(best)) {
-      best = tier.toLowerCase()
-    }
-  })
-  return best
-}
+
 
 const isImageType = (type?: string) => (type ? type.startsWith("image/") : false)
 const isVideoType = (type?: string) => (type ? type.startsWith("video/") : false)

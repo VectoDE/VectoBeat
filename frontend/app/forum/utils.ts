@@ -1,9 +1,7 @@
 import { cookies } from "next/headers"
 
 import { getUserRole, getUserSubscriptions, type SubscriptionSummary } from "@/lib/db"
-import { normalizeTierId } from "@/lib/memberships"
-
-const hasProPlus = (tiers: string[]) => tiers.some((tier) => ["pro", "growth", "scale", "enterprise"].includes(tier))
+import { normalizeTierId, hasProPlus } from "@/lib/memberships"
 
 export type ForumViewerContext = {
   discordId: string | null
