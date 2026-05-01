@@ -240,12 +240,14 @@ export function HomeMetricsPanel({ initialMetrics, copy, statsCopy }: HomeMetric
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
           <h2 className="text-2xl font-semibold">{labels.title}</h2>
-          <p className="text-xs text-foreground/60" suppressHydrationWarning>
-            {labels.status}:{" "}
-            <span className={state === "connected" ? "text-primary" : state === "connecting" ? "text-yellow-400" : "text-foreground/60"}>
+          <p className="text-xs text-foreground/60 flex items-center gap-1.5" suppressHydrationWarning>
+            <span>{labels.status}:</span>
+            <span className={`font-medium ${state === "connected" ? "text-primary" : state === "connecting" ? "text-yellow-400" : "text-foreground/60"}`}>
               {state === "connected" ? labels.live : state === "connecting" ? labels.connecting : labels.offline}
-            </span>{" "}
-            - {labels.updated} {updatedLabel}
+            </span>
+            <span className="text-foreground/30">·</span>
+            <span>{labels.updated}</span>
+            <span>{updatedLabel}</span>
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">

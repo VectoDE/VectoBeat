@@ -40,8 +40,10 @@ export default async function CommandsPage() {
       <section className="w-full py-12 px-4" data-animate-on-scroll="off">
         <div className="max-w-6xl mx-auto space-y-12">
           {commandGroups.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-foreground/70">Loading commands...</p>
+            <div className="text-center py-16">
+              <Command className="h-12 w-12 mx-auto mb-4 text-foreground/20" />
+              <p className="text-lg font-medium text-foreground/60 mb-2">No commands available</p>
+              <p className="text-sm text-foreground/40">Commands are loaded from the bot API. Connect the bot to see the full command reference.</p>
             </div>
           ) : (
             commandGroups.map((group) => {

@@ -2,6 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { buildDiscordLoginUrl } from "@/lib/config"
 import { MenuIcon, CloseIcon } from "./icons"
 import { RoleBadge } from "./role-badge"
@@ -11,6 +12,7 @@ import { useScrollAnimation } from "@/lib/hooks/useScrollAnimation"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
   const { isLoggedIn, user, handleLogout } = useAuth()
   const { ref: dropdownRef, isOpen: profileMenuOpen, setIsOpen: setProfileMenuOpen } = useClickOutside(false)
   
@@ -49,16 +51,19 @@ export default function Navigation() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8 flex-1 justify-center">
-            {navLinks.map((link, i) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-foreground/70 hover:text-primary transition-colors duration-200 text-sm font-medium animate-slide-down"
-                style={{ animationDelay: `${i * 50}ms` }}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link, i) => {
+              const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`transition-colors duration-200 text-sm font-medium animate-slide-down ${isActive ? "text-primary" : "text-foreground/70 hover:text-primary"}`}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
 
           <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
@@ -166,17 +171,20 @@ export default function Navigation() {
         {isOpen && (
           <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-sm animate-slide-down">
             <div className="px-4 py-4 space-y-3">
-              {navLinks.map((link, i) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="block text-foreground/70 hover:text-primary transition-colors py-2 animate-slide-in-right"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link, i) => {
+                const isActive = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href)
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className={`block transition-colors py-2 animate-slide-in-right ${isActive ? "text-primary font-semibold" : "text-foreground/70 hover:text-primary"}`}
+                    style={{ animationDelay: `${i * 50}ms` }}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
 
               {isLoggedIn && user ? (
                 <div className="pt-2">

@@ -181,8 +181,16 @@ export function PluginMarketplace({ guildId }: PluginMarketplaceProps) {
             </Card>
           ))}
           {filteredPlugins.length === 0 && (
-            <div className="col-span-full text-center py-12 text-muted-foreground">
-              No plugins found matching your search.
+            <div className="col-span-full text-center py-16 text-muted-foreground">
+              <Download className="h-10 w-10 mx-auto mb-4 text-foreground/20" />
+              <p className="text-lg font-medium text-foreground/60 mb-2">
+                {search ? "No plugins found matching your search." : "No plugins available yet."}
+              </p>
+              <p className="text-sm text-foreground/40">
+                {search
+                  ? "Try a different search term or clear the filter."
+                  : "Community and official plugins will appear here once published."}
+              </p>
             </div>
           )}
         </div>
